@@ -9,105 +9,159 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Cog, AlertCircle } from "lucide-react";
+import { Cog, AlertCircle, ArrowRight } from "lucide-react";
 
-const ALL_MEASUREMENT_TYPES = [
-  { id: "temperature", label: "Temperature" },
-  { id: "humidity", label: "Humidity" },
-  { id: "pressure", label: "Pressure" },
-  { id: "vibration", label: "Vibration" },
-  { id: "voltage", label: "Voltage" },
-  { id: "current", label: "Current" },
-  { id: "flow_rate", label: "Flow Rate" },
-  { id: "level", label: "Level" },
-  { id: "custom", label: "Custom" },
+// Predefined System Variables for mapping
+const SYSTEM_VARIABLES_OPTIONS = [
+  { id: "temp", label: "Temperature (temp)" },
+  { id: "hum", label: "Humidity (hum)" },
+  { id: "press", label: "Pressure (press)" },
+  { id: "co2", label: "CO2 Level (co2)" },
+  { id: "voc", label: "VOC Level (voc)" },
+  { id: "pm25", label: "PM2.5 (pm25)" },
+  { id: "pm10", label: "PM10 (pm10)" },
+  { id: "light", label: "Light Level (light)" },
+  { id: "motion", label: "Motion (motion)" },
+  { id: "battery_percent", label: "Battery Level % (battery_percent)" },
+  { id: "battery_voltage", label: "Battery Voltage (battery_voltage)" },
+  { id: "rssi", label: "Signal Strength RSSI (rssi)" },
+  { id: "snr", label: "Signal-to-Noise Ratio (snr)" },
+  { id: "gps_lat", label: "GPS Latitude (gps_lat)" },
+  { id: "gps_lon", label: "GPS Longitude (gps_lon)" },
+  { id: "gps_alt", label: "GPS Altitude (gps_alt)" },
+  { id: "water_level", label: "Water Level (water_level)" },
+  { id: "flow_rate", label: "Flow Rate (flow_rate)" },
+  { id: "vibration", label: "Vibration (vibration)" },
+  { id: "sound_level", label: "Sound Level (sound_level)" },
+  { id: "count", label: "Generic Count (count)" },
+  { id: "switch_state", label: "Switch State (on/off) (switch_state)" },
+  { id: "analog_value", label: "Analog Value (analog_value)" },
+  { id: "digital_value", label: "Digital Value (digital_value)" },
+  { id: "text_value", label: "Text Value (text_value)" },
+  { id: "timestamp", label: "Timestamp (timestamp)" },
+  { id: "error_code", label: "Error Code (error_code)" },
+  { id: "status_text", label: "Status Text (status_text)" },
+  { id: "other", label: "Other/Uncategorized (other)" },
 ];
 
-interface ParsedSchemaProperty {
-  name: string;
-  type?: string; // JSON schema types: string, number, integer, boolean, array, object
-}
+const GENERAL_SENSOR_CATEGORIES = [
+    { id: "temperature", label: "Temperature" },
+    { id: "humidity", label: "Humidity" },
+    { id: "pressure", label: "Pressure" },
+    { id: "air_quality", label: "Air Quality (CO2, VOC, PM)" },
+    { id: "light", label: "Light" },
+    { id: "motion", label: "Motion" },
+    { id: "power", label: "Power/Battery" },
+    { id: "location", label: "Location/GPS" },
+    { id: "level_flow", label: "Level/Flow" },
+    { id: "vibration_sound", label: "Vibration/Sound" },
+    { id: "multi_purpose", label: "Multi-Purpose Sensor" },
+    { id: "generic_other", label: "Generic/Other" },
+];
 
-export default function AdminSensorDeclarationPage() {
-  const [sensorName, setSensorName] = useState("");
-  const [selectedMeasurementTypes, setSelectedMeasurementTypes] = useState<string[]>([]);
-  const [sensorUnit, setSensorUnit] = useState("");
+
+export default function AdminSensorDefinitionPage() {
+  const [sensorTypeName, setSensorTypeName] = useState("");
+  const [sensorGeneralCategory, setSensorGeneralCategory] = useState("");
+  const [exampleJsonText, setExampleJsonText] = useState("");
+  const [parsedJsonKeys, setParsedJsonKeys] = useState<string[]>([]);
+  const [keyMappings, setKeyMappings] = useState<Record<string, string>>({});
   const [sensorDescription, setSensorDescription] = useState("");
-  const [jsonSchemaText, setJsonSchemaText] = useState("");
-  const [parsedSchemaProperties, setParsedSchemaProperties] = useState<ParsedSchemaProperty[]>([]);
-  const [propertyMappings, setPropertyMappings] = useState<Record<string, string>>({});
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const handleMeasurementTypeChange = (typeId: string) => {
-    setSelectedMeasurementTypes((prevTypes) =>
-      prevTypes.includes(typeId)
-        ? prevTypes.filter((t) => t !== typeId)
-        : [...prevTypes, typeId]
-    );
-  };
-
   useEffect(() => {
-    if (jsonSchemaText.trim() === "") {
-      setParsedSchemaProperties([]);
-      setPropertyMappings({});
+    if (exampleJsonText.trim() === "") {
+      setParsedJsonKeys([]);
+      setKeyMappings({}); // Clear mappings if JSON text is empty
       setJsonError(null);
       return;
     }
     try {
-      const schema = JSON.parse(jsonSchemaText);
-      if (schema && typeof schema === "object" && schema.properties && typeof schema.properties === "object") {
-        const properties: ParsedSchemaProperty[] = Object.entries(schema.properties).map(([key, value]: [string, any]) => ({
-          name: key,
-          type: value?.type || "any",
-        }));
-        setParsedSchemaProperties(properties);
-        // Reset mappings if schema changes significantly
+      const parsed = JSON.parse(exampleJsonText);
+      if (typeof parsed === 'object' && !Array.isArray(parsed) && parsed !== null) {
+        const keys = Object.keys(parsed);
+        setParsedJsonKeys(keys);
+        // Reset mappings for new keys, preserve existing if key still present
         const newMappings: Record<string, string> = {};
-        properties.forEach(p => {
-            if (propertyMappings[p.name] && selectedMeasurementTypes.includes(propertyMappings[p.name])) {
-                newMappings[p.name] = propertyMappings[p.name];
+        keys.forEach(key => {
+            if(keyMappings[key] && SYSTEM_VARIABLES_OPTIONS.some(opt => opt.id === keyMappings[key])) {
+                newMappings[key] = keyMappings[key];
+            } else {
+                newMappings[key] = ""; // Initialize new keys with no mapping
             }
         });
-        setPropertyMappings(newMappings);
+        setKeyMappings(newMappings);
         setJsonError(null);
       } else {
-        setParsedSchemaProperties([]);
-        setPropertyMappings({});
-        setJsonError("Invalid JSON Schema structure: 'properties' object is missing or invalid.");
+        setParsedJsonKeys([]);
+        setKeyMappings({});
+        setJsonError("Example JSON must be a valid JSON object (not an array or primitive).");
       }
     } catch (error) {
-      setParsedSchemaProperties([]);
-      setPropertyMappings({});
+      setParsedJsonKeys([]);
+      setKeyMappings({});
       if (error instanceof Error) {
-        setJsonError(`Error parsing JSON: ${error.message}`);
+        setJsonError(`Invalid JSON: ${error.message}`);
       } else {
         setJsonError("An unknown error occurred while parsing JSON.");
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jsonSchemaText]); // Removed selectedMeasurementTypes from deps to avoid resetting mappings on type selection change
+  }, [exampleJsonText]); // Not including keyMappings here to avoid loop when initializing new keys
 
-  const handlePropertyMappingChange = (propertyName: string, measurementTypeId: string) => {
-    setPropertyMappings((prevMappings) => ({
+  const handleMappingChange = (jsonKey: string, systemVariableId: string) => {
+    setKeyMappings((prevMappings) => ({
       ...prevMappings,
-      [propertyName]: measurementTypeId,
+      [jsonKey]: systemVariableId,
     }));
   };
 
   const handleSaveSensorType = () => {
+    if (!sensorTypeName.trim()) {
+        alert("Sensor Type Name is required.");
+        return;
+    }
+    if (!sensorGeneralCategory) {
+        alert("General Category is required.");
+        return;
+    }
+    
+    let parsedExamplePayload = null;
+    if (exampleJsonText.trim() && !jsonError) {
+        try {
+            parsedExamplePayload = JSON.parse(exampleJsonText);
+        } catch (e) {
+            // Should be caught by jsonError state, but as a safeguard
+            alert("Example JSON is invalid and cannot be saved.");
+            return;
+        }
+    }
+
+    const finalMappings: Record<string, string> = {};
+    for (const key in keyMappings) {
+        if (keyMappings[key]) { // Only include mappings that have a system variable selected
+            finalMappings[key] = keyMappings[key];
+        }
+    }
+
     const sensorTypeData = {
-      name: sensorName,
-      measurementTypes: selectedMeasurementTypes.map(id => ALL_MEASUREMENT_TYPES.find(t => t.id === id)?.label || id),
-      unit: sensorUnit,
+      name: sensorTypeName,
+      category: sensorGeneralCategory,
       description: sensorDescription,
-      configSchema: jsonSchemaText ? JSON.parse(jsonSchemaText) : null,
-      configPropertyMappings: propertyMappings,
+      examplePayload: parsedExamplePayload,
+      mapping: finalMappings, // Use the filtered mappings
     };
-    console.log("Sensor Type Data to Save:", sensorTypeData);
-    alert("Sensor type declaration simulated. Check console for data.");
+    console.log("Sensor Type Definition to Save:", JSON.stringify(sensorTypeData, null, 2));
+    alert("Sensor Type definition simulated. Check console for data.");
     // Potentially reset form here
+    // setSensorTypeName("");
+    // setSensorGeneralCategory("");
+    // setExampleJsonText("");
+    // setSensorDescription("");
+    // setParsedJsonKeys([]);
+    // setKeyMappings({});
+    // setJsonError(null);
   };
 
 
@@ -117,143 +171,133 @@ export default function AdminSensorDeclarationPage() {
         <header className="flex items-center justify-between pb-4 mb-6 border-b">
           <div className="flex items-center gap-2">
             <Cog className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Sensor Declaration</h1>
+            <h1 className="text-3xl font-bold">Define Sensor Type and Data Mapping</h1>
           </div>
-          {/* <Button>Add New Sensor Type</Button> */}
         </header>
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Declare New Sensor Type</CardTitle>
-            <CardDescription>Define a new generic sensor type that can be detected and configured in the system.</CardDescription>
+            <CardTitle>New Sensor Type Definition</CardTitle>
+            <CardDescription>
+              Define a new type of sensor by providing its details and mapping its raw JSON data output to standardized system variables.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="sensorName">Sensor Name</Label>
+                <Label htmlFor="sensorTypeName">Sensor Type Name *</Label>
                 <Input 
-                  id="sensorName" 
-                  placeholder="e.g., Ambient Temperature Sensor HT-01" 
-                  value={sensorName}
-                  onChange={(e) => setSensorName(e.target.value)}
+                  id="sensorTypeName" 
+                  placeholder="e.g., Ambient THL Sensor v2.1" 
+                  value={sensorTypeName}
+                  onChange={(e) => setSensorTypeName(e.target.value)}
+                  required
                 />
+                 <p className="text-xs text-muted-foreground">A unique name for this type of sensor.</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sensorUnit">Unit of Measurement</Label>
-                <Input 
-                  id="sensorUnit" 
-                  placeholder="e.g., °C, %, Pa, g, V, A" 
-                  value={sensorUnit}
-                  onChange={(e) => setSensorUnit(e.target.value)}
-                />
+                <Label htmlFor="sensorGeneralCategory">General Category *</Label>
+                <Select value={sensorGeneralCategory} onValueChange={setSensorGeneralCategory} required>
+                  <SelectTrigger id="sensorGeneralCategory">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" disabled>-- Select Category --</SelectItem>
+                    {GENERAL_SENSOR_CATEGORIES.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Broad classification for this sensor type.</p>
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label>Measurement Types</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 border rounded-md">
-                {ALL_MEASUREMENT_TYPES.map((type) => (
-                  <div key={type.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`type-${type.id}`}
-                      checked={selectedMeasurementTypes.includes(type.id)}
-                      onCheckedChange={() => handleMeasurementTypeChange(type.id)}
-                    />
-                    <Label htmlFor={`type-${type.id}`} className="font-normal">
-                      {type.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="sensorDescription">Description</Label>
               <Textarea 
                 id="sensorDescription" 
-                placeholder="Brief description of the sensor type and its purpose." 
+                placeholder="Brief description of the sensor type, its purpose, common use cases, etc." 
                 value={sensorDescription}
                 onChange={(e) => setSensorDescription(e.target.value)}
+                rows={3}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sensorConfigParams">Configuration Parameters (JSON Schema)</Label>
+              <Label htmlFor="exampleJsonText">Example JSON Payload from Sensor</Label>
               <Textarea 
-                id="sensorConfigParams" 
-                placeholder='e.g., { "type": "object", "properties": { "threshold_min": { "type": "number", "description": "Minimum alert threshold" }, "threshold_max": { "type": "number" } } }' 
+                id="exampleJsonText" 
+                placeholder='Paste an example of the raw JSON data this sensor type sends, e.g., { "t": 23.5, "h": 55.2, "l": 750, "bat_v": 3.1 }'
                 rows={5} 
-                value={jsonSchemaText}
-                onChange={(e) => setJsonSchemaText(e.target.value)}
-                className={jsonError ? "border-destructive" : ""}
+                value={exampleJsonText}
+                onChange={(e) => setExampleJsonText(e.target.value)}
+                className={jsonError ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               <p className="text-xs text-muted-foreground">
-                Define the schema for parameters required during sensor instance configuration. Use standard JSON Schema format.
+                The system will parse this JSON to identify data keys for mapping. Must be a valid JSON object.
               </p>
               {jsonError && (
-                <p className="text-xs text-destructive flex items-center gap-1">
+                <p className="text-sm text-destructive flex items-center gap-1 p-2 bg-destructive/10 rounded-md">
                   <AlertCircle className="h-4 w-4" /> {jsonError}
                 </p>
               )}
             </div>
 
-            {parsedSchemaProperties.length > 0 && selectedMeasurementTypes.length > 0 && (
+            {parsedJsonKeys.length > 0 && !jsonError && (
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-medium">Map Configuration Properties to Measurement Types</h3>
+                <h3 className="text-lg font-medium">Map JSON Keys to System Variables</h3>
                 <CardDescription>
-                  Associate each configuration parameter from your schema with one of the selected measurement types for this sensor.
+                  For each key found in your example JSON, select the Capnio.pro system variable it corresponds to. 
+                  Unmapped keys will be ignored.
                 </CardDescription>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Schema Property</TableHead>
-                      <TableHead>Data Type</TableHead>
-                      <TableHead>Map to Measurement Type</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {parsedSchemaProperties.map((prop) => (
-                      <TableRow key={prop.name}>
-                        <TableCell className="font-mono text-sm">{prop.name}</TableCell>
-                        <TableCell className="text-xs uppercase text-muted-foreground">{prop.type}</TableCell>
-                        <TableCell>
-                          <Select
-                            value={propertyMappings[prop.name] || ""}
-                            onValueChange={(value) => handlePropertyMappingChange(prop.name, value)}
-                            disabled={selectedMeasurementTypes.length === 0}
-                          >
-                            <SelectTrigger className="w-full md:w-[200px]">
-                              <SelectValue placeholder="Select measurement type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="" disabled>-- Select --</SelectItem>
-                              {selectedMeasurementTypes.map((typeId) => {
-                                const typeLabel = ALL_MEASUREMENT_TYPES.find(t => t.id === typeId)?.label || typeId;
-                                return (
-                                  <SelectItem key={typeId} value={typeId}>
-                                    {typeLabel}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40%]">Incoming JSON Key</TableHead>
+                        <TableHead className="w-[10%] text-center hidden md:table-cell">Maps to</TableHead>
+                        <TableHead className="w-[50%]">Capnio.pro System Variable</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {parsedJsonKeys.map((key) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-mono text-sm break-all pr-2">
+                            {key}
+                            <span className="text-muted-foreground md:hidden"> →</span>
+                          </TableCell>
+                          <TableCell className="text-center hidden md:table-cell">
+                            <ArrowRight className="h-4 w-4 text-muted-foreground mx-auto" />
+                          </TableCell>
+                          <TableCell className="pl-2">
+                            <Select
+                              value={keyMappings[key] || ""}
+                              onValueChange={(value) => handleMappingChange(key, value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select system variable..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="" disabled>-- Do not map --</SelectItem>
+                                {SYSTEM_VARIABLES_OPTIONS.map((opt) => (
+                                  <SelectItem key={opt.id} value={opt.id}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
-            {parsedSchemaProperties.length > 0 && selectedMeasurementTypes.length === 0 && (
-                 <p className="text-sm text-orange-600 flex items-center gap-1 p-4 bg-orange-50 border border-orange-200 rounded-md">
-                  <AlertCircle className="h-4 w-4" /> Please select at least one Measurement Type above to map schema properties.
-                </p>
-            )}
 
-
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-6">
               <Button onClick={handleSaveSensorType} size="lg">
                 <Cog className="mr-2 h-5 w-5" />
-                Save Sensor Type
+                Save Sensor Type Definition
               </Button>
             </div>
           </CardContent>
@@ -262,3 +306,4 @@ export default function AdminSensorDeclarationPage() {
     </AppLayout>
   );
 }
+
