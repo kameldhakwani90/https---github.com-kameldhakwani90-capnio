@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export function UserNav() {
+  const router = useRouter(); // Initialize useRouter
+
   // Placeholder user data
   const user = {
     name: "Admin User",
@@ -28,6 +31,11 @@ export function UserNav() {
     const initials = names.map(n => n[0]).join('');
     return initials.toUpperCase();
   }
+
+  const handleLogout = () => {
+    // In a real app, you'd also clear any auth state here
+    router.push('/login');
+  };
 
   return (
     <DropdownMenu>
@@ -51,7 +59,7 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/profile">
+            <Link href="/profile"> {/* Assuming you might create a /profile page */}
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
               <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>
@@ -66,7 +74,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
           <DropdownMenuShortcut>⇧Q</DropdownMenuShortcut>
