@@ -1,3 +1,4 @@
+
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ export default function AdminFormulaCreationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <header className="flex items-center justify-between">
+        <header className="flex items-center justify-between pb-4 mb-6 border-b">
            <div className="flex items-center gap-2">
             <FileText className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Formula Creation</h1>
@@ -23,7 +24,7 @@ export default function AdminFormulaCreationPage() {
             <Button>Create New Formula</Button>
           </div>
         </header>
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Create New Formula</CardTitle>
             <CardDescription>Define dynamic formulas applicable to a range of machines and sensors.</CardDescription>

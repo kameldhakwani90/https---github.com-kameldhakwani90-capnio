@@ -1,3 +1,4 @@
+
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,11 @@ export default function AdminFormulaValidationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <header className="flex items-center gap-2">
+        <header className="flex items-center gap-2 pb-4 mb-6 border-b">
           <FlaskConical className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Formula Validation Engine</h1>
         </header>
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Test Formula with Example Data</CardTitle>
             <CardDescription>Enter a formula expression and sample data payloads to test its output.</CardDescription>

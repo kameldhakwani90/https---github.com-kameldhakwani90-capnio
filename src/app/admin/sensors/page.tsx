@@ -1,3 +1,4 @@
+
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,14 @@ export default function AdminSensorDeclarationPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <header className="flex items-center justify-between">
+        <header className="flex items-center justify-between pb-4 mb-6 border-b">
           <div className="flex items-center gap-2">
             <Cog className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Sensor Declaration</h1>
           </div>
           <Button>Add New Sensor Type</Button>
         </header>
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Declare New Sensor Type</CardTitle>
             <CardDescription>Define a new generic sensor type that can be detected and configured in the system.</CardDescription>
