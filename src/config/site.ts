@@ -30,11 +30,11 @@ export const siteConfig = {
       href: "/admin/clients",
       // icon: Users, // Icon assignment is handled in AppLayout/AppSidebar
     },
-    {
-      title: "Create Client Account",
-      href: "/admin/clients/create",
-      // icon: UserPlus,
-    },
+    // {
+    //   title: "Create Client Account", // Removed from here
+    //   href: "/admin/clients/create",
+    //   // icon: UserPlus,
+    // },
     {
       title: "Sensor Declaration", // Renamed
       href: "/admin/sensors",

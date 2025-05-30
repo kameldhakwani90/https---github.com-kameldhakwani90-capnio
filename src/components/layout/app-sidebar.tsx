@@ -25,7 +25,7 @@ interface AppSidebarProps {
 }
 
 const getAdminIcon = (href: string) => {
-  if (href.includes('/admin/clients/create')) return UserPlus;
+  // if (href.includes('/admin/clients/create')) return UserPlus; // No longer needed here
   if (href.includes('/admin/clients')) return Users; // Icon for List Clients
   if (href.includes('/admin/sensors')) return Cog;
   if (href.includes('/admin/formulas/validate')) return FlaskConical;
