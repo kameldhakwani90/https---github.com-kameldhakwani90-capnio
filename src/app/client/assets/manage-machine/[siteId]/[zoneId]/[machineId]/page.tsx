@@ -9,11 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, type Machine as FullMachineType, type Status } from "@/app/client/sites/[...sitePath]/page"; // Import full structure for finding machine
-import { ChevronLeft, Save, Settings2, HardDrive, Server } from "lucide-react";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status } from "@/app/client/sites/[...sitePath]/page"; // Import full structure for finding machine
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Thermometer, Zap, Wind } from "lucide-react"; // Example icons for machines
 
 // --- Data Structures (Simulated for this page) ---
 
@@ -99,8 +98,8 @@ function findMachineFromGlobalData(siteId: string, zoneId: string, machineId: st
     }
     if (!targetSite) return undefined;
 
-    let targetZone: Zone | undefined;
-    function findZoneRecursive(zones: Zone[], id: string): Zone | undefined {
+    let targetZone: FullZoneType | undefined;
+    function findZoneRecursive(zones: FullZoneType[], id: string): FullZoneType | undefined {
         for (const z of zones) {
             if (z.id === id) return z;
             if (z.subZones) {
@@ -244,7 +243,7 @@ export default function ManageMachineControlsPage() {
       title: "Configuration Sauvegardée",
       description: `Les configurations des contrôles pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
-    router.push(`/client/assets/manage/${siteId}/${zoneId}`); // Navigate back to zone or site
+    router.push(`/client/assets/manage/${siteId}`); // Navigate back to site management page
   };
 
   if (isLoading) {
@@ -283,8 +282,8 @@ export default function ManageMachineControlsPage() {
     <AppLayout>
       <div className="container mx-auto py-8">
         <div className="mb-6">
-          <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}/${zoneId}`)}>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la zone
+          <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}`)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion du site {/* Changed from "Retour à la zone" */}
           </Button>
         </div>
 
