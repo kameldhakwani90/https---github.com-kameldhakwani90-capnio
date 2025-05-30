@@ -1,5 +1,5 @@
 
-import type { Cog, FileText, FlaskConical, Users } from "lucide-react";
+import type { Cog, FileText, FlaskConical, Users, Cpu } from "lucide-react";
 
 export type SiteConfig = typeof siteConfig;
 
@@ -35,11 +35,15 @@ export const siteConfig = {
       href: "/admin/sensors",
     },
     {
-      title: "Configuration des Contrôles", // Renommé
-      href: "/admin/controls",             // Nouvelle URL
+      title: "Configuration des Contrôles",
+      href: "/admin/controls",
     },
     {
-      title: "Formula Validator", // Conservé pour l'instant, peut nécessiter une révision
+      title: "Gestion des Types de Machines", // Nouveau
+      href: "/admin/machine-types",
+    },
+    {
+      title: "Formula Validator", 
       href: "/admin/formulas/validate",
     },
   ]

@@ -15,7 +15,7 @@ import { siteConfig } from "@/config/site";
 import { Logo } from "../common/logo";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
-import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid } from "lucide-react";
+import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid, Cpu } from "lucide-react"; // Ajout de Cpu
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 
@@ -27,8 +27,9 @@ interface AppSidebarProps {
 const getAdminIcon = (href: string) => {
   if (href.includes('/admin/clients')) return Users;
   if (href.includes('/admin/sensors')) return Cog;
-  if (href.includes('/admin/controls')) return FileText; // Pour Configuration des Contrôles
-  if (href.includes('/admin/formulas/validate')) return FlaskConical; // Pour Formula Validator
+  if (href.includes('/admin/controls')) return Settings; 
+  if (href.includes('/admin/machine-types')) return Cpu; // Icône pour les types de machines
+  if (href.includes('/admin/formulas/validate')) return FlaskConical;
   return FileText; 
 };
 

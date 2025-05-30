@@ -1,5 +1,5 @@
 
-"use client"; // MUST be the first line
+"use client"; 
 
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings2, Save, ChevronLeft } from "lucide-react";
+import { Settings, Save, ChevronLeft } from "lucide-react"; // Changed icon from Settings2
 import Link from "next/link";
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 
-// This should ideally be shared or fetched, but for simulation:
 const REQUIRED_SENSOR_TYPES_OPTIONS = [
   { id: "temperature", label: "Température" },
   { id: "humidity", label: "Humidité" },
@@ -30,12 +29,23 @@ const REQUIRED_SENSOR_TYPES_OPTIONS = [
   { id: "other", label: "Autre" },
 ];
 
+// Dummy machine types, in a real app, fetch this from your backend
+const AVAILABLE_MACHINE_TYPES = [
+  { id: "mt-001", name: "Frigo" },
+  { id: "mt-002", name: "Pompe Hydraulique" },
+  { id: "mt-003", name: "Armoire Électrique" },
+  { id: "mt-004", name: "Compresseur" },
+  { id: "mt-005", name: "Moteur Principal" },
+  { id: "mt-006", name: "Congélateur" },
+];
+
+
 // Dummy data for controls, similar to the list page but with all fields for editing
 const dummyControlsData = [
   { 
     id: "control-001", 
     nomDuControle: "Contrôle Température Frigo", 
-    typesDeMachinesConcernees: ["Frigo", "Congélateur"], 
+    typesDeMachinesConcernees: ["Frigo", "Congélateur"], // Array of names
     typesDeCapteursNecessaires: ["Température"], // These are labels. We'll need to map to IDs.
     variablesUtilisees: ["temp", "seuil_min", "seuil_max"],
     formuleDeCalcul: "",
@@ -55,8 +65,8 @@ const dummyControlsData = [
   { 
     id: "control-003", 
     nomDuControle: "Alerte Pression Basse Huile Compresseur", 
-    typesDeMachinesConcernees: ["Compresseur X2000"], 
-    typesDeCapteursNecessaires: ["Pression"], // Assuming "Pression Huile" maps to "Pression" ID
+    typesDeMachinesConcernees: ["Compresseur"], 
+    typesDeCapteursNecessaires: ["Pression"], 
     variablesUtilisees: ["pression_huile", "seuil_min_pression"],
     formuleDeCalcul: "",
     formuleDeVerification: "sensor['pression_huile'].value < machine.params['seuil_min_pression']",
@@ -72,7 +82,7 @@ export default function AdminEditControlPage() {
   const controlId = params.id as string;
 
   const [nomDuControle, setNomDuControle] = useState("");
-  const [typesDeMachinesConcernees, setTypesDeMachinesConcernees] = useState("");
+  const [selectedMachineTypes, setSelectedMachineTypes] = useState<string[]>([]);
   const [selectedSensorTypes, setSelectedSensorTypes] = useState<string[]>([]);
   const [variablesUtilisees, setVariablesUtilisees] = useState("");
   const [formuleDeCalcul, setFormuleDeCalcul] = useState("");
@@ -89,14 +99,12 @@ export default function AdminEditControlPage() {
       return;
     }
 
-    // Simulate fetching control data
     const controlToEdit = dummyControlsData.find(c => c.id === controlId);
 
     if (controlToEdit) {
       setNomDuControle(controlToEdit.nomDuControle);
-      setTypesDeMachinesConcernees(controlToEdit.typesDeMachinesConcernees.join(', '));
+      setSelectedMachineTypes(controlToEdit.typesDeMachinesConcernees || []); // Ensure it's an array
       
-      // Map saved sensor type labels back to their IDs for checkboxes
       const sensorTypeIds = controlToEdit.typesDeCapteursNecessaires.map(label => {
         const option = REQUIRED_SENSOR_TYPES_OPTIONS.find(opt => opt.label === label);
         return option ? option.id : null;
@@ -120,12 +128,42 @@ export default function AdminEditControlPage() {
     );
   };
 
+  const handleMachineTypeChange = (machineTypeName: string, checked: boolean) => {
+    setSelectedMachineTypes(prev =>
+      checked ? [...prev, machineTypeName] : prev.filter(name => name !== machineTypeName)
+    );
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedSensorTypes.length === 0) {
       toast({
         title: "Erreur de validation",
         description: "Veuillez sélectionner au moins un type de capteur nécessaire.",
+        variant: "destructive",
+      });
+      return;
+    }
+     if (!nomDuControle.trim()) {
+       toast({
+        title: "Erreur de validation",
+        description: "Le nom du contrôle est requis.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!variablesUtilisees.trim()) {
+       toast({
+        title: "Erreur de validation",
+        description: "Les variables système utilisées sont requises.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formuleDeVerification.trim()) {
+       toast({
+        title: "Erreur de validation",
+        description: "La formule de vérification est requise.",
         variant: "destructive",
       });
       return;
@@ -139,10 +177,10 @@ export default function AdminEditControlPage() {
     const updatedControlData = {
       id: controlId,
       nomDuControle,
-      typesDeMachinesConcernees: typesDeMachinesConcernees.split(',').map(s => s.trim()).filter(s => s),
+      typesDeMachinesConcernees: selectedMachineTypes,
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
       variablesUtilisees: variablesUtilisees.split(',').map(s => s.trim()).filter(s => s),
-      formuleDeCalcul: formuleDeCalcul.trim() === "" ? "" : formuleDeCalcul, // Store as empty string if blank
+      formuleDeCalcul: formuleDeCalcul.trim() === "" ? "" : formuleDeCalcul,
       formuleDeVerification,
       description,
     };
@@ -151,7 +189,7 @@ export default function AdminEditControlPage() {
       title: "Contrôle Métier Mis à Jour",
       description: `Le contrôle "${nomDuControle}" a été sauvegardé (simulation).`,
     });
-    router.push('/admin/controls'); // Redirect to the list page
+    router.push('/admin/controls'); 
   };
 
   if (isLoading) {
@@ -180,7 +218,7 @@ export default function AdminEditControlPage() {
       <div className="space-y-6">
         <header className="flex items-center justify-between pb-4 mb-6 border-b border-border">
           <div className="flex items-center gap-3">
-            <Settings2 className="h-8 w-8 text-primary" />
+            <Settings className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Modifier le Contrôle Métier</h1>
           </div>
           <Button variant="outline" asChild>
@@ -211,13 +249,21 @@ export default function AdminEditControlPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="typesDeMachinesConcernees">Types de machines concernées (séparés par virgule)</Label>
-                <Input 
-                  id="typesDeMachinesConcernees" 
-                  value={typesDeMachinesConcernees}
-                  onChange={(e) => setTypesDeMachinesConcernees(e.target.value)}
-                  placeholder="Ex: Frigo, Congélateur, Armoire électrique" 
-                />
+                <Label>Types de machines concernées</Label>
+                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 border rounded-md">
+                  {AVAILABLE_MACHINE_TYPES.map(type => (
+                    <div key={type.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`machine-type-${type.id}`}
+                        checked={selectedMachineTypes.includes(type.name)}
+                        onCheckedChange={(checked) => handleMachineTypeChange(type.name, !!checked)}
+                      />
+                      <Label htmlFor={`machine-type-${type.id}`} className="font-normal text-sm">
+                        {type.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground">Laissez vide si applicable à toutes machines avec les capteurs requis.</p>
               </div>
 
@@ -258,11 +304,11 @@ export default function AdminEditControlPage() {
                   id="formuleDeCalcul" 
                   value={formuleDeCalcul}
                   onChange={(e) => setFormuleDeCalcul(e.target.value)}
-                  placeholder="Ex: conso = courant * tension" 
+                  placeholder="Ex: conso = sensor['courant'].value * sensor['tension'].value" 
                   rows={2} 
                 />
                 <p className="text-xs text-muted-foreground">
-                  Utilisée pour dériver une nouvelle variable à partir d'autres. Ex: <code>conso = sensor['courant'].value * sensor['tension'].value</code>.
+                  Utilisée pour dériver une nouvelle variable à partir d'autres.
                 </p>
               </div>
 
@@ -272,13 +318,13 @@ export default function AdminEditControlPage() {
                   id="formuleDeVerification" 
                   value={formuleDeVerification}
                   onChange={(e) => setFormuleDeVerification(e.target.value)}
-                  placeholder="Ex: temp >= seuil_min && temp <= seuil_max OU conso <= seuil_max" 
+                  placeholder="Ex: sensor['temp'].value >= machine.params['seuil_min'] && sensor['temp'].value <= machine.params['seuil_max']" 
                   rows={4} 
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  L'expression doit évaluer à <code>true</code> (OK) ou <code>false</code> (Alerte).
-                  Utilisez les variables système (ex: <code>sensor['temp'].value</code>) et les seuils (ex: <code>machine.params['seuil_max']</code>).
+                   L'expression doit évaluer à <code>true</code> (OK) ou <code>false</code> (Alerte).
+                  Utilisez <code>sensor['variable']</code> et <code>machine.params['seuil']</code>.
                 </p>
               </div>
               
@@ -294,7 +340,11 @@ export default function AdminEditControlPage() {
               </div>
 
               <div className="flex justify-end pt-4">
-                <Button type="submit" size="lg" disabled={selectedSensorTypes.length === 0 && nomDuControle.trim() === ""}>
+                 <Button 
+                  type="submit" 
+                  size="lg" 
+                  disabled={selectedSensorTypes.length === 0 || !nomDuControle.trim() || !variablesUtilisees.trim() || !formuleDeVerification.trim()}
+                >
                   <Save className="mr-2 h-5 w-5" />
                   Sauvegarder les Modifications
                 </Button>
@@ -306,5 +356,3 @@ export default function AdminEditControlPage() {
     </AppLayout>
   );
 }
-
-    
