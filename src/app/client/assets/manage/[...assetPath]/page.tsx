@@ -16,10 +16,10 @@ import {
     type Zone, 
     type Machine, 
     type Status,
-    getZoneOverallStatus, // Assuming this is exported or redefined
-    getSiteOverallStatus, // Assuming this is exported or redefined
-    getStatusIcon,      // Assuming this is exported or redefined
-    getStatusText       // Assuming this is exported or redefined
+    getZoneOverallStatus, 
+    getSiteOverallStatus, 
+    getStatusIcon,      
+    getStatusText       
 } from "@/app/client/sites/[...sitePath]/page"; 
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,7 @@ const findAssetByPath = (
 
 // Re-usable SubSiteCard, similar to dashboard but adapted for management context
 const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> = ({ site, currentAssetPath }) => {
-  const siteStatus = getSiteOverallStatus(site); // Make sure this function is available
+  const siteStatus = getSiteOverallStatus(site); 
   const SiteIcon = site.isConceptualSubSite ? Layers : HomeIcon;
   const href = `/client/assets/manage/${[...currentAssetPath, site.id].join('/')}`;
 
@@ -89,10 +89,10 @@ const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> =
 };
 
 
-const ZoneItemForManagement: React.FC<{ zone: Zone; sitePath: string[]; siteId: string }> = ({ zone, sitePath, siteId }) => {
+const ZoneItemForManagement: React.FC<{ zone: Zone; siteId: string }> = ({ zone, siteId }) => {
     const router = useRouter();
     const zoneStatus = getZoneOverallStatus(zone); 
-    const MachineIcon = Server; // Default machine icon
+    const MachineIcon = Server; 
 
     const handleMachineAlertNavigation = (machineId: string) => {
         router.push(`/client/machine-alerts/${machineId}`);
@@ -149,7 +149,7 @@ const ZoneItemForManagement: React.FC<{ zone: Zone; sitePath: string[]; siteId: 
                                     <div className="flex items-center gap-1">
                                         {machine.status !== 'green' && machine.activeControlInAlert && (
                                             <Button size="sm" variant="ghost" className="text-orange-600 hover:text-orange-700 hover:bg-orange-100" onClick={() => handleMachineAlertNavigation(machine.id)}>
-                                                <AlertTriangle className="mr-1 h-4 w-4" /> Details
+                                                <AlertTriangle className="mr-1 h-4 w-4" /> Alert Details
                                             </Button>
                                         )}
                                         <Button size="sm" variant="ghost" onClick={() => alert(`Managing machine: ${machine.name} (Not implemented)`)}><Settings2 className="mr-1 h-4 w-4" /> Manage</Button>
@@ -212,6 +212,14 @@ export default function ManageAssetPage() {
     return `/client/assets/manage/${pathSegments.join('/')}`;
   };
 
+  const handleEditSiteDetails = () => {
+    router.push(`/client/assets/edit-site/${currentAsset.id}`);
+  };
+
+  const handleAddZone = () => {
+    router.push(`/client/assets/add-zone/${currentAsset.id}`);
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -241,7 +249,7 @@ export default function ManageAssetPage() {
                         <CardDescription className="text-md">{currentAsset.location}</CardDescription>
                     </div>
                 </div>
-                <Button variant="outline" size="lg" onClick={() => alert(`Editing details for ${currentAsset.name} (Not implemented)`)}>
+                <Button variant="outline" size="lg" onClick={handleEditSiteDetails}>
                     <Edit3 className="mr-2 h-5 w-5" /> Edit Site Details
                 </Button>
             </div>
@@ -252,14 +260,14 @@ export default function ManageAssetPage() {
             <section>
               <div className="flex justify-between items-center mb-4 pb-2 border-b">
                 <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-6 w-6 text-primary/70"/>Zones</h2>
-                <Button variant="outline" onClick={() => alert(`Adding zone to ${currentAsset.name} (Not implemented)`)}>
+                <Button variant="outline" onClick={handleAddZone}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Zone
                 </Button>
               </div>
               {currentAsset.zones && currentAsset.zones.length > 0 ? (
                 <Accordion type="multiple" className="w-full space-y-2">
                   {currentAsset.zones.map(zone => (
-                    <ZoneItemForManagement key={zone.id} zone={zone} sitePath={assetPath} siteId={currentAsset.id} />
+                    <ZoneItemForManagement key={zone.id} zone={zone} siteId={currentAsset.id} />
                   ))}
                 </Accordion>
               ) : (
@@ -275,7 +283,6 @@ export default function ManageAssetPage() {
               <section>
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
                     <h2 className="text-2xl font-semibold flex items-center gap-2"><HomeIcon className="h-6 w-6 text-primary/70" />Sub-Sites / Buildings</h2>
-                    {/* Add Sub-Site button is typically on the parent or a dedicated creation flow */}
                 </div>
                 <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                   {currentAsset.subSites.map(subSite => (
