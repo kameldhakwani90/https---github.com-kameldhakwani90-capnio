@@ -46,24 +46,24 @@ const SYSTEM_VARIABLES_OPTIONS = [
 ];
 
 const GENERAL_SENSOR_CATEGORIES = [
-    { id: "temperature", label: "Temperature" },
-    { id: "humidity", label: "Humidity" },
-    { id: "pressure", label: "Pressure" },
-    { id: "air_quality", label: "Air Quality (CO2, VOC, PM)" },
-    { id: "light", label: "Light" },
-    { id: "motion", label: "Motion" },
-    { id: "power", label: "Power/Battery" },
-    { id: "location", label: "Location/GPS" },
-    { id: "level_flow", label: "Level/Flow" },
-    { id: "vibration_sound", label: "Vibration/Sound" },
-    { id: "multi_purpose", label: "Multi-Purpose Sensor" },
-    { id: "generic_other", label: "Generic/Other" },
+    { id: "temperature", label: "Température" },
+    { id: "humidity", label: "Humidité" },
+    { id: "pressure", label: "Pression" },
+    { id: "air_quality", label: "Qualité de l'air (CO2, VOC, PM)" },
+    { id: "light", label: "Luminosité" },
+    { id: "motion", label: "Mouvement" },
+    { id: "power", label: "Alimentation/Batterie" },
+    { id: "location", label: "Localisation/GPS" },
+    { id: "level_flow", label: "Niveau/Débit" },
+    { id: "vibration_sound", label: "Vibration/Son" },
+    { id: "multi_purpose", label: "Capteur Polyvalent" },
+    { id: "generic_other", label: "Générique/Autre" },
 ];
 
 
 export default function AdminSensorDefinitionPage() {
   const [sensorTypeName, setSensorTypeName] = useState("");
-  const [sensorGeneralCategory, setSensorGeneralCategory] = useState("");
+  const [sensorType, setSensorType] = useState(""); // Changed from sensorGeneralCategory
   const [exampleJsonText, setExampleJsonText] = useState("");
   const [parsedJsonKeys, setParsedJsonKeys] = useState<string[]>([]);
   const [keyMappings, setKeyMappings] = useState<Record<string, string>>({});
@@ -96,15 +96,15 @@ export default function AdminSensorDefinitionPage() {
       } else {
         setParsedJsonKeys([]);
         setKeyMappings({});
-        setJsonError("Example JSON must be a valid JSON object (not an array or primitive).");
+        setJsonError("L'exemple JSON doit être un objet JSON valide (pas un tableau ou une primitive).");
       }
     } catch (error) {
       setParsedJsonKeys([]);
       setKeyMappings({});
       if (error instanceof Error) {
-        setJsonError(`Invalid JSON: ${error.message}`);
+        setJsonError(`JSON Invalide: ${error.message}`);
       } else {
-        setJsonError("An unknown error occurred while parsing JSON.");
+        setJsonError("Une erreur inconnue est survenue lors de l'analyse du JSON.");
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +114,7 @@ export default function AdminSensorDefinitionPage() {
     setKeyMappings((prevMappings) => {
       const newMappings = { ...prevMappings };
       if (systemVariableId === "__NONE__") {
-        newMappings[jsonKey] = ""; // Set to empty string to show placeholder
+        newMappings[jsonKey] = ""; 
       } else {
         newMappings[jsonKey] = systemVariableId;
       }
@@ -124,11 +124,11 @@ export default function AdminSensorDefinitionPage() {
 
   const handleSaveSensorType = () => {
     if (!sensorTypeName.trim()) {
-        alert("Sensor Type Name is required.");
+        alert("Le nom du type de capteur est requis.");
         return;
     }
-    if (!sensorGeneralCategory) {
-        alert("General Category is required.");
+    if (!sensorType) { // Changed from sensorGeneralCategory
+        alert("Le type de capteur est requis.");
         return;
     }
     
@@ -137,27 +137,27 @@ export default function AdminSensorDefinitionPage() {
         try {
             parsedExamplePayload = JSON.parse(exampleJsonText);
         } catch (e) {
-            alert("Example JSON is invalid and cannot be saved.");
+            alert("L'exemple JSON est invalide et ne peut être sauvegardé.");
             return;
         }
     }
 
     const finalMappings: Record<string, string> = {};
     for (const key in keyMappings) {
-        if (keyMappings[key] && keyMappings[key] !== "__NONE__") { 
+        if (keyMappings[key] && keyMappings[key] !== "__NONE__" && keyMappings[key] !== "") { 
             finalMappings[key] = keyMappings[key];
         }
     }
 
     const sensorTypeData = {
       name: sensorTypeName,
-      category: sensorGeneralCategory,
+      type: sensorType, // Changed from category
       description: sensorDescription,
       examplePayload: parsedExamplePayload,
       mapping: finalMappings, 
     };
-    console.log("Sensor Type Definition to Save:", JSON.stringify(sensorTypeData, null, 2));
-    alert("Sensor Type definition simulated. Check console for data.");
+    console.log("Définition du type de capteur à sauvegarder:", JSON.stringify(sensorTypeData, null, 2));
+    alert("Définition du type de capteur simulée. Vérifiez la console pour les données.");
   };
 
 
@@ -167,43 +167,42 @@ export default function AdminSensorDefinitionPage() {
         <header className="flex items-center justify-between pb-4 mb-6 border-b border-border">
           <div className="flex items-center gap-3">
             <Cog className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Define Sensor Type and Data Mapping</h1>
+            <h1 className="text-3xl font-bold">Définir le Type de Capteur et le Mappage des Données</h1>
           </div>
         </header>
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle className="text-2xl">New Sensor Type Definition</CardTitle>
+            <CardTitle className="text-2xl">Nouvelle Définition de Type de Capteur</CardTitle>
             <CardDescription>
-              Define a new type of sensor by providing its details and mapping its raw JSON data output to standardized system variables.
+              Définissez un nouveau type de capteur en fournissant ses détails et en mappant sa sortie de données JSON brutes à des variables système standardisées.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="sensorTypeName">Sensor Type Name *</Label>
+                <Label htmlFor="sensorTypeName">Nom du type de capteur *</Label>
                 <Input 
                   id="sensorTypeName" 
-                  placeholder="e.g., Ambient THL Sensor v2.1" 
+                  placeholder="Ex: Sonde Ambiante THL v2.1" 
                   value={sensorTypeName}
                   onChange={(e) => setSensorTypeName(e.target.value)}
                   required
                 />
-                 <p className="text-xs text-muted-foreground">A unique name for this type of sensor.</p>
+                 <p className="text-xs text-muted-foreground">Un nom unique pour ce type de capteur.</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sensorGeneralCategory">General Category *</Label>
-                <Select value={sensorGeneralCategory} onValueChange={setSensorGeneralCategory} required>
-                  <SelectTrigger id="sensorGeneralCategory">
-                    <SelectValue placeholder="Select a category" />
+                <Label htmlFor="sensorType">Type de capteur *</Label>
+                <Select value={sensorType} onValueChange={setSensorType} required>
+                  <SelectTrigger id="sensorType">
+                    <SelectValue placeholder="Sélectionnez un type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Removed: <SelectItem value="" disabled>-- Select Category --</SelectItem> */}
                     {GENERAL_SENSOR_CATEGORIES.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Broad classification for this sensor type.</p>
+                <p className="text-xs text-muted-foreground">Classification générale pour ce type de capteur.</p>
               </div>
             </div>
             
@@ -211,7 +210,7 @@ export default function AdminSensorDefinitionPage() {
               <Label htmlFor="sensorDescription">Description</Label>
               <Textarea 
                 id="sensorDescription" 
-                placeholder="Brief description of the sensor type, its purpose, common use cases, etc." 
+                placeholder="Brève description du type de capteur, son objectif, cas d'usage courants, etc." 
                 value={sensorDescription}
                 onChange={(e) => setSensorDescription(e.target.value)}
                 rows={3}
@@ -219,17 +218,17 @@ export default function AdminSensorDefinitionPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="exampleJsonText">Example JSON Payload from Sensor</Label>
+              <Label htmlFor="exampleJsonText">Exemple de JSON reçu</Label>
               <Textarea 
                 id="exampleJsonText" 
-                placeholder='Paste an example of the raw JSON data this sensor type sends, e.g., { "t": 23.5, "h": 55.2, "l": 750, "bat_v": 3.1 }'
+                placeholder='Collez un exemple des données JSON brutes que ce type de capteur envoie, ex: { "t": 23.5, "h": 55.2, "l": 750, "bat_v": 3.1 }'
                 rows={5} 
                 value={exampleJsonText}
                 onChange={(e) => setExampleJsonText(e.target.value)}
                 className={jsonError ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               <p className="text-xs text-muted-foreground">
-                The system will parse this JSON to identify data keys for mapping. Must be a valid JSON object.
+                Le système analysera ce JSON pour identifier les clés de données à mapper. Doit être un objet JSON valide.
               </p>
               {jsonError && (
                 <p className="text-sm text-destructive flex items-center gap-1 p-2 bg-destructive/10 rounded-md">
@@ -240,18 +239,18 @@ export default function AdminSensorDefinitionPage() {
 
             {parsedJsonKeys.length > 0 && !jsonError && (
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-medium">Map JSON Keys to System Variables</h3>
+                <h3 className="text-lg font-medium">Mapper les clés JSON aux variables système</h3>
                 <CardDescription>
-                  For each key found in your example JSON, select the Capnio.pro system variable it corresponds to. 
-                  Unmapped keys will be ignored.
+                  Pour chaque clé trouvée dans votre exemple JSON, sélectionnez la variable système Capnio.pro correspondante.
+                  Les clés non mappées seront ignorées.
                 </CardDescription>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[40%]">Incoming JSON Key</TableHead>
+                        <TableHead className="w-[40%]">Clé JSON détectée</TableHead>
                         <TableHead className="w-[10%] text-center hidden md:table-cell">Maps to</TableHead>
-                        <TableHead className="w-[50%]">Capnio.pro System Variable</TableHead>
+                        <TableHead className="w-[50%]">Associer à variable système</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,14 +265,14 @@ export default function AdminSensorDefinitionPage() {
                           </TableCell>
                           <TableCell className="pl-2">
                             <Select
-                              value={keyMappings[key] || ""} // Ensure placeholder shows if value is ""
+                              value={keyMappings[key] || ""}
                               onValueChange={(value) => handleMappingChange(key, value)}
                             >
                               <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select system variable..." />
+                                <SelectValue placeholder="Sélectionnez une variable système..." />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__NONE__">-- Do not map --</SelectItem>
+                                <SelectItem value="__NONE__">-- Ne pas mapper --</SelectItem>
                                 {SYSTEM_VARIABLES_OPTIONS.map((opt) => (
                                   <SelectItem key={opt.id} value={opt.id}>
                                     {opt.label}
@@ -293,7 +292,7 @@ export default function AdminSensorDefinitionPage() {
             <div className="flex justify-end pt-6">
               <Button onClick={handleSaveSensorType} size="lg">
                 <Cog className="mr-2 h-5 w-5" />
-                Save Sensor Type Definition
+                Créer le type de capteur
               </Button>
             </div>
           </CardContent>
@@ -302,3 +301,4 @@ export default function AdminSensorDefinitionPage() {
     </AppLayout>
   );
 }
+
