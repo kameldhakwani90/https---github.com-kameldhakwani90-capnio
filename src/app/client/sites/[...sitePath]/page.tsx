@@ -11,22 +11,30 @@ import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building, Chev
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
+
 
 // Interfaces (should be in a shared types file eventually)
-type Status = 'green' | 'orange' | 'red' | 'white';
+export type Status = 'green' | 'orange' | 'red' | 'white';
 
-interface HistoricalDataPoint {
+export interface HistoricalDataPoint {
   name: string; // Typically time or sequence
   value: number;
 }
 
-interface ChecklistItem {
+export interface ChecklistItem {
   id: string;
   label: string;
   checked?: boolean; // If we want to track completion, not used actively yet
 }
 
-interface ActiveControlInAlert {
+export interface ActiveControlInAlert {
   controlId: string;
   controlName: string;
   controlDescription: string;
@@ -39,7 +47,7 @@ interface ActiveControlInAlert {
   checklist?: ChecklistItem[];
 }
 
-interface Machine {
+export interface Machine {
   id: string;
   name: string;
   type: string;
@@ -48,13 +56,13 @@ interface Machine {
   activeControlInAlert?: ActiveControlInAlert;
 }
 
-interface Zone {
+export interface Zone {
   id: string;
   name: string;
   machines: Machine[];
 }
 
-interface Site {
+export interface Site {
   id: string;
   name: string;
   location: string;
@@ -236,12 +244,12 @@ const getCombinedStatus = (statuses: Status[]): Status => {
   return 'green';
 };
 
-const getZoneOverallStatus = (zone: Zone): Status => {
+export const getZoneOverallStatus = (zone: Zone): Status => {
   if (!zone.machines || zone.machines.length === 0) return 'green';
   return getCombinedStatus(zone.machines.map(m => m.status));
 };
 
-const getSiteOverallStatus = (site: Site): Status => {
+export const getSiteOverallStatus = (site: Site): Status => {
   const statuses: Status[] = [];
   site.zones.forEach(zone => statuses.push(getZoneOverallStatus(zone)));
   if (site.subSites) {
@@ -250,7 +258,7 @@ const getSiteOverallStatus = (site: Site): Status => {
   return getCombinedStatus(statuses);
 };
 
-const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
+export const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
   const defaultClassName = "h-5 w-5";
   const combinedClassName = className ? `${defaultClassName} ${className}` : defaultClassName;
   switch (status) {
@@ -261,7 +269,7 @@ const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
   }
 };
 
-const getStatusText = (status: Status): string => {
+export const getStatusText = (status: Status): string => {
   switch (status) {
     case 'red': return 'Problème Critique';
     case 'orange': return 'Avertissement';
@@ -545,3 +553,15 @@ export default function SiteDetailPage() {
     </AppLayout>
   );
 }
+
+// Ensure DUMMY_CLIENT_SITES_DATA and helper functions are exported if they are defined in this file
+// and intended for use by other modules (like the new machine-alerts page).
+// For now, they are directly used within this file or copied.
+// If these were meant to be shared, they should be in a common location.
+// e.g. src/lib/client-data.ts or src/services/client-asset-service.ts
+// and then imported here.
+// This is particularly important for DUMMY_CLIENT_SITES_DATA if it's also used by machine-alerts/[machineId]/page.tsx.
+// The status helper functions (getZoneOverallStatus, getSiteOverallStatus, getStatusIcon, getStatusText)
+// are also needed by /client/assets/manage/[...assetPath]/page.tsx.
+// Exporting them here makes them available.
+// The types are also exported.
