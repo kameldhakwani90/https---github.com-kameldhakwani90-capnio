@@ -73,7 +73,7 @@ export default function AdminSensorDefinitionPage() {
   useEffect(() => {
     if (exampleJsonText.trim() === "") {
       setParsedJsonKeys([]);
-      setKeyMappings({}); // Clear mappings if JSON text is empty
+      setKeyMappings({}); 
       setJsonError(null);
       return;
     }
@@ -82,13 +82,13 @@ export default function AdminSensorDefinitionPage() {
       if (typeof parsed === 'object' && !Array.isArray(parsed) && parsed !== null) {
         const keys = Object.keys(parsed);
         setParsedJsonKeys(keys);
-        // Reset mappings for new keys, preserve existing if key still present
+        
         const newMappings: Record<string, string> = {};
         keys.forEach(key => {
             if(keyMappings[key] && SYSTEM_VARIABLES_OPTIONS.some(opt => opt.id === keyMappings[key])) {
                 newMappings[key] = keyMappings[key];
             } else {
-                newMappings[key] = ""; // Initialize new keys with no mapping
+                newMappings[key] = ""; 
             }
         });
         setKeyMappings(newMappings);
@@ -108,13 +108,18 @@ export default function AdminSensorDefinitionPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exampleJsonText]); // Not including keyMappings here to avoid loop when initializing new keys
+  }, [exampleJsonText]); 
 
   const handleMappingChange = (jsonKey: string, systemVariableId: string) => {
-    setKeyMappings((prevMappings) => ({
-      ...prevMappings,
-      [jsonKey]: systemVariableId,
-    }));
+    setKeyMappings((prevMappings) => {
+      const newMappings = { ...prevMappings };
+      if (systemVariableId === "__NONE__") {
+        newMappings[jsonKey] = ""; // Set to empty string to show placeholder
+      } else {
+        newMappings[jsonKey] = systemVariableId;
+      }
+      return newMappings;
+    });
   };
 
   const handleSaveSensorType = () => {
@@ -132,7 +137,6 @@ export default function AdminSensorDefinitionPage() {
         try {
             parsedExamplePayload = JSON.parse(exampleJsonText);
         } catch (e) {
-            // Should be caught by jsonError state, but as a safeguard
             alert("Example JSON is invalid and cannot be saved.");
             return;
         }
@@ -140,7 +144,7 @@ export default function AdminSensorDefinitionPage() {
 
     const finalMappings: Record<string, string> = {};
     for (const key in keyMappings) {
-        if (keyMappings[key]) { // Only include mappings that have a system variable selected
+        if (keyMappings[key] && keyMappings[key] !== "__NONE__") { 
             finalMappings[key] = keyMappings[key];
         }
     }
@@ -150,33 +154,25 @@ export default function AdminSensorDefinitionPage() {
       category: sensorGeneralCategory,
       description: sensorDescription,
       examplePayload: parsedExamplePayload,
-      mapping: finalMappings, // Use the filtered mappings
+      mapping: finalMappings, 
     };
     console.log("Sensor Type Definition to Save:", JSON.stringify(sensorTypeData, null, 2));
     alert("Sensor Type definition simulated. Check console for data.");
-    // Potentially reset form here
-    // setSensorTypeName("");
-    // setSensorGeneralCategory("");
-    // setExampleJsonText("");
-    // setSensorDescription("");
-    // setParsedJsonKeys([]);
-    // setKeyMappings({});
-    // setJsonError(null);
   };
 
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <header className="flex items-center justify-between pb-4 mb-6 border-b">
-          <div className="flex items-center gap-2">
+        <header className="flex items-center justify-between pb-4 mb-6 border-b border-border">
+          <div className="flex items-center gap-3">
             <Cog className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Define Sensor Type and Data Mapping</h1>
           </div>
         </header>
-        <Card className="shadow-lg">
+        <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle>New Sensor Type Definition</CardTitle>
+            <CardTitle className="text-2xl">New Sensor Type Definition</CardTitle>
             <CardDescription>
               Define a new type of sensor by providing its details and mapping its raw JSON data output to standardized system variables.
             </CardDescription>
@@ -201,7 +197,7 @@ export default function AdminSensorDefinitionPage() {
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" disabled>-- Select Category --</SelectItem>
+                    {/* Removed: <SelectItem value="" disabled>-- Select Category --</SelectItem> */}
                     {GENERAL_SENSOR_CATEGORIES.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
                     ))}
@@ -270,14 +266,14 @@ export default function AdminSensorDefinitionPage() {
                           </TableCell>
                           <TableCell className="pl-2">
                             <Select
-                              value={keyMappings[key] || ""}
+                              value={keyMappings[key] || ""} // Ensure placeholder shows if value is ""
                               onValueChange={(value) => handleMappingChange(key, value)}
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Select system variable..." />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="" disabled>-- Do not map --</SelectItem>
+                                <SelectItem value="__NONE__">-- Do not map --</SelectItem>
                                 {SYSTEM_VARIABLES_OPTIONS.map((opt) => (
                                   <SelectItem key={opt.id} value={opt.id}>
                                     {opt.label}
@@ -306,4 +302,3 @@ export default function AdminSensorDefinitionPage() {
     </AppLayout>
   );
 }
-
