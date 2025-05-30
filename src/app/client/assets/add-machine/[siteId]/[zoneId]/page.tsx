@@ -8,10 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/app/client/sites/[...sitePath]/page";
-import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2 } from "lucide-react";
+import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
+
+// Dummy machine types, in a real app, fetch this from your backend or a shared constant
+const AVAILABLE_MACHINE_TYPES = [
+  { id: "mt-001", name: "Frigo" },
+  { id: "mt-002", name: "Pompe Hydraulique" },
+  { id: "mt-003", name: "Armoire Électrique" },
+  { id: "mt-004", name: "Compresseur" },
+  { id: "mt-005", name: "Moteur Principal" },
+  { id: "mt-006", name: "Congélateur" },
+  { id: "mt-007", name: "Serveur Informatique" },
+  { id: "mt-008", name: "Ventilation / HVAC" },
+  { id: "mt-009", name: "Autre Machine Générique" },
+];
+
 
 // Helper function to find a site and a specific zone within it
 function findSiteAndZone(sites: Site[], siteId: string, zoneId: string): { site?: Site, zone?: Zone } {
@@ -41,7 +55,8 @@ export default function AddMachineToZonePage() {
 
   const [machineName, setMachineName] = useState("");
   const [machineModel, setMachineModel] = useState("");
-  const [selectedMachineType, setSelectedMachineType] = useState<string>("generic"); // "generic" or "pi_server"
+  const [selectedGenericMachineType, setSelectedGenericMachineType] = useState<string>("");
+  const [selectedMachineTypeToAdd, setSelectedMachineTypeToAdd] = useState<string>("generic"); // "generic" or "pi_server"
   
   // Pi Server Setup State
   const [piSetupStep, setPiSetupStep] = useState<"instructions" | "wifiConfig" | "confirmation">("instructions");
@@ -80,8 +95,17 @@ export default function AddMachineToZonePage() {
       toast({ title: "Validation Error", description: "Machine name is required.", variant: "destructive" });
       return;
     }
-    console.log("Adding generic machine to site/zone:", siteId, zoneId, { name: machineName, model: machineModel });
-    toast({ title: "Machine Ajoutée (Simulation)", description: `La machine "${machineName}" a été ajoutée à la zone "${parentZone?.name}".` });
+    if (!selectedGenericMachineType) {
+      toast({ title: "Validation Error", description: "Machine type/nature is required.", variant: "destructive" });
+      return;
+    }
+    const genericMachineData = {
+      name: machineName,
+      model: machineModel,
+      type: selectedGenericMachineType, // Using the selected type
+    };
+    console.log("Adding generic machine to site/zone:", siteId, zoneId, genericMachineData);
+    toast({ title: "Machine Ajoutée (Simulation)", description: `La machine "${machineName}" de type "${selectedGenericMachineType}" a été ajoutée à la zone "${parentZone?.name}".` });
     router.push(`/client/assets/manage/${siteId}`);
   };
 
@@ -98,7 +122,7 @@ export default function AddMachineToZonePage() {
     setIsConnectingPi(true);
     console.log("Simulating Pi connection with data:", {
       ssid: piSsid,
-      password: piPassword, // In a real app, be careful with password logging
+      password: piPassword, 
       piName: piServerName,
       siteId,
       zoneId,
@@ -114,8 +138,8 @@ export default function AddMachineToZonePage() {
       setTimeout(() => {
         toast({ title: "Serveur Pi Lié (Simulation)", description: `Le serveur Pi "${piServerName}" a été lié à la zone "${parentZone?.name}". Redirection...` });
         router.push(`/client/assets/manage/${siteId}`);
-      }, 2000); // Simulate registration and redirect
-    }, 3000); // Simulate connection attempt
+      }, 2000); 
+    }, 3000); 
   };
 
   if (isLoading) {
@@ -151,14 +175,14 @@ export default function AddMachineToZonePage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="machineTypeSelect">Type de Machine</Label>
-              <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
-                <SelectTrigger id="machineTypeSelect">
+              <Label htmlFor="machineTypeToAddSelect">Type de Machine à Ajouter</Label>
+              <Select value={selectedMachineTypeToAdd} onValueChange={setSelectedMachineTypeToAdd}>
+                <SelectTrigger id="machineTypeToAddSelect">
                   <SelectValue placeholder="Sélectionnez un type de machine" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="generic">
-                    <Settings className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Machine Générique
+                    <HardDrive className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Machine Générique
                   </SelectItem>
                   <SelectItem value="pi_server">
                     <Router className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Serveur Pi Capnio
@@ -167,7 +191,7 @@ export default function AddMachineToZonePage() {
               </Select>
             </div>
 
-            {selectedMachineType === "generic" && (
+            {selectedMachineTypeToAdd === "generic" && (
               <form onSubmit={handleGenericMachineSubmit} className="space-y-6 pt-4 border-t">
                 <CardTitle className="text-lg">Détails de la Machine Générique</CardTitle>
                 <div className="space-y-2">
@@ -180,7 +204,22 @@ export default function AddMachineToZonePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="machineModel">Type / Modèle (Optionnel)</Label>
+                  <Label htmlFor="selectedGenericMachineType">Type de Machine / Nature *</Label>
+                  <Select value={selectedGenericMachineType} onValueChange={setSelectedGenericMachineType}>
+                    <SelectTrigger id="selectedGenericMachineType">
+                      <SelectValue placeholder="Sélectionnez la nature de la machine" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_MACHINE_TYPES.map(type => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="machineModel">Modèle Spécifique (Optionnel)</Label>
                   <Input 
                     id="machineModel" 
                     value={machineModel} 
@@ -196,7 +235,7 @@ export default function AddMachineToZonePage() {
               </form>
             )}
 
-            {selectedMachineType === "pi_server" && (
+            {selectedMachineTypeToAdd === "pi_server" && (
               <div className="pt-4 border-t">
                 {piSetupStep === "instructions" && (
                   <Card className="bg-muted/50">
