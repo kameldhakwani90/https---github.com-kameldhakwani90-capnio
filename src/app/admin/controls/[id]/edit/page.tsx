@@ -30,6 +30,8 @@ const REQUIRED_SENSOR_TYPES_OPTIONS = [
 ];
 
 // Dummy data for controls list - for simulation purposes
+// COMMENTED OUT FOR DEBUGGING PARSING ERROR
+/*
 const dummyControls = [
   {
     id: "control-001",
@@ -52,6 +54,7 @@ const dummyControls = [
     description: "Calcule la consommation et vérifie qu'elle ne dépasse pas le seuil maximal."
   },
 ];
+*/
 
 export default function AdminEditControlPage() {
   const params = useParams();
@@ -78,7 +81,8 @@ export default function AdminEditControlPage() {
     }
 
     // Simulate fetching control data
-    const controlToEdit = dummyControls.find(c => c.id === controlId);
+    // const controlToEdit = dummyControls.find(c => c.id === controlId); // Original line relying on dummyControls
+    const controlToEdit = null; // MODIFIED FOR DEBUGGING: Assume control is not found if dummyControls is commented out
 
     if (controlToEdit) {
       setNomDuControle(controlToEdit.nomDuControle);
@@ -101,7 +105,7 @@ export default function AdminEditControlPage() {
       setDescription(controlToEdit.description);
       setNotFound(false);
     } else {
-      setNotFound(true);
+      setNotFound(true); // This path will be taken due to controlToEdit being null
     }
     setIsLoading(false);
   }, [controlId]);
