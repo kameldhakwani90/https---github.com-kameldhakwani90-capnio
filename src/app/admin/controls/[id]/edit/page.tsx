@@ -59,25 +59,25 @@ export default function AdminEditControlPage() {
   const { toast } = useToast();
   const controlId = params.id as string;
 
-  const [nomDuControle, setNomDuControle] = useState("");
-  const [typesDeMachinesConcernees, setTypesDeMachinesConcernees] = useState("");
+  const [nomDuControle, setNomDuControle] = useState<string>("");
+  const [typesDeMachinesConcernees, setTypesDeMachinesConcernees] = useState<string>("");
   const [selectedSensorTypes, setSelectedSensorTypes] = useState<string[]>([]);
-  const [variablesUtilisees, setVariablesUtilisees] = useState("");
-  const [formuleDeCalcul, setFormuleDeCalcul] = useState("");
-  const [formuleDeVerification, setFormuleDeVerification] = useState("");
-  const [description, setDescription] = useState("");
+  const [variablesUtilisees, setVariablesUtilisees] = useState<string>("");
+  const [formuleDeCalcul, setFormuleDeCalcul] = useState<string>("");
+  const [formuleDeVerification, setFormuleDeVerification] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [notFound, setNotFound] = useState<boolean>(false);
 
   useEffect(() => {
     if (!controlId) {
-      setIsLoading(false);
       setNotFound(true);
+      setIsLoading(false);
       return;
     }
 
-    // Simulate fetching control data
+    // Simulate fetching data
     const controlToEdit = dummyControls.find(c => c.id === controlId);
 
     if (controlToEdit) {
@@ -99,7 +99,7 @@ export default function AdminEditControlPage() {
       setNotFound(true);
     }
     setIsLoading(false);
-  }, [controlId]); // Core dependency is controlId. State setters are stable. Constants are stable.
+  }, [controlId]);
 
   const handleSensorTypeChange = (sensorTypeId: string, checked: boolean) => {
     setSelectedSensorTypes(prev =>
@@ -118,12 +118,12 @@ export default function AdminEditControlPage() {
     const machineTypesArray = typesDeMachinesConcernees
       .split(',')
       .map(s => s.trim())
-      .filter(s => s);
+      .filter(s => s !== "");
 
     const variablesArray = variablesUtilisees
       .split(',')
       .map(s => s.trim())
-      .filter(s => s);
+      .filter(s => s !== "");
 
     const updatedControlData = {
       id: controlId,
@@ -131,14 +131,15 @@ export default function AdminEditControlPage() {
       typesDeMachinesConcernees: machineTypesArray,
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
       variablesUtilisees: variablesArray,
-      formuleDeCalcul: formuleDeCalcul.trim() === "" ? null : formuleDeCalcul,
-      formuleDeVerification: formuleDeVerification,
-      description: description,
+      formuleDeCalcul: formuleDeCalcul.trim() === "" ? null : formuleDeCalcul.trim(),
+      formuleDeVerification: formuleDeVerification.trim(),
+      description: description.trim(),
     };
+
     console.log("Contrôle métier mis à jour (simulation):", updatedControlData);
     toast({
       title: "Contrôle Métier Mis à Jour",
-      description: `Le contrôle "${nomDuControle}" a été mis à jour (simulation).`,
+      description: `Le contrôle "${updatedControlData.nomDuControle}" a été mis à jour (simulation).`,
     });
     router.push("/admin/controls");
   };
@@ -154,7 +155,7 @@ export default function AdminEditControlPage() {
   if (notFound) {
     return (
       <AppLayout>
-        <div className="p-6 text-center text-red-500">Contrôle métier non trouvé.</div>
+        <div className="p-6 text-center text-destructive">Contrôle métier non trouvé.</div>
       </AppLayout>
     );
   }
@@ -207,7 +208,7 @@ export default function AdminEditControlPage() {
               <div className="space-y-2">
                 <Label>Types de capteurs nécessaires *</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 border rounded-md">
-                  {REQUIRED_SENSOR_TYPES_OPTIONS.map(type => (
+                  {REQUIRED_SENSOR_TYPES_OPTIONS.map((type) => (
                     <div key={type.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`sensor-type-${type.id}`}
