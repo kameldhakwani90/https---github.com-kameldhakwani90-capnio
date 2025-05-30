@@ -31,7 +31,7 @@ export interface HistoricalDataPoint {
 export interface ChecklistItem {
   id: string;
   label: string;
-  checked?: boolean; // If we want to track completion, not used actively yet
+  checked?: boolean; 
 }
 
 export interface ActiveControlInAlert {
@@ -60,6 +60,7 @@ export interface Zone {
   id: string;
   name: string;
   machines: Machine[];
+  subZones?: Zone[]; // Added for sub-zone hierarchy
 }
 
 export interface Site {
@@ -71,9 +72,7 @@ export interface Site {
   isConceptualSubSite?: boolean;
 }
 
-// Dummy data - This should be fetched from a central place or API in a real app
-// IMPORTANT: This data is now also used by the machine-alerts page.
-// In a real app, this would be in a service or global state.
+
 export const DUMMY_CLIENT_SITES_DATA: Site[] = [
   {
     id: "site-campus-central",
@@ -87,6 +86,30 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           { id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green", icon: Server },
           { id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind },
         ],
+        subZones: [ // Example of sub-zones
+          {
+            id: "subzone-cc-admin-bureau101",
+            name: "Bureau 101",
+            machines: [
+              { id: "machine-pc-b101", name: "PC Bureau 101", type: "PC", status: "green", icon: Server }
+            ]
+          },
+          {
+            id: "subzone-cc-admin-salle-reunion",
+            name: "Salle de Réunion Alpha",
+            machines: [
+              { id: "machine-projecteur-alpha", name: "Projecteur Salle Alpha", type: "Projecteur", status: "orange", icon: Settings2, 
+                activeControlInAlert: {
+                    controlId: "control-proj-temp",
+                    controlName: "Surchauffe Projecteur",
+                    controlDescription: "Surveille la température interne du projecteur.",
+                    alertDetails: "Température projecteur (65°C) élevée. Seuil: 60°C.",
+                    relevantSensorVariable: "Température Projecteur",
+                }
+              }
+            ]
+          }
+        ]
       },
     ],
     subSites: [
@@ -238,24 +261,22 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
 
 // Helper functions for status and display
 const getCombinedStatus = (statuses: Status[]): Status => {
-  if (statuses.length === 0) return 'green'; // Default to green if no elements to check
+  if (statuses.length === 0) return 'green'; 
   if (statuses.includes('red')) return 'red';
   if (statuses.includes('orange')) return 'orange';
   return 'green';
 };
 
 export const getZoneOverallStatus = (zone: Zone): Status => {
-  if (!zone.machines || zone.machines.length === 0) return 'green';
-  return getCombinedStatus(zone.machines.map(m => m.status));
+  const machineStatuses = zone.machines?.map(m => m.status) || [];
+  const subZoneStatuses = zone.subZones?.map(sz => getZoneOverallStatus(sz)) || [];
+  return getCombinedStatus([...machineStatuses, ...subZoneStatuses]);
 };
 
 export const getSiteOverallStatus = (site: Site): Status => {
-  const statuses: Status[] = [];
-  site.zones.forEach(zone => statuses.push(getZoneOverallStatus(zone)));
-  if (site.subSites) {
-    site.subSites.forEach(subSite => statuses.push(getSiteOverallStatus(subSite)));
-  }
-  return getCombinedStatus(statuses);
+  const zoneStatuses = site.zones?.map(zone => getZoneOverallStatus(zone)) || [];
+  const subSiteStatuses = site.subSites?.map(subSite => getSiteOverallStatus(subSite)) || [];
+  return getCombinedStatus([...zoneStatuses, ...subSiteStatuses]);
 };
 
 export const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
@@ -278,10 +299,9 @@ export const getStatusText = (status: Status): string => {
   }
 };
 
-// Helper function to find a site by its path
 interface FoundSiteInfo {
   site: Site;
-  path: { id: string; name: string }[]; // For breadcrumbs
+  path: { id: string; name: string }[]; 
 }
 
 const findSiteByPath = (
@@ -299,21 +319,20 @@ const findSiteByPath = (
       breadcrumbPath.push({ id: found.id, name: found.name });
       currentSearchSpace = found.subSites || [];
     } else {
-      return undefined; // Path segment not found
+      return undefined; 
     }
   }
   return currentSite ? { site: currentSite, path: breadcrumbPath } : undefined;
 };
 
 
-// UI Components
-const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machineId: string) => void }> = ({ machine, onViewDetails }) => {
+const MachineItem: React.FC<{ machine: Machine; onMachineClick: (machineId: string) => void }> = ({ machine, onMachineClick }) => {
   const MachineIcon = machine.icon || Server;
   const isProblem = machine.status === 'orange' || machine.status === 'red';
 
   const handleClick = () => {
-    if (isProblem && machine.activeControlInAlert) { // Only trigger if there's control data and it's a problem
-      onViewDetails(machine.id);
+    if (isProblem && machine.activeControlInAlert) {
+      onMachineClick(machine.id);
     }
   };
 
@@ -338,6 +357,7 @@ const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machineId: strin
           machine.status === 'red' && 'text-red-600',
           machine.status === 'orange' && 'text-orange-600',
           machine.status === 'green' && 'text-green-600',
+          'font-medium'
         )}>
           {getStatusText(machine.status)}
         </span>
@@ -346,10 +366,19 @@ const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machineId: strin
   );
 };
 
-const ZoneItem: React.FC<{ zone: Zone; parentId: string; onViewMachineDetails: (machineId: string) => void }> = ({ zone, parentId, onViewMachineDetails }) => {
+interface SiteDetailZoneItemProps {
+  zone: Zone;
+  parentId: string; // Site ID
+  onMachineClick: (machineId: string) => void;
+  level?: number;
+}
+
+const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId, onMachineClick, level = 0 }) => {
   const zoneStatus = getZoneOverallStatus(zone);
+  const paddingLeft = `${level * 1.5}rem`; // Indent sub-zones
+
   return (
-    <AccordionItem value={`${parentId}-${zone.id}`} className="border-b-0 mb-1 last:mb-0">
+    <AccordionItem value={`${parentId}-${zone.id}`} className="border-b-0 mb-1 last:mb-0" style={{ marginLeft: paddingLeft }}>
       <AccordionTrigger className="py-2 px-3 hover:no-underline hover:bg-muted/30 rounded-md data-[state=open]:bg-muted/40 transition-colors">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
@@ -368,15 +397,31 @@ const ZoneItem: React.FC<{ zone: Zone; parentId: string; onViewMachineDetails: (
           </div>
         </div>
       </AccordionTrigger>
-      <AccordionContent className="pl-6 pr-2 pb-0 pt-1">
-        {zone.machines.length > 0 ? (
-          <div className="space-y-0.5">
+      <AccordionContent className="pl-4 pr-2 pb-0 pt-1">
+        {zone.machines && zone.machines.length > 0 && (
+          <div className="space-y-0.5 mb-2">
             {zone.machines.map((machine) => (
-              <MachineItem key={machine.id} machine={machine} onViewDetails={onViewMachineDetails} />
+              <MachineItem key={machine.id} machine={machine} onMachineClick={onMachineClick} />
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground py-2 px-3">Aucune machine dans cette zone.</p>
+        )}
+         {(!zone.machines || zone.machines.length === 0) && (!zone.subZones || zone.subZones.length === 0) && (
+           <p className="text-xs text-muted-foreground py-2 px-3">Aucune machine ou sous-zone définie.</p>
+         )}
+
+        {zone.subZones && zone.subZones.length > 0 && (
+          <div className="mt-2 space-y-1 border-l-2 border-primary/20 pl-2">
+             <p className="text-xs font-semibold text-muted-foreground mb-1">Sous-zones :</p>
+            {zone.subZones.map(subZone => (
+              <SiteDetailZoneItem 
+                key={subZone.id} 
+                zone={subZone} 
+                parentId={zone.id} // Parent ID for sub-zone is the ID of its parent zone
+                onMachineClick={onMachineClick}
+                level={level + 1}
+              />
+            ))}
+          </div>
         )}
       </AccordionContent>
     </AccordionItem>
@@ -477,8 +522,7 @@ export default function SiteDetailPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center space-x-1.5 text-sm text-muted-foreground mb-4 bg-muted p-2 rounded-md">
+        <nav className="flex items-center space-x-1.5 text-sm text-muted-foreground mb-4 bg-muted p-2 rounded-md shadow-sm">
           <Link href="/client/dashboard" className="hover:text-primary">Tableau de Bord</Link>
           {breadcrumbPath.map((segment, index) => (
             <React.Fragment key={segment.id}>
@@ -517,19 +561,22 @@ export default function SiteDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
-            {/* Direct Zones */}
             {currentSite.zones.length > 0 && (
               <section>
                 <h2 className="text-lg font-semibold mb-2 text-foreground/90">Zones Directes</h2>
                 <Accordion type="multiple" className="w-full space-y-1 bg-muted/30 p-2 rounded-lg">
                   {currentSite.zones.map((zone) => (
-                    <ZoneItem key={zone.id} zone={zone} parentId={currentSite.id} onViewMachineDetails={handleViewMachineAlertDetails} />
+                    <SiteDetailZoneItem 
+                      key={zone.id} 
+                      zone={zone} 
+                      parentId={currentSite.id} 
+                      onMachineClick={handleViewMachineAlertDetails} 
+                    />
                   ))}
                 </Accordion>
               </section>
             )}
 
-            {/* Sub-Sites */}
             {currentSite.subSites && currentSite.subSites.length > 0 && (
               <section>
                 <h2 className="text-lg font-semibold mb-2 text-foreground/90">Sous-Sites / Bâtiments</h2>
@@ -554,14 +601,4 @@ export default function SiteDetailPage() {
   );
 }
 
-// Ensure DUMMY_CLIENT_SITES_DATA and helper functions are exported if they are defined in this file
-// and intended for use by other modules (like the new machine-alerts page).
-// For now, they are directly used within this file or copied.
-// If these were meant to be shared, they should be in a common location.
-// e.g. src/lib/client-data.ts or src/services/client-asset-service.ts
-// and then imported here.
-// This is particularly important for DUMMY_CLIENT_SITES_DATA if it's also used by machine-alerts/[machineId]/page.tsx.
-// The status helper functions (getZoneOverallStatus, getSiteOverallStatus, getStatusIcon, getStatusText)
-// are also needed by /client/assets/manage/[...assetPath]/page.tsx.
-// Exporting them here makes them available.
-// The types are also exported.
+    
