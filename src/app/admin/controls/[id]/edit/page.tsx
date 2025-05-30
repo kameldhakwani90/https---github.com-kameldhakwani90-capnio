@@ -71,8 +71,13 @@ export default function AdminEditControlPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!controlId) return;
+    if (!controlId) {
+      setIsLoading(false);
+      setNotFound(true);
+      return;
+    }
 
+    // Simulate fetching control data
     const controlToEdit = dummyControls.find(c => c.id === controlId);
 
     if (controlToEdit) {
@@ -82,7 +87,7 @@ export default function AdminEditControlPage() {
       const sensorTypeIds = controlToEdit.typesDeCapteursNecessaires.map(label => {
         const foundOption = REQUIRED_SENSOR_TYPES_OPTIONS.find(opt => opt.label === label);
         return foundOption ? foundOption.id : "";
-      }).filter(id => id);
+      }).filter(id => id !== "");
       setSelectedSensorTypes(sensorTypeIds);
 
       setVariablesUtilisees(controlToEdit.variablesUtilisees.join(", "));
@@ -112,13 +117,13 @@ export default function AdminEditControlPage() {
 
     const updatedControlData = {
       id: controlId,
-      nomDuControle,
+      nomDuControle: nomDuControle,
       typesDeMachinesConcernees: typesDeMachinesConcernees.split(',').map(s => s.trim()).filter(s => s),
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
       variablesUtilisees: variablesUtilisees.split(',').map(s => s.trim()).filter(s => s),
       formuleDeCalcul: formuleDeCalcul.trim() === "" ? null : formuleDeCalcul,
-      formuleDeVerification,
-      description,
+      formuleDeVerification: formuleDeVerification,
+      description: description,
     };
     console.log("Contrôle métier mis à jour (simulation):", updatedControlData);
     toast({
