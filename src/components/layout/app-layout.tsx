@@ -35,64 +35,61 @@ const dummyTreeData: NavItem[] = [
     onClick: () => window.location.href = '/notifications',
   },
   {
-    id: 'site-1',
+    id: 'site-1', // Main Site example
     label: 'Headquarters',
     type: 'site',
     status: 'green',
     icon: Home,
     data: { location: 'New York, USA', zones: 2, machines: 5 },
+    // Simplified children:
     children: [
       {
-        id: 'zone-1-1',
-        label: 'Manufacturing Floor',
-        type: 'zone',
-        status: 'green',
-        icon: LayoutGrid,
-        data: { area: '1000 sqm', machines: 3 },
-        children: [
-          {
-            id: 'machine-1-1-1',
-            label: 'CNC Mill A01',
-            type: 'machine',
-            status: 'orange',
-            icon: Cpu,
-            data: { serial: 'SN123', model: 'X500', statusDetails: 'Vibration sensor exceeds threshold.' },
-            children: [
-              { id: 'sensor-1-1-1-1', label: 'Temperature', type: 'sensor', status: 'orange', icon: Thermometer, data: { value: '85', unit: '°C', threshold: '80°C' } },
-              { id: 'sensor-1-1-1-2', label: 'Vibration', type: 'sensor', status: 'green', icon: Activity, data: { value: '0.2', unit: 'g', threshold: '0.5g' } },
-            ],
-          },
-          { id: 'machine-1-1-2', label: 'Robot Arm B02', type: 'machine', status: 'green', icon: Cpu, data: { serial: 'SN456', model: 'R200' } },
-        ],
+        id: 'machine-hq-cnc',
+        label: 'CNC Mill A01 (HQ)',
+        type: 'machine',
+        status: 'orange',
+        icon: Cpu,
+        data: { serial: 'SN123', model: 'X500', statusDetails: 'Vibration sensor high.' },
+        children: [ // Sensors can still be nested if needed for detail on click
+           { id: 'sensor-hq-cnc-temp', label: 'Temperature', type: 'sensor', status: 'orange', icon: Thermometer, data: { value: '85', unit: '°C' } },
+           { id: 'sensor-hq-cnc-vib', label: 'Vibration', type: 'sensor', status: 'green', icon: Activity, data: { value: '0.2', unit: 'g' } },
+        ]
       },
       {
-        id: 'zone-1-2',
-        label: 'Server Room',
+        id: 'machine-hq-robot',
+        label: 'Robot Arm B02 (HQ)',
+        type: 'machine',
+        status: 'green',
+        icon: Cpu,
+        data: { serial: 'SN456', model: 'R200' },
+      },
+      {
+        id: 'zone-hq-server',
+        label: 'Server Room (HQ)',
         type: 'zone',
         status: 'red',
         icon: LayoutGrid,
-        data: { area: '50 sqm', machines: 2, statusDetails: 'Main AC Unit Offline.' },
+        data: { area: '50 sqm', machines: 1, statusDetails: 'AC Offline'},
         children: [
-          { id: 'machine-1-2-1', label: 'Main Server Rack', type: 'machine', status: 'red', icon: HardDrive, data: { serial: 'SRV001', model: 'Dell R740' } },
-          { id: 'pi-1-2-1', label: 'RPi Gateway 01', type: 'raspberrypi', status: 'white', icon: HardDrive, data: { ip: '192.168.1.10', statusDetails: 'Offline' } },
-        ],
-      },
+           { id: 'machine-hq-server-rack', label: 'Main Server Rack', type: 'machine', status: 'red', icon: HardDrive, data: { serial: 'SRV001', model: 'Dell R740' } },
+        ]
+      }
     ],
   },
   {
-    id: 'site-2',
+    id: 'site-2', // Another site, maybe without children initially
     label: 'Warehouse Alpha',
     type: 'site',
-    status: 'white',
+    status: 'white', // Offline status
     icon: Home,
-    data: { location: 'Remote Location', statusDetails: 'Offline' },
+    data: { location: 'Chicago, USA', statusDetails: 'Offline' },
   },
    {
     id: 'sites-management',
     label: 'Site Management',
     type: 'group',
-    icon: Home, // Changed from Cog to Home for site management
-    href: '/sites', // Link to main sites page, not register
+    icon: Home, 
+    href: '/sites', 
     onClick: () => window.location.href = '/sites',
   },
   {
@@ -100,7 +97,7 @@ const dummyTreeData: NavItem[] = [
     label: 'Machine Management',
     type: 'group',
     icon: ClipboardList,
-    href: '/machines', // Link to main machines page, not register
+    href: '/machines', 
     onClick: () => window.location.href = '/machines',
   }
 ];
@@ -127,7 +124,7 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
     }
   };
   
-  const fullNavTree = [...dummyTreeData]; // Admin items are now handled directly in AppSidebar
+  const fullNavTree = [...dummyTreeData]; 
 
   return (
     <SidebarProvider defaultOpen={true} open={undefined} onOpenChange={undefined}>
@@ -143,9 +140,13 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
             <main className="flex-1 p-4 md:p-6 lg:p-8">
               {React.Children.map(children, child => {
                 if (React.isValidElement(child)) {
+                  // Check if the child is a DOM element (e.g., 'div', 'span')
+                  // or a React component.
                   if (typeof child.type === 'string') {
+                    // It's a DOM element, don't pass selectedItem
                     return child;
                   }
+                  // It's a React component, pass selectedItem
                   return React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem });
                 }
                 return child;
