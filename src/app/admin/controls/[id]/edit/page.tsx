@@ -77,18 +77,23 @@ export default function AdminEditControlPage() {
       return;
     }
 
-    // Simulate fetching data
+    // Simulate fetching control data
     const controlToEdit = dummyControls.find(c => c.id === controlId);
 
     if (controlToEdit) {
       setNomDuControle(controlToEdit.nomDuControle);
       setTypesDeMachinesConcernees(controlToEdit.typesDeMachinesConcernees.join(", "));
 
-      const sensorTypeIds = controlToEdit.typesDeCapteursNecessaires.map(label => {
-        const foundOption = REQUIRED_SENSOR_TYPES_OPTIONS.find(opt => opt.label === label);
-        return foundOption ? foundOption.id : "";
-      }).filter(id => id !== "");
-      setSelectedSensorTypes(sensorTypeIds);
+      const newSelectedSensorTypesFromData: string[] = [];
+      if (controlToEdit.typesDeCapteursNecessaires && Array.isArray(controlToEdit.typesDeCapteursNecessaires)) {
+        for (const label of controlToEdit.typesDeCapteursNecessaires) {
+          const foundOption = REQUIRED_SENSOR_TYPES_OPTIONS.find(opt => opt.label === label);
+          if (foundOption && foundOption.id) {
+            newSelectedSensorTypesFromData.push(foundOption.id);
+          }
+        }
+      }
+      setSelectedSensorTypes(newSelectedSensorTypesFromData);
 
       setVariablesUtilisees(controlToEdit.variablesUtilisees.join(", "));
       setFormuleDeCalcul(controlToEdit.formuleDeCalcul || "");
@@ -131,7 +136,7 @@ export default function AdminEditControlPage() {
       typesDeMachinesConcernees: machineTypesArray,
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
       variablesUtilisees: variablesArray,
-      formuleDeCalcul: formuleDeCalcul.trim() === "" ? null : formuleDeCalcul.trim(),
+      formuleDeCalcul: formuleDeCalcul.trim() === "" ? "" : formuleDeCalcul.trim(),
       formuleDeVerification: formuleDeVerification.trim(),
       description: description.trim(),
     };
