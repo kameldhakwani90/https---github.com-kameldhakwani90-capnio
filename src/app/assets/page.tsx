@@ -1,41 +1,25 @@
 
-import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Network, PlusCircle } from "lucide-react"; // Or other relevant icons like Share2, HardDrive, Home
-import Link from "next/link";
-import Image from "next/image";
+"use client";
 
-// Placeholder data - in a real app, this would come from a backend/state
-const userAssets = {
-  sites: [
-    { 
-      id: "site-hq", 
-      name: "Headquarters", 
-      status: "green", 
-      location: "New York",
-      zones: [
-        { 
-          id: "zone-mfg", 
-          name: "Manufacturing Floor", 
-          status: "orange",
-          machines: [
-            { id: "machine-cnc", name: "CNC Mill A01", status: "orange", type: "CNC Mill" },
-            { id: "machine-robot", name: "Robot Arm B02", status: "green", type: "Robotic Arm" },
-          ]
-        },
-        {
-          id: "zone-server",
-          name: "Server Room",
-          status: "red",
-          machines: [
-            { id: "machine-server-rack", name: "Main Server Rack", status: "red", type: "Server" }
-          ]
-        }
-      ]
-    },
-    { id: "site-wh-a", name: "Warehouse Alpha", status: "green", location: "Chicago", zones: [] },
-  ]
+import * as React from "react";
+import Link from "next/link";
+import { AppLayout } from "@/components/layout/app-layout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Network, PlusCircle, Home, Building } from "lucide-react"; // Added Home, Building
+import type { Site, Status } from "@/app/client/sites/[...sitePath]/page"; // Assuming types can be imported
+import { DUMMY_CLIENT_SITES_DATA } from "@/app/client/sites/[...sitePath]/page"; // Import dummy data for now
+
+// For Asset Management, we might only show top-level sites or all sites client has access to.
+// For this example, let's use the same DUMMY_CLIENT_SITES_DATA as the dashboard
+// but only render the top-level entries.
+
+const getSiteOverallStatus = (site: Site): Status => {
+  // Simplified status for asset management card for now, can be expanded later
+  // This is just to have some visual cue, actual status calculation might be complex
+  if (site.zones.some(z => z.machines.some(m => m.status === 'red'))) return 'red';
+  if (site.zones.some(z => z.machines.some(m => m.status === 'orange'))) return 'orange';
+  return 'green';
 };
 
 const getStatusColorClass = (status: string) => {
@@ -49,8 +33,10 @@ const getStatusColorClass = (status: string) => {
 
 
 export default function AssetManagementPage() {
-  // This page will display the client's sites, zones, machines in a tree or list.
-  // For now, it's a placeholder structure.
+  // Filter for top-level sites (sites that are not subSites of another explicitly listed site)
+  // Or simply use all sites from DUMMY_CLIENT_SITES_DATA if it's structured as top-level.
+  // For this example, we consider all entries in DUMMY_CLIENT_SITES_DATA as manageable top-level asset groups.
+  const manageableSites = DUMMY_CLIENT_SITES_DATA;
 
   return (
     <AppLayout>
@@ -60,104 +46,55 @@ export default function AssetManagementPage() {
             <Network className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Asset Management</h1>
           </div>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Site
+          <Button asChild>
+            <Link href="/sites/register"> {/* Link to existing admin-styled page for now */}
+              <PlusCircle className="mr-2 h-4 w-4" /> Add New Site
+            </Link>
           </Button>
         </header>
 
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-2xl">Your Assets Overview</CardTitle>
-            <CardDescription>Manage your sites, zones, machines, and sensors.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {userAssets.sites.length === 0 ? (
-              <div className="text-center py-10">
-                <Image 
-                  src="https://placehold.co/400x300.png" 
-                  alt="No assets configured" 
-                  width={400} 
-                  height={300} 
-                  className="mx-auto mb-4 rounded-md shadow-md"
-                  data-ai-hint="empty state network" 
-                />
-                <p className="text-xl text-muted-foreground">No assets configured yet.</p>
-                <Button className="mt-6" size="lg">
-                  <PlusCircle className="mr-2 h-5 w-5" />
-                  Configure Your First Site
+        {manageableSites.length === 0 ? (
+          <Card className="shadow-xl">
+            <CardContent className="py-10 text-center">
+                <Network className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-xl font-semibold">No assets configured yet.</p>
+                <p className="text-muted-foreground">Start by adding your first site.</p>
+                <Button asChild className="mt-6">
+                    <Link href="/sites/register">Add New Site</Link>
                 </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {userAssets.sites.map(site => (
-                  <div key={site.id} className="p-4 border rounded-lg shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-semibold flex items-center">
-                         <span className={`w-3 h-3 rounded-full mr-2 ${getStatusColorClass(site.status)}`}></span>
-                        {site.name}
-                      </h3>
-                      <span className="text-sm text-muted-foreground">{site.location}</span>
-                    </div>
-                    {/* Placeholder for zones and machines - this will become a more complex tree view */}
-                     {site.zones && site.zones.length > 0 && (
-                       <div className="ml-6 mt-2 space-y-2">
-                        {site.zones.map(zone => (
-                          <div key={zone.id} className="p-3 border-l-2 border-border rounded-r-md">
-                             <div className="flex items-center">
-                               <span className={`w-2.5 h-2.5 rounded-full mr-2 ${getStatusColorClass(zone.status)}`}></span>
-                               <h4 className="font-medium">{zone.name}</h4>
-                             </div>
-                             {zone.machines && zone.machines.length > 0 && (
-                               <div className="ml-6 mt-1 space-y-1">
-                                {zone.machines.map(machine => (
-                                  <div key={machine.id} className="text-sm flex items-center">
-                                    <span className={`w-2 h-2 rounded-full mr-2 ${getStatusColorClass(machine.status)}`}></span>
-                                    {machine.name} <span className="text-xs text-muted-foreground ml-1">({machine.type})</span>
-                                  </div>
-                                ))}
-                               </div>
-                             )}
-                          </div>
-                        ))}
-                       </div>
-                     )}
-                     <div className="mt-3 flex gap-2">
-                        <Button variant="outline" size="sm">Manage Zones</Button>
-                        <Button variant="outline" size="sm">View Machines</Button>
-                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card className="mt-8 shadow-lg">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button variant="outline" className="p-6 text-left justify-start h-auto">
-              <div>
-                <h4 className="font-semibold text-lg">Register New Machine</h4>
-                <p className="text-sm text-muted-foreground">Add a new piece of equipment to your monitoring system.</p>
-              </div>
-            </Button>
-            <Button variant="outline" className="p-6 text-left justify-start h-auto">
-               <div>
-                <h4 className="font-semibold text-lg">Configure Sensors</h4>
-                <p className="text-sm text-muted-foreground">Set up or modify sensor parameters and associations.</p>
-              </div>
-            </Button>
-             <Button variant="outline" className="p-6 text-left justify-start h-auto">
-               <div>
-                <h4 className="font-semibold text-lg">View Alert Rules</h4>
-                <p className="text-sm text-muted-foreground">Check and define formulas for notifications.</p>
-              </div>
-            </Button>
-          </CardContent>
-        </Card>
-
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {manageableSites.map(site => {
+              const siteStatus = getSiteOverallStatus(site);
+              const SiteIcon = site.isConceptualSubSite ? Building : Home;
+              return (
+                <Link key={site.id} href={`/client/assets/manage/${site.id}`} className="block group">
+                  <Card className="shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl mb-1 flex items-center gap-2 group-hover:text-primary transition-colors">
+                          <SiteIcon className="h-6 w-6 text-primary" />
+                          {site.name}
+                        </CardTitle>
+                        <span className={`w-3 h-3 rounded-full ${getStatusColorClass(siteStatus)}`} title={`Status: ${siteStatus}`}></span>
+                      </div>
+                      <CardDescription>{site.location}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <p className="text-sm text-muted-foreground">
+                        {/* Placeholder for brief stats, e.g., zones/machines count */}
+                        {site.zones.length} zone(s), {site.subSites?.length || 0} sub-site(s).
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">Click to manage this site.</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
