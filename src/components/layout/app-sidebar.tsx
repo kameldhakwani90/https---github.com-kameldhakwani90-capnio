@@ -15,7 +15,7 @@ import { siteConfig } from "@/config/site";
 import { Logo } from "../common/logo";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
-import { LogOut, Settings, FileText, Cog, FlaskConical, UserPlus, ShieldAlert, Bell, Home, Network, LayoutGrid, Users } from "lucide-react"; // Added Users
+import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 
@@ -25,12 +25,11 @@ interface AppSidebarProps {
 }
 
 const getAdminIcon = (href: string) => {
-  // if (href.includes('/admin/clients/create')) return UserPlus; // No longer needed here
-  if (href.includes('/admin/clients')) return Users; // Icon for List Clients
+  if (href.includes('/admin/clients')) return Users;
   if (href.includes('/admin/sensors')) return Cog;
-  if (href.includes('/admin/formulas/validate')) return FlaskConical;
-  if (href.includes('/admin/formulas')) return FileText;
-  return FileText; // Default admin icon
+  if (href.includes('/admin/controls')) return FileText; // Pour Configuration des Contrôles
+  if (href.includes('/admin/formulas/validate')) return FlaskConical; // Pour Formula Validator
+  return FileText; 
 };
 
 export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
@@ -89,7 +88,6 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           href: '/', 
           onClick: () => window.location.href = '/',
         },
-        // Admin does NOT see Monitoring or Notifications in main nav here
       ];
       adminToolsNavItems = siteConfig.adminNav.map(item => ({
         ...item,

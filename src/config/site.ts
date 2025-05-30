@@ -1,4 +1,5 @@
-import type { Cog, FileText, FlaskConical, UserPlus, Users } from "lucide-react"; // Added Users
+
+import type { Cog, FileText, FlaskConical, Users } from "lucide-react";
 
 export type SiteConfig = typeof siteConfig;
 
@@ -6,17 +7,17 @@ export const siteConfig = {
   name: "Capnio.pro",
   description:
     "Intuitive Industrial Sensor Monitoring and Management Platform.",
-  mainNav: [ // This is now primarily for the client view or as a fallback
+  mainNav: [ 
     {
       title: "Dashboard",
-      href: "/", // Default dashboard, context will determine if it's / or /client/dashboard
+      href: "/", 
     },
     {
       title: "Monitoring",
       href: "/monitoring",
     },
      {
-      title: "Asset Management", // For client view
+      title: "Asset Management", 
       href: "/assets",
     },
     {
@@ -26,29 +27,20 @@ export const siteConfig = {
   ],
   adminNav: [
     {
-      title: "List Clients", // New
+      title: "List Clients",
       href: "/admin/clients",
-      // icon: Users, // Icon assignment is handled in AppLayout/AppSidebar
     },
-    // {
-    //   title: "Create Client Account", // Removed from here
-    //   href: "/admin/clients/create",
-    //   // icon: UserPlus,
-    // },
     {
-      title: "Sensor Declaration", // Renamed
+      title: "Sensor Declaration",
       href: "/admin/sensors",
-      // icon: Cog,
     },
     {
-      title: "Formula Configuration", // Renamed
-      href: "/admin/formulas",
-      // icon: FileText,
+      title: "Configuration des Contrôles", // Renommé
+      href: "/admin/controls",             // Nouvelle URL
     },
     {
-      title: "Formula Validator",
+      title: "Formula Validator", // Conservé pour l'instant, peut nécessiter une révision
       href: "/admin/formulas/validate",
-      // icon: FlaskConical,
     },
   ]
 };
