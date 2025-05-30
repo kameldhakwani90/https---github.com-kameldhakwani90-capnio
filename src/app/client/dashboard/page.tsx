@@ -2,14 +2,15 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import type { LucideIcon } from 'lucide-react';
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/status-badge";
-import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building, ChevronDown, ChevronRight } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Home, Building, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Simplified interfaces for this page
 type Status = 'green' | 'orange' | 'red' | 'white';
 
 interface Machine {
@@ -30,26 +31,27 @@ interface Site {
   name: string;
   location: string;
   zones: Zone[];
-  subSites?: Site[]; // Added for nesting
-  isConceptualSubSite?: boolean; // To style top-level sites that are conceptually branches
+  subSites?: Site[];
+  isConceptualSubSite?: boolean; // A top-level site that is conceptually a branch
 }
 
+// Dummy data - this would ideally come from a shared service or context
 const dummyClientSites: Site[] = [
   {
     id: "site-campus-central",
     name: "Campus Central Opérations",
     location: "Ville Principale, HQ",
-    zones: [ // Direct zones of Campus Central
+    zones: [
       {
         id: "zone-cc-admin",
-        name: "Bâtiment Administratif Central",
+        name: "Bâtiment Administratif Central (Zones Directes)",
         machines: [
           { id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green" },
           { id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green" },
         ],
       },
     ],
-    subSites: [ // Sub-sites within Campus Central
+    subSites: [
       {
         id: "subsite-batiment-a",
         name: "Bâtiment A - Production",
@@ -74,7 +76,7 @@ const dummyClientSites: Site[] = [
       },
       {
         id: "subsite-batiment-b",
-        name: "Bâtiment B - Logistique & Stockage",
+        name: "Bâtiment B - Logistique",
         location: "Campus Central - Zone Est",
         zones: [
           {
@@ -92,7 +94,7 @@ const dummyClientSites: Site[] = [
     id: "site-entrepot-distant",
     name: "Entrepôt Distant Delta",
     location: "Zone Industrielle Externe",
-    isConceptualSubSite: true, // This is a top-level card but represents a branch
+    isConceptualSubSite: true,
     zones: [
       {
         id: "zone-ed-rack",
@@ -107,7 +109,7 @@ const dummyClientSites: Site[] = [
 ];
 
 const getCombinedStatus = (statuses: Status[]): Status => {
-  if (statuses.length === 0) return 'green'; // Default if no elements to check
+  if (statuses.length === 0) return 'green';
   if (statuses.includes('red')) return 'red';
   if (statuses.includes('orange')) return 'orange';
   return 'green';
@@ -122,11 +124,10 @@ const getSiteOverallStatus = (site: Site): Status => {
   const statuses: Status[] = [];
   site.zones.forEach(zone => statuses.push(getZoneOverallStatus(zone)));
   if (site.subSites) {
-    site.subSites.forEach(subSite => statuses.push(getSiteOverallStatus(subSite))); // Recursive call
+    site.subSites.forEach(subSite => statuses.push(getSiteOverallStatus(subSite)));
   }
   return getCombinedStatus(statuses);
 };
-
 
 const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
   const defaultClassName = "h-5 w-5";
@@ -152,158 +153,62 @@ const getStatusText = (status: Status): string => {
     }
 };
 
-const MachineItem: React.FC<{ machine: Machine }> = ({ machine }) => (
-  <div className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50">
-    <div className="flex items-center gap-2">
-      <Server className="h-4 w-4 text-muted-foreground" />
-      <span>{machine.name} <span className="text-xs text-muted-foreground">({machine.type})</span></span>
-    </div>
-    <StatusBadge status={machine.status} />
-  </div>
-);
 
-const ZoneItem: React.FC<{ zone: Zone; parentId: string }> = ({ zone, parentId }) => {
-  const zoneStatus = getZoneOverallStatus(zone);
-  return (
-    <AccordionItem value={`${parentId}-${zone.id}`} className="border-b-0 mb-1 last:mb-0">
-      <AccordionTrigger className="py-2 px-3 hover:no-underline hover:bg-muted/30 rounded-md data-[state=open]:bg-muted/40 transition-colors">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary/80" />
-            <span className="font-medium text-sm">{zone.name}</span>
-          </div>
-          <StatusBadge status={zoneStatus} />
-        </div>
-      </AccordionTrigger>
-      <AccordionContent className="pl-6 pr-2 pb-0 pt-1">
-        {zone.machines.length > 0 ? (
-          <div className="space-y-0.5">
-            {zone.machines.map((machine) => (
-              <MachineItem key={machine.id} machine={machine} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground py-2 px-3">Aucune machine dans cette zone.</p>
-        )}
-      </AccordionContent>
-    </AccordionItem>
-  );
-};
-
-const SubSiteDisplay: React.FC<{ site: Site, parentId: string }> = ({ site, parentId }) => {
-  const subSiteStatus = getSiteOverallStatus(site);
-  const SubSiteIcon = Building;
-
-  return (
-    <div className="ml-1 pl-3 border-l-2 border-border/70 pt-3 bg-card rounded-r-md shadow-sm mt-3">
-      <div className="flex items-center justify-between mb-2 px-2">
-        <h4 className="text-md font-semibold flex items-center gap-2 text-foreground/90">
-          <SubSiteIcon className="h-5 w-5 text-primary/90" />
-          {site.name}
-        </h4>
-        <div className="flex items-center gap-2">
-          <span className={cn("text-xs font-medium", 
-            subSiteStatus === 'red' ? 'text-red-600' :
-            subSiteStatus === 'orange' ? 'text-orange-600' :
-            subSiteStatus === 'green' ? 'text-green-600' : 'text-gray-500'
-          )}>
-            {getStatusText(subSiteStatus)}
-          </span>
-          {getStatusIcon(subSiteStatus, "h-5 w-5")}
-        </div>
-      </div>
-      <div className="px-1">
-        {site.zones.length > 0 ? (
-            <Accordion type="multiple" className="w-full space-y-1">
-            {site.zones.map((zone) => (
-                <ZoneItem key={zone.id} zone={zone} parentId={`${parentId}-${site.id}`} />
-            ))}
-            </Accordion>
-        ) : (
-            <div className="text-center py-3">
-            <Layers className="h-8 w-8 text-muted-foreground mx-auto mb-1" />
-            <p className="text-xs text-muted-foreground">Aucune zone configurée pour ce sous-site.</p>
-            </div>
-        )}
-      </div>
-      {/* Recursive call for sub-sub-sites if needed, though not implemented in this iteration */}
-      {/* {site.subSites && site.subSites.length > 0 && (
-        <div className="mt-2 space-y-2">
-          {site.subSites.map(subSubSite => (
-            <SubSiteDisplay key={subSubSite.id} site={subSubSite} parentId={`${parentId}-${site.id}`} />
-          ))}
-        </div>
-      )} */}
-    </div>
-  );
-};
-
-
-const SiteCard: React.FC<{ site: Site }> = ({ site }) => {
+const SiteCard: React.FC<{ site: Site; isTopLevel?: boolean }> = ({ site, isTopLevel = false }) => {
   const siteStatus = getSiteOverallStatus(site);
   const SiteIcon = site.isConceptualSubSite ? Building : Home;
+  const href = isTopLevel ? `/client/sites/${site.id}` : `/client/sites/${site.id}`; // Simplified for now, will be part of path in dynamic page
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="text-xl mb-1 flex items-center gap-2">
-            <SiteIcon className="h-6 w-6 text-primary" />
-            {site.name}
-          </CardTitle>
-          <CardDescription>{site.location}</CardDescription>
-        </div>
-        <div className="flex flex-col items-end">
-          {getStatusIcon(siteStatus, "h-7 w-7")}
-          <span className={`text-xs font-semibold mt-1 ${
-            siteStatus === 'red' ? 'text-red-600' : 
-            siteStatus === 'orange' ? 'text-orange-600' : 'text-green-600'
-          }`}>
-            {getStatusText(siteStatus)}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        {site.zones.length > 0 ? (
-          <Accordion type="multiple" className="w-full space-y-1">
-            {site.zones.map((zone) => (
-              <ZoneItem key={zone.id} zone={zone} parentId={site.id} />
-            ))}
-          </Accordion>
-        ) : (
-          (!site.subSites || site.subSites.length === 0) && ( // Show "no direct zones" only if no sub-sites either
-            <div className="text-center py-4 text-sm text-muted-foreground">
-                Aucune zone directe configurée pour ce site.
-            </div>
-          )
-        )}
-
-        {site.subSites && site.subSites.length > 0 && (
-          <div className={cn("space-y-3", site.zones.length > 0 ? "mt-4 pt-3 border-t" : "mt-0")}>
-             <h3 className="text-sm font-semibold text-muted-foreground px-1 uppercase tracking-wider">Sous-Sites</h3>
-            {site.subSites.map(subSite => (
-              <SubSiteDisplay key={subSite.id} site={subSite} parentId={site.id} />
-            ))}
+    <Link href={href} className="block group">
+      <Card className="shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="text-xl mb-1 flex items-center gap-2 group-hover:text-primary transition-colors">
+              <SiteIcon className="h-6 w-6 text-primary" />
+              {site.name}
+            </CardTitle>
+            <CardDescription>{site.location}</CardDescription>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div className="flex flex-col items-end">
+            {getStatusIcon(siteStatus, "h-7 w-7")}
+            <span className={cn("text-xs font-semibold mt-1",
+              siteStatus === 'red' ? 'text-red-600' : 
+              siteStatus === 'orange' ? 'text-orange-600' : 
+              siteStatus === 'green' ? 'text-green-600' : 'text-gray-500'
+            )}>
+              {getStatusText(siteStatus)}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="flex-grow">
+          <p className="text-sm text-muted-foreground">
+            {site.zones.length} zone(s) directe(s), {site.subSites?.length || 0} sous-site(s).
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">Cliquez pour voir les détails.</p>
+        </CardContent>
+      </Card>
+    </Link>
   );
 };
 
 export default function ClientDashboardPage() {
+  // For this page, we only display top-level sites.
+  // The actual dummyClientSites might contain nested structures, but we iterate over its first level.
+  const topLevelSites = dummyClientSites;
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <header className="pb-2">
           <h1 className="text-3xl font-bold tracking-tight">Tableau de Bord Client</h1>
-          <p className="text-muted-foreground">Vue d'ensemble de l'état de vos actifs.</p>
+          <p className="text-muted-foreground">Vue d'ensemble de l'état de vos actifs principaux.</p>
         </header>
 
-        {dummyClientSites.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2"> {/* Adjusted for potentially wider cards */}
-            {dummyClientSites.map((site) => (
-              <SiteCard key={site.id} site={site} />
+        {topLevelSites.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {topLevelSites.map((site) => (
+              <SiteCard key={site.id} site={site} isTopLevel={true} />
             ))}
           </div>
         ) : (
@@ -319,5 +224,3 @@ export default function ClientDashboardPage() {
     </AppLayout>
   );
 }
-
-    
