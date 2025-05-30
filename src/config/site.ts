@@ -1,4 +1,4 @@
-import type { Cog, FileText, FlaskConical, UserPlus } from "lucide-react"; // Added UserPlus
+import type { Cog, FileText, FlaskConical, UserPlus, Users } from "lucide-react"; // Added Users
 
 export type SiteConfig = typeof siteConfig;
 
@@ -6,22 +6,18 @@ export const siteConfig = {
   name: "Capnio.pro",
   description:
     "Intuitive Industrial Sensor Monitoring and Management Platform.",
-  mainNav: [
+  mainNav: [ // This is now primarily for the client view or as a fallback
     {
       title: "Dashboard",
-      href: "/",
+      href: "/", // Default dashboard, context will determine if it's / or /client/dashboard
     },
     {
       title: "Monitoring",
       href: "/monitoring",
     },
-    {
-      title: "Sites",
-      href: "/sites",
-    },
-    {
-      title: "Machines",
-      href: "/machines",
+     {
+      title: "Asset Management", // For client view
+      href: "/assets",
     },
     {
       title: "Notifications",
@@ -29,13 +25,23 @@ export const siteConfig = {
     },
   ],
   adminNav: [
-     {
-      title: "Sensor Config",
-      href: "/admin/sensors",
-      // icon: Cog, // Icon assignment is handled in AppLayout/AppSidebar for now
+    {
+      title: "List Clients", // New
+      href: "/admin/clients",
+      // icon: Users, // Icon assignment is handled in AppLayout/AppSidebar
     },
     {
-      title: "Formula Config",
+      title: "Create Client Account",
+      href: "/admin/clients/create",
+      // icon: UserPlus,
+    },
+    {
+      title: "Sensor Declaration", // Renamed
+      href: "/admin/sensors",
+      // icon: Cog,
+    },
+    {
+      title: "Formula Configuration", // Renamed
       href: "/admin/formulas",
       // icon: FileText,
     },
@@ -43,11 +49,6 @@ export const siteConfig = {
       title: "Formula Validator",
       href: "/admin/formulas/validate",
       // icon: FlaskConical,
-    },
-    {
-      title: "Create Client Account",
-      href: "/admin/clients/create",
-      // icon: UserPlus, // Icon for create client
     },
   ]
 };

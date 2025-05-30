@@ -15,39 +15,36 @@ import { siteConfig } from "@/config/site";
 import { Logo } from "../common/logo";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
-import { LogOut, Settings, FileText, Cog, FlaskConical, UserPlus, ShieldAlert, Bell, Home, Network, LayoutGrid } from "lucide-react";
+import { LogOut, Settings, FileText, Cog, FlaskConical, UserPlus, ShieldAlert, Bell, Home, Network, LayoutGrid, Users } from "lucide-react"; // Added Users
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 
 interface AppSidebarProps {
-  // navTree prop is less relevant now as we build it based on role
-  // navTree: NavItem[]; 
   onSelectItem: (item: NavItem) => void;
   selectedItemId?: string;
 }
 
 const getAdminIcon = (href: string) => {
+  if (href.includes('/admin/clients/create')) return UserPlus;
+  if (href.includes('/admin/clients')) return Users; // Icon for List Clients
   if (href.includes('/admin/sensors')) return Cog;
   if (href.includes('/admin/formulas/validate')) return FlaskConical;
   if (href.includes('/admin/formulas')) return FileText;
-  if (href.includes('/admin/clients/create')) return UserPlus;
-  return FileText;
+  return FileText; // Default admin icon
 };
 
 export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
   const pathname = usePathname();
   const isClientView = pathname.startsWith('/client/');
-  // Fallback for login page, though AppLayout handles not rendering sidebar there.
-  // This check ensures we don't try to build nav if pathname is null during SSR or weird states.
   const isLoginPage = pathname === '/login';
 
-
-  let currentNavTree: NavItem[] = [];
+  let mainNavItems: NavItem[] = [];
+  let adminToolsNavItems: NavItem[] = [];
   let showAdminToolsSection = false;
 
   if (!isLoginPage) {
     if (isClientView) {
-      currentNavTree = [
+      mainNavItems = [
         {
           id: 'client-dashboard-link',
           label: 'Dashboard',
@@ -61,7 +58,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Monitoring',
           type: 'group',
           icon: ShieldAlert,
-          href: '/monitoring', // Path needs to be client-specific or data filtered
+          href: '/monitoring',
           onClick: () => window.location.href = '/monitoring',
         },
         {
@@ -69,7 +66,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Notifications',
           type: 'group',
           icon: Bell,
-          href: '/notifications', // Path needs to be client-specific or data filtered
+          href: '/notifications',
           onClick: () => window.location.href = '/notifications',
         },
         {
@@ -77,52 +74,34 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Asset Management',
           type: 'group',
           icon: Network,
-          href: '/assets', // Path needs tobe client-specific or data filtered
+          href: '/assets',
           onClick: () => window.location.href = '/assets',
         },
       ];
       showAdminToolsSection = false;
     } else { // Admin View (or default if not client and not login)
-      currentNavTree = [
+      mainNavItems = [
         {
           id: 'admin-dashboard-link',
           label: 'Dashboard',
           type: 'group',
           icon: LayoutGrid,
-          href: '/', // Admin dashboard is the root
+          href: '/', 
           onClick: () => window.location.href = '/',
         },
-        {
-          id: 'admin-monitoring-link',
-          label: 'Monitoring',
-          type: 'group',
-          icon: ShieldAlert,
-          href: '/monitoring',
-          onClick: () => window.location.href = '/monitoring',
-        },
-        {
-          id: 'admin-notifications-link',
-          label: 'Notifications',
-          type: 'group',
-          icon: Bell,
-          href: '/notifications',
-          onClick: () => window.location.href = '/notifications',
-        },
-        // Admin does NOT see "Asset Management" in their main nav
+        // Admin does NOT see Monitoring or Notifications in main nav here
       ];
-      showAdminToolsSection = true; // Admins see the admin tools
+      adminToolsNavItems = siteConfig.adminNav.map(item => ({
+        ...item,
+        id: item.href, 
+        label: item.title,
+        icon: getAdminIcon(item.href),
+        type: 'group' as NavItem['type'], 
+        onClick: () => { if(item.href) window.location.href = item.href; }
+      }));
+      showAdminToolsSection = true;
     }
   }
-
-
-  const adminNavItemsWithIcons = siteConfig.adminNav.map(item => ({
-    ...item,
-    id: item.href, 
-    label: item.title,
-    icon: getAdminIcon(item.href),
-    type: 'group' as NavItem['type'], 
-    onClick: () => { if(item.href) window.location.href = item.href; }
-  }));
 
   return (
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
@@ -131,20 +110,20 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
         <Logo className="hidden group-data-[collapsible=icon]:flex justify-center w-full" />
       </SidebarHeader>
       <SidebarContent className="p-0">
-        {currentNavTree.length > 0 && (
+        {mainNavItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="group-data-[collapsible=icon]:justify-center">Navigation</SidebarGroupLabel>
-            <SidebarNav items={currentNavTree} onSelectItem={onSelectItem} selectedItemId={selectedItemId} />
+            <SidebarNav items={mainNavItems} onSelectItem={onSelectItem} selectedItemId={selectedItemId} />
           </SidebarGroup>
         )}
         
-        {showAdminToolsSection && (
+        {showAdminToolsSection && adminToolsNavItems.length > 0 && (
           <>
             <Separator className="my-2" />
             <SidebarGroup>
               <SidebarGroupLabel className="group-data-[collapsible=icon]:justify-center">Admin Tools</SidebarGroupLabel>
               <SidebarNav 
-                items={adminNavItemsWithIcons} 
+                items={adminToolsNavItems} 
                 onSelectItem={(item) => { if(item.href) window.location.href = item.href; }} 
                 selectedItemId={selectedItemId} 
               />
