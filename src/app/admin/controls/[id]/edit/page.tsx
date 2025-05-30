@@ -99,7 +99,7 @@ export default function AdminEditControlPage() {
       setNotFound(true);
     }
     setIsLoading(false);
-  }, [controlId]);
+  }, [controlId]); // Core dependency is controlId. State setters are stable. Constants are stable.
 
   const handleSensorTypeChange = (sensorTypeId: string, checked: boolean) => {
     setSelectedSensorTypes(prev =>
@@ -115,12 +115,22 @@ export default function AdminEditControlPage() {
       return option ? option.label : id;
     });
 
+    const machineTypesArray = typesDeMachinesConcernees
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s);
+
+    const variablesArray = variablesUtilisees
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s);
+
     const updatedControlData = {
       id: controlId,
       nomDuControle: nomDuControle,
-      typesDeMachinesConcernees: typesDeMachinesConcernees.split(',').map(s => s.trim()).filter(s => s),
+      typesDeMachinesConcernees: machineTypesArray,
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
-      variablesUtilisees: variablesUtilisees.split(',').map(s => s.trim()).filter(s => s),
+      variablesUtilisees: variablesArray,
       formuleDeCalcul: formuleDeCalcul.trim() === "" ? null : formuleDeCalcul,
       formuleDeVerification: formuleDeVerification,
       description: description,
