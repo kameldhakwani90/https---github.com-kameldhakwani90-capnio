@@ -31,20 +31,20 @@ const REQUIRED_SENSOR_TYPES_OPTIONS = [
 
 // Dummy data for controls list - for simulation purposes
 const dummyControls = [
-  { 
-    id: "control-001", 
-    nomDuControle: "Contrôle Température Frigo", 
-    typesDeMachinesConcernees: ["Frigo", "Congélateur"], 
+  {
+    id: "control-001",
+    nomDuControle: "Contrôle Température Frigo",
+    typesDeMachinesConcernees: ["Frigo", "Congélateur"],
     typesDeCapteursNecessaires: ["Température"], // Store labels
     variablesUtilisees: ["temp", "seuil_min", "seuil_max"],
     formuleDeCalcul: "",
     formuleDeVerification: "sensor['temp'].value >= machine.params['seuil_min'] && sensor['temp'].value <= machine.params['seuil_max']",
     description: "Vérifie que la température du frigo reste dans la plage définie par le client."
   },
-  { 
-    id: "control-002", 
-    nomDuControle: "Contrôle Consommation Électrique Moteur", 
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique"], 
+  {
+    id: "control-002",
+    nomDuControle: "Contrôle Consommation Électrique Moteur",
+    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique"],
     typesDeCapteursNecessaires: ["Tension", "Courant"], // Store labels
     variablesUtilisees: ["tension", "courant", "conso", "seuil_max_conso"],
     formuleDeCalcul: "sensor['conso'].value = sensor['tension'].value * sensor['courant'].value",
@@ -66,7 +66,7 @@ export default function AdminEditControlPage() {
   const [formuleDeCalcul, setFormuleDeCalcul] = useState("");
   const [formuleDeVerification, setFormuleDeVerification] = useState("");
   const [description, setDescription] = useState("");
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -78,8 +78,7 @@ export default function AdminEditControlPage() {
     if (controlToEdit) {
       setNomDuControle(controlToEdit.nomDuControle);
       setTypesDeMachinesConcernees(controlToEdit.typesDeMachinesConcernees.join(", "));
-      
-      // Map stored labels back to IDs for checkboxes
+
       const sensorTypeIds = controlToEdit.typesDeCapteursNecessaires.map(label => {
         const foundOption = REQUIRED_SENSOR_TYPES_OPTIONS.find(opt => opt.label === label);
         return foundOption ? foundOption.id : "";
@@ -130,11 +129,19 @@ export default function AdminEditControlPage() {
   };
 
   if (isLoading) {
-    return <AppLayout><div className="p-6 text-center">Chargement du contrôle métier...</div></AppLayout>;
+    return (
+      <AppLayout>
+        <div className="p-6 text-center">Chargement du contrôle métier...</div>
+      </AppLayout>
+    );
   }
 
   if (notFound) {
-    return <AppLayout><div className="p-6 text-center text-red-500">Contrôle métier non trouvé.</div></AppLayout>;
+    return (
+      <AppLayout>
+        <div className="p-6 text-center text-red-500">Contrôle métier non trouvé.</div>
+      </AppLayout>
+    );
   }
 
   return (
@@ -163,22 +170,22 @@ export default function AdminEditControlPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
                <div className="space-y-2">
                 <Label htmlFor="nomDuControle">Nom du contrôle *</Label>
-                <Input 
-                  id="nomDuControle" 
+                <Input
+                  id="nomDuControle"
                   value={nomDuControle}
                   onChange={(e) => setNomDuControle(e.target.value)}
-                  placeholder="Ex: Contrôle température frigo" 
-                  required 
+                  placeholder="Ex: Contrôle température frigo"
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="typesDeMachinesConcernees">Types de machines concernées (séparés par virgule)</Label>
-                <Input 
-                  id="typesDeMachinesConcernees" 
+                <Input
+                  id="typesDeMachinesConcernees"
                   value={typesDeMachinesConcernees}
                   onChange={(e) => setTypesDeMachinesConcernees(e.target.value)}
-                  placeholder="Ex: Frigo, Congélateur, Armoire électrique" 
+                  placeholder="Ex: Frigo, Congélateur, Armoire électrique"
                 />
               </div>
 
@@ -203,11 +210,11 @@ export default function AdminEditControlPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="variablesUtilisees">Variables système utilisées (séparées par virgule) *</Label>
-                <Input 
-                  id="variablesUtilisees" 
+                <Input
+                  id="variablesUtilisees"
                   value={variablesUtilisees}
                   onChange={(e) => setVariablesUtilisees(e.target.value)}
-                  placeholder="Ex: temp, tension, courant, conso" 
+                  placeholder="Ex: temp, tension, courant, conso"
                   required
                 />
                  <p className="text-xs text-muted-foreground">Ex: <code>temp</code>, <code>pression_huile</code>, <code>machine.params.seuil_max</code>.</p>
@@ -215,12 +222,12 @@ export default function AdminEditControlPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="formuleDeCalcul">Formule de calcul (optionnel)</Label>
-                <Textarea 
-                  id="formuleDeCalcul" 
+                <Textarea
+                  id="formuleDeCalcul"
                   value={formuleDeCalcul}
                   onChange={(e) => setFormuleDeCalcul(e.target.value)}
-                  placeholder="Ex: conso = courant * tension" 
-                  rows={2} 
+                  placeholder="Ex: conso = courant * tension"
+                  rows={2}
                 />
                  <p className="text-xs text-muted-foreground">
                   Ex: <code>sensor['conso'].value = sensor['courant'].value * sensor['tension'].value</code>.
@@ -229,26 +236,26 @@ export default function AdminEditControlPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="formuleDeVerification">Formule de vérification *</Label>
-                <Textarea 
-                  id="formuleDeVerification" 
+                <Textarea
+                  id="formuleDeVerification"
                   value={formuleDeVerification}
                   onChange={(e) => setFormuleDeVerification(e.target.value)}
-                  placeholder="Ex: temp >= seuil_min && temp <= seuil_max OU conso <= seuil_max" 
-                  rows={4} 
+                  placeholder="Ex: temp >= seuil_min && temp <= seuil_max OU conso <= seuil_max"
+                  rows={4}
                   required
                 />
                 <p className="text-xs text-muted-foreground">
                   Ex: <code>sensor['temp'].value >= machine.params['seuil_min'] && sensor['temp'].value <= machine.params['seuil_max']</code>.
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description (lisible par le client final)</Label>
-                <Textarea 
-                  id="description" 
+                <Textarea
+                  id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Expliquez ce que ce contrôle vérifie et son importance." 
+                  placeholder="Expliquez ce que ce contrôle vérifie et son importance."
                   rows={3}
                 />
               </div>
