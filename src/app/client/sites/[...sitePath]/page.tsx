@@ -11,24 +11,6 @@ import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building, Chev
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
-
 
 // Interfaces (should be in a shared types file eventually)
 type Status = 'green' | 'orange' | 'red' | 'white';
@@ -36,6 +18,12 @@ type Status = 'green' | 'orange' | 'red' | 'white';
 interface HistoricalDataPoint {
   name: string; // Typically time or sequence
   value: number;
+}
+
+interface ChecklistItem {
+  id: string;
+  label: string;
+  checked?: boolean; // If we want to track completion, not used actively yet
 }
 
 interface ActiveControlInAlert {
@@ -48,6 +36,7 @@ interface ActiveControlInAlert {
   thresholds?: Record<string, number | string>;
   historicalData?: HistoricalDataPoint[];
   relevantSensorVariable?: string;
+  checklist?: ChecklistItem[];
 }
 
 interface Machine {
@@ -75,7 +64,9 @@ interface Site {
 }
 
 // Dummy data - This should be fetched from a central place or API in a real app
-const DUMMY_CLIENT_SITES_DATA: Site[] = [
+// IMPORTANT: This data is now also used by the machine-alerts page.
+// In a real app, this would be in a service or global state.
+export const DUMMY_CLIENT_SITES_DATA: Site[] = [
   {
     id: "site-campus-central",
     name: "Campus Central Opérations",
@@ -120,6 +111,11 @@ const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     { name: '09:15', value: 7.5 }, { name: '09:20', value: 7.8 },
                   ],
                   relevantSensorVariable: "Couple Axe Z (Nm)",
+                  checklist: [
+                    { id: 'chk-robot-1', label: "Vérifier l'absence d'obstruction physique sur l'axe Z." },
+                    { id: 'chk-robot-2', label: "Contrôler le niveau de lubrification de l'axe Z." },
+                    { id: 'chk-robot-3', label: "Inspecter le câblage du moteur de l'axe Z pour tout dommage." },
+                  ]
                 }
               },
             ],
@@ -147,6 +143,12 @@ const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     { name: '10:15', value: 12 }, { name: '10:20', value: 15 },
                   ],
                   relevantSensorVariable: "Température (°C)",
+                  checklist: [
+                    { id: 'chk-frigo-1', label: "Vérifier que la porte du frigo est bien fermée et étanche." },
+                    { id: 'chk-frigo-2', label: "Nettoyer le condenseur de toute poussière ou obstruction." },
+                    { id: 'chk-frigo-3', label: "S'assurer que la ventilation autour du frigo n'est pas bloquée." },
+                    { id: 'chk-frigo-4', label: "Vérifier le thermostat et ses réglages." },
+                  ]
                 }
               },
             ],
@@ -201,7 +203,7 @@ const DUMMY_CLIENT_SITES_DATA: Site[] = [
             status: "orange",
             icon: Thermometer,
             activeControlInAlert: {
-              controlId: "control-001",
+              controlId: "control-001b",
               controlName: "Contrôle Température Congélateur",
               controlDescription: "Maintien de la température du congélateur pour produits surgelés.",
               alertDetails: "Température (-15°C) proche du seuil d'alerte (-18°C). Cycle de dégivrage en retard.",
@@ -213,6 +215,11 @@ const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 { name: '11:15', value: -15.5 }, { name: '11:20', value: -15 },
               ],
               relevantSensorVariable: "Température (°C)",
+              checklist: [
+                 { id: 'chk-congel-1', label: "Vérifier l'étanchéité de la porte du congélateur." },
+                 { id: 'chk-congel-2', label: "S'assurer que le cycle de dégivrage automatique fonctionne ou a été effectué récemment." },
+                 { id: 'chk-congel-3', label: "Ne pas surcharger le congélateur pour permettre une bonne circulation de l'air." },
+              ]
             }
           },
         ],
@@ -292,13 +299,13 @@ const findSiteByPath = (
 
 
 // UI Components
-const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machine: Machine) => void }> = ({ machine, onViewDetails }) => {
+const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machineId: string) => void }> = ({ machine, onViewDetails }) => {
   const MachineIcon = machine.icon || Server;
   const isProblem = machine.status === 'orange' || machine.status === 'red';
 
   const handleClick = () => {
-    if (machine.activeControlInAlert) { // Only trigger if there's control data
-      onViewDetails(machine);
+    if (isProblem && machine.activeControlInAlert) { // Only trigger if there's control data and it's a problem
+      onViewDetails(machine.id);
     }
   };
 
@@ -308,7 +315,7 @@ const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machine: Machine
         "flex items-center justify-between py-2 px-3 rounded-md",
         isProblem && machine.activeControlInAlert ? "cursor-pointer hover:bg-muted/60" : "hover:bg-muted/50"
       )}
-      onClick={isProblem && machine.activeControlInAlert ? handleClick : undefined}
+      onClick={handleClick}
       role={isProblem && machine.activeControlInAlert ? "button" : undefined}
       tabIndex={isProblem && machine.activeControlInAlert ? 0 : undefined}
       onKeyDown={isProblem && machine.activeControlInAlert ? (e) => (e.key === 'Enter' || e.key === ' ') && handleClick() : undefined}
@@ -331,7 +338,7 @@ const MachineItem: React.FC<{ machine: Machine; onViewDetails: (machine: Machine
   );
 };
 
-const ZoneItem: React.FC<{ zone: Zone; parentId: string; onViewMachineDetails: (machine: Machine) => void }> = ({ zone, parentId, onViewMachineDetails }) => {
+const ZoneItem: React.FC<{ zone: Zone; parentId: string; onViewMachineDetails: (machineId: string) => void }> = ({ zone, parentId, onViewMachineDetails }) => {
   const zoneStatus = getZoneOverallStatus(zone);
   return (
     <AccordionItem value={`${parentId}-${zone.id}`} className="border-b-0 mb-1 last:mb-0">
@@ -370,7 +377,7 @@ const ZoneItem: React.FC<{ zone: Zone; parentId: string; onViewMachineDetails: (
 
 const SubSiteCard: React.FC<{ site: Site; currentPath: string[] }> = ({ site, currentPath }) => {
   const siteStatus = getSiteOverallStatus(site);
-  const SiteIcon = site.isConceptualSubSite ? Building : Home; // This differentiation might need refinement based on UX
+  const SiteIcon = site.isConceptualSubSite ? Building : Home; 
   const href = `/client/sites/${[...currentPath, site.id].join('/')}`;
 
   return (
@@ -406,13 +413,6 @@ const SubSiteCard: React.FC<{ site: Site; currentPath: string[] }> = ({ site, cu
   );
 };
 
-const chartConfig = {
-  value: {
-    label: "Value", // Default label, can be overridden by relevantSensorVariable
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies React.ComponentProps<typeof ChartContainer>["config"];
-
 
 export default function SiteDetailPage() {
   const params = useParams();
@@ -420,9 +420,7 @@ export default function SiteDetailPage() {
   const { sitePath } = params as { sitePath: string[] };
 
   const [currentSiteInfo, setCurrentSiteInfo] = React.useState<FoundSiteInfo | null | undefined>(undefined);
-  const [controlDetailDialogOpen, setControlDetailDialogOpen] = React.useState(false);
-  const [selectedMachineForControlDetail, setSelectedMachineForControlDetail] = React.useState<Machine | null>(null);
-
+  
   React.useEffect(() => {
     if (sitePath && Array.isArray(sitePath) && sitePath.length > 0) {
       const found = findSiteByPath(sitePath, DUMMY_CLIENT_SITES_DATA);
@@ -432,11 +430,8 @@ export default function SiteDetailPage() {
     }
   }, [sitePath]);
 
-  const handleViewControlDetails = (machine: Machine) => {
-    if (machine.activeControlInAlert) {
-      setSelectedMachineForControlDetail(machine);
-      setControlDetailDialogOpen(true);
-    }
+  const handleViewMachineAlertDetails = (machineId: string) => {
+    router.push(`/client/machine-alerts/${machineId}`);
   };
 
   if (currentSiteInfo === undefined) {
@@ -466,22 +461,11 @@ export default function SiteDetailPage() {
   const currentSiteStatus = getSiteOverallStatus(currentSite);
   const SiteIcon = currentSite.isConceptualSubSite ? Building : Home;
 
-
   const generateBreadcrumbUrl = (index: number) => {
     const pathSegments = breadcrumbPath.slice(0, index + 1).map(p => p.id);
     return `/client/sites/${pathSegments.join('/')}`;
   };
   
-  const activeControl = selectedMachineForControlDetail?.activeControlInAlert;
-  const chartData = activeControl?.historicalData || [];
-  const dynamicChartConfig = activeControl ? {
-      value: {
-        label: activeControl.relevantSensorVariable || "Value",
-        color: "hsl(var(--chart-1))",
-      },
-    } : chartConfig;
-
-
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -531,7 +515,7 @@ export default function SiteDetailPage() {
                 <h2 className="text-lg font-semibold mb-2 text-foreground/90">Zones Directes</h2>
                 <Accordion type="multiple" className="w-full space-y-1 bg-muted/30 p-2 rounded-lg">
                   {currentSite.zones.map((zone) => (
-                    <ZoneItem key={zone.id} zone={zone} parentId={currentSite.id} onViewMachineDetails={handleViewControlDetails} />
+                    <ZoneItem key={zone.id} zone={zone} parentId={currentSite.id} onViewMachineDetails={handleViewMachineAlertDetails} />
                   ))}
                 </Accordion>
               </section>
@@ -558,84 +542,6 @@ export default function SiteDetailPage() {
           </CardContent>
         </Card>
       </div>
-
-      {selectedMachineForControlDetail && activeControl && (
-        <Dialog open={controlDetailDialogOpen} onOpenChange={setControlDetailDialogOpen}>
-          <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                {getStatusIcon(selectedMachineForControlDetail.status, "h-6 w-6")}
-                Fiche Contrôle: {activeControl.controlName}
-              </DialogTitle>
-              <DialogDescription className="pt-1 text-left">
-                Sur Machine: {selectedMachineForControlDetail.name} ({selectedMachineForControlDetail.type})
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4 text-sm">
-              <div>
-                <h4 className="font-semibold mb-1">Description du Contrôle</h4>
-                <p className="text-muted-foreground">{activeControl.controlDescription}</p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-1">Détails de l'Alerte Actuelle</h4>
-                <p className="text-foreground p-2 bg-muted/50 rounded-md">{activeControl.alertDetails}</p>
-              </div>
-              {activeControl.formulaUsed && (
-                <div>
-                    <h4 className="font-semibold mb-1">Formule Déclenchée</h4>
-                    <p className="font-mono text-xs text-muted-foreground p-2 bg-muted/50 rounded-md">{activeControl.formulaUsed}</p>
-                </div>
-              )}
-
-              {chartData.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2 flex items-center gap-1.5">
-                    <LineChartIcon className="h-4 w-4 text-primary" />
-                    Historique des Données ({activeControl.relevantSensorVariable || 'Valeur'})
-                  </h4>
-                  <ChartContainer config={dynamicChartConfig} className="h-[200px] w-full">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        tickLine={false} 
-                        axisLine={false} 
-                        tickMargin={8}
-                        tickFormatter={(value) => value.slice(0, 5)} // Example: show only first 5 chars for time
-                      />
-                      <YAxis 
-                        tickLine={false} 
-                        axisLine={false} 
-                        tickMargin={8}
-                        width={30}
-                      />
-                       <RechartsTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="line" />}
-                      />
-                      <Line 
-                        dataKey="value" 
-                        type="monotone" 
-                        stroke="var(--color-value)" 
-                        strokeWidth={2} 
-                        dot={true}
-                      />
-                    </LineChart>
-                  </ChartContainer>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Fermer
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </AppLayout>
   );
 }
