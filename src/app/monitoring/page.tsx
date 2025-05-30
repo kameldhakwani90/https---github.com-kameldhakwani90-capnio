@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, AlertTriangle, Info, CheckCircle2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
