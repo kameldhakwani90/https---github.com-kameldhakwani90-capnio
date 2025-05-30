@@ -1,5 +1,5 @@
 
-"use client";
+"use client"; // MUST be the first line
 
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -14,47 +14,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
+// Drastically simplified for debugging parsing error
 const REQUIRED_SENSOR_TYPES_OPTIONS = [
   { id: "temperature", label: "Température" },
   { id: "humidity", label: "Humidité" },
-  { id: "pressure", label: "Pression" },
-  { id: "voltage", label: "Tension" },
-  { id: "current", label: "Courant" },
-  { id: "power", label: "Puissance" },
-  { id: "vibration", label: "Vibration" },
-  { id: "co2", label: "CO2" },
-  { id: "flow_rate", label: "Débit" },
-  { id: "level", label: "Niveau" },
-  { id: "status", label: "État (On/Off)" },
-  { id: "other", label: "Autre" },
+  // Add more back if this version parses correctly
 ];
-
-// Dummy data for controls list - for simulation purposes
-// COMMENTED OUT FOR DEBUGGING PARSING ERROR
-/*
-const dummyControls = [
-  {
-    id: "control-001",
-    nomDuControle: "Contrôle Température Frigo",
-    typesDeMachinesConcernees: ["Frigo", "Congélateur"],
-    typesDeCapteursNecessaires: ["Température"], // Store labels
-    variablesUtilisees: ["temp", "seuil_min", "seuil_max"],
-    formuleDeCalcul: "",
-    formuleDeVerification: "sensor['temp'].value >= machine.params['seuil_min'] && sensor['temp'].value <= machine.params['seuil_max']",
-    description: "Vérifie que la température du frigo reste dans la plage définie par le client."
-  },
-  {
-    id: "control-002",
-    nomDuControle: "Contrôle Consommation Électrique Moteur",
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique"],
-    typesDeCapteursNecessaires: ["Tension", "Courant"], // Store labels
-    variablesUtilisees: ["tension", "courant", "conso", "seuil_max_conso"],
-    formuleDeCalcul: "sensor['conso'].value = sensor['tension'].value * sensor['courant'].value",
-    formuleDeVerification: "sensor['conso'].value <= machine.params['seuil_max_conso']",
-    description: "Calcule la consommation et vérifie qu'elle ne dépasse pas le seuil maximal."
-  },
-];
-*/
 
 export default function AdminEditControlPage() {
   const params = useParams();
@@ -80,13 +45,17 @@ export default function AdminEditControlPage() {
       return;
     }
 
-    // Simulate fetching control data
-    // const controlToEdit = dummyControls.find(c => c.id === controlId); // Original line relying on dummyControls
-    const controlToEdit = null; // MODIFIED FOR DEBUGGING: Assume control is not found if dummyControls is commented out
+    // Simulate fetching data - dummyControls is removed for parsing debug
+    // This means controlToEdit will always be null for now
+    const controlToEdit: any = null; 
 
     if (controlToEdit) {
-      setNomDuControle(controlToEdit.nomDuControle);
-      setTypesDeMachinesConcernees(controlToEdit.typesDeMachinesConcernees.join(", "));
+      setNomDuControle(controlToEdit.nomDuControle || "");
+      setTypesDeMachinesConcernees(
+        Array.isArray(controlToEdit.typesDeMachinesConcernees)
+          ? controlToEdit.typesDeMachinesConcernees.join(", ")
+          : ""
+      );
 
       const newSelectedSensorTypesFromData: string[] = [];
       if (controlToEdit.typesDeCapteursNecessaires && Array.isArray(controlToEdit.typesDeCapteursNecessaires)) {
@@ -99,13 +68,18 @@ export default function AdminEditControlPage() {
       }
       setSelectedSensorTypes(newSelectedSensorTypesFromData);
 
-      setVariablesUtilisees(controlToEdit.variablesUtilisees.join(", "));
+      setVariablesUtilisees(
+        Array.isArray(controlToEdit.variablesUtilisees)
+          ? controlToEdit.variablesUtilisees.join(", ")
+          : ""
+      );
       setFormuleDeCalcul(controlToEdit.formuleDeCalcul || "");
-      setFormuleDeVerification(controlToEdit.formuleDeVerification);
-      setDescription(controlToEdit.description);
+      setFormuleDeVerification(controlToEdit.formuleDeVerification || "");
+      setDescription(controlToEdit.description || "");
       setNotFound(false);
     } else {
-      setNotFound(true); // This path will be taken due to controlToEdit being null
+      // If controlToEdit is null (because dummyControls is removed or no match)
+      setNotFound(true); 
     }
     setIsLoading(false);
   }, [controlId]);
@@ -140,7 +114,7 @@ export default function AdminEditControlPage() {
       typesDeMachinesConcernees: machineTypesArray,
       typesDeCapteursNecessaires: selectedSensorTypeLabels,
       variablesUtilisees: variablesArray,
-      formuleDeCalcul: formuleDeCalcul.trim() === "" ? "" : formuleDeCalcul.trim(),
+      formuleDeCalcul: formuleDeCalcul.trim() === "" ? "" : formuleDeCalcul.trim(), // Use empty string instead of null
       formuleDeVerification: formuleDeVerification.trim(),
       description: description.trim(),
     };
@@ -164,7 +138,7 @@ export default function AdminEditControlPage() {
   if (notFound) {
     return (
       <AppLayout>
-        <div className="p-6 text-center text-destructive">Contrôle métier non trouvé.</div>
+        <div className="p-6 text-center text-destructive">Contrôle métier non trouvé. Veuillez vérifier l'ID ou retourner à la liste pour sélectionner un contrôle valide.</div>
       </AppLayout>
     );
   }
