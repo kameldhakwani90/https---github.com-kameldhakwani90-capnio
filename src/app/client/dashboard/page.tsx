@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/status-badge";
-import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type Status = 'green' | 'orange' | 'red' | 'white';
@@ -29,66 +29,99 @@ interface Site {
   name: string;
   location: string;
   zones: Zone[];
+  isSubSite?: boolean; // Optional flag to denote a sub-site if needed for styling/logic later
 }
 
 const dummyClientSites: Site[] = [
   {
-    id: "site-001",
-    name: "Usine Principale Alpha",
-    location: "Zone Industrielle Nord",
+    id: "site-campus-central",
+    name: "Campus Central",
+    location: "Ville Principale",
     zones: [
       {
-        id: "zone-a01",
-        name: "Atelier d'Assemblage A",
+        id: "zone-cc-admin",
+        name: "Bâtiment Administratif",
         machines: [
-          { id: "machine-a01-01", name: "Presse Hydraulique P-100", type: "Presse", status: "green" },
-          { id: "machine-a01-02", name: "Robot Soudeur R-50", type: "Robot", status: "orange" },
-          { id: "machine-a01-03", name: "Convoyeur C-300", type: "Convoyeur", status: "green" },
-        ],
-      },
-      {
-        id: "zone-a02",
-        name: "Zone de Stockage B",
-        machines: [
-          { id: "machine-a02-01", name: "Chariot Élévateur E-1", type: "Véhicule", status: "green" },
-        ],
-      },
-       {
-        id: "zone-a03",
-        name: "Salle des Serveurs",
-        machines: [
-          { id: "machine-a03-01", name: "Rack Serveur Principal", type: "Serveur", status: "red" },
-          { id: "machine-a03-02", name: "Unité de Climatisation", type: "HVAC", status: "green" },
+          { id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green" },
+          { id: "machine-cc-admin-hvac", name: "Climatisation Centrale", type: "HVAC", status: "green" },
         ],
       },
     ],
   },
   {
-    id: "site-002",
-    name: "Entrepôt Secondaire Bêta",
-    location: "Parc Logistique Sud",
+    id: "subsite-batiment-a",
+    name: "Bâtiment A - Production",
+    location: "Campus Central - Zone Nord",
+    isSubSite: true,
     zones: [
       {
-        id: "zone-b01",
+        id: "zone-ba-atelier1",
+        name: "Atelier d'Assemblage Alpha",
+        machines: [
+          { id: "machine-ba-a1-presse", name: "Presse Hydraulique P-100", type: "Presse", status: "green" },
+          { id: "machine-ba-a1-robot", name: "Robot Soudeur R-50", type: "Robot", status: "orange" },
+        ],
+      },
+      {
+        id: "zone-ba-stock",
+        name: "Zone de Stockage Composants",
+        machines: [
+          { id: "machine-ba-stock-frigo", name: "Réfrigérateur Industriel F-01", type: "Frigo", status: "red" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "subsite-batiment-b",
+    name: "Bâtiment B - Logistique",
+    location: "Campus Central - Zone Est",
+    isSubSite: true,
+    zones: [
+      {
+        id: "zone-bb-quai",
         name: "Quai de Chargement",
         machines: [
-          { id: "machine-b01-01", name: "Pont Roulant PR-20", type: "Grue", status: "green" },
-          { id: "machine-b01-02", name: "Compacteur de Déchets CD-5", type: "Utilitaire", status: "green" },
+          { id: "machine-bb-quai-pont", name: "Pont Roulant PR-20", type: "Grue", status: "green" },
         ],
       },
     ],
   },
   {
-    id: "site-003",
-    name: "Laboratoire de Recherche",
-    location: "Campus Universitaire",
-    zones: []
-  }
+    id: "subsite-labo",
+    name: "Laboratoire de Recherche (Annexe)",
+    location: "Campus Central - Aile Sud",
+    isSubSite: true,
+    zones: [
+       {
+        id: "zone-lab-analyse",
+        name: "Salle d'Analyse",
+        machines: [
+          { id: "machine-lab-spec", name: "Spectromètre S-3000", type: "Equipement Labo", status: "green" },
+          { id: "machine-lab-hotte", name: "Hotte Chimique H-02", type: "Sécurité", status: "orange" },
+        ],
+      },
+    ]
+  },
+  {
+    id: "site-entrepot-distant",
+    name: "Entrepôt Distant Delta",
+    location: "Zone Industrielle Externe",
+    zones: [
+      {
+        id: "zone-ed-rack",
+        name: "Zone Racks Élevés",
+        machines: [
+          { id: "machine-ed-chariot", name: "Chariot Élévateur CE-05", type: "Véhicule", status: "green" },
+        ],
+      },
+    ],
+  },
 ];
 
 const getPropagatedStatus = (children: { status: Status }[]): Status => {
-  if (!children || children.length === 0) return 'green'; // Default to green if no children
-  const statuses = children.map(child => child.status);
+  if (!children || children.length === 0) return 'green'; // Default to green if no children with status
+  const statuses = children.map(child => child.status).filter(status => status !== undefined);
+  if (statuses.length === 0) return 'green';
   if (statuses.includes('red')) return 'red';
   if (statuses.includes('orange')) return 'orange';
   return 'green';
@@ -105,7 +138,7 @@ const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
     case 'green':
       return <CheckCircle2 className={`${combinedClassName} text-green-500`} />;
     default:
-      return <Info className={`${combinedClassName} text-gray-400`} />;
+      return <Info className={`${combinedClassName} text-gray-400`} />; // Or a specific 'white' icon
   }
 };
 
@@ -149,13 +182,14 @@ const ZoneItem: React.FC<{ zone: Zone }> = ({ zone }) => {
 
 const SiteCard: React.FC<{ site: Site }> = ({ site }) => {
   const siteStatus = getPropagatedStatus(site.zones.map(zone => ({ status: getPropagatedStatus(zone.machines) })));
+  const SiteIcon = site.isSubSite ? Building : Home;
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div>
           <CardTitle className="text-xl mb-1 flex items-center gap-2">
-            <Home className="h-6 w-6 text-primary" />
+            <SiteIcon className="h-6 w-6 text-primary" />
             {site.name}
           </CardTitle>
           <CardDescription>{site.location}</CardDescription>
@@ -166,7 +200,7 @@ const SiteCard: React.FC<{ site: Site }> = ({ site }) => {
             siteStatus === 'red' ? 'text-red-600' : 
             siteStatus === 'orange' ? 'text-orange-600' : 'text-green-600'
           }`}>
-            {siteStatus.charAt(0).toUpperCase() + siteStatus.slice(1)}
+            {siteStatus === 'red' ? 'Problème Critique' : siteStatus === 'orange' ? 'Avertissement' : 'Opérationnel'}
           </span>
         </div>
       </CardHeader>
@@ -198,7 +232,7 @@ export default function ClientDashboardPage() {
         </header>
 
         {dummyClientSites.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2"> {/* Adjusted for potentially wider cards */}
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2">
             {dummyClientSites.map((site) => (
               <SiteCard key={site.id} site={site} />
             ))}
