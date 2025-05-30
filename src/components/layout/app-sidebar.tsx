@@ -2,6 +2,7 @@
 "use client";
 
 import type { NavItem } from "@/types";
+import React, { useState, useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,7 +16,7 @@ import { siteConfig } from "@/config/site";
 import { Logo } from "../common/logo";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
-import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid, Cpu } from "lucide-react"; // Ajout de Cpu
+import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid, Cpu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 
@@ -28,14 +29,22 @@ const getAdminIcon = (href: string) => {
   if (href.includes('/admin/clients')) return Users;
   if (href.includes('/admin/sensors')) return Cog;
   if (href.includes('/admin/controls')) return Settings; 
-  if (href.includes('/admin/machine-types')) return Cpu; // Icône pour les types de machines
-  if (href.includes('/admin/formulas/validate')) return FlaskConical;
+  if (href.includes('/admin/machine-types')) return Cpu;
+  if (href.includes('/admin/formulas/validate')) return FlaskConical; // Note: formulas validate might become controls validate
   return FileText; 
 };
 
 export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
   const pathname = usePathname();
-  const isClientView = pathname.startsWith('/client/');
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // localStorage is only available on the client side
+    const role = localStorage.getItem('userRole');
+    setCurrentUserRole(role);
+  }, [pathname]); // Re-check role if pathname changes, in case of SPA navigations affecting context
+
+  const isClientView = currentUserRole === 'client';
   const isLoginPage = pathname === '/login';
 
   let mainNavItems: NavItem[] = [];
@@ -50,7 +59,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Dashboard',
           type: 'group',
           icon: LayoutGrid,
-          href: '/client/dashboard',
+          href: '/client/dashboard', // Specific client dashboard
           onClick: () => window.location.href = '/client/dashboard',
         },
         {
@@ -58,7 +67,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Monitoring',
           type: 'group',
           icon: ShieldAlert,
-          href: '/monitoring',
+          href: '/monitoring', // Shared URL
           onClick: () => window.location.href = '/monitoring',
         },
         {
@@ -66,7 +75,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Notifications',
           type: 'group',
           icon: Bell,
-          href: '/notifications',
+          href: '/notifications', // Shared URL
           onClick: () => window.location.href = '/notifications',
         },
         {
@@ -74,12 +83,12 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           label: 'Asset Management',
           type: 'group',
           icon: Network,
-          href: '/assets',
+          href: '/assets', // Shared URL
           onClick: () => window.location.href = '/assets',
         },
       ];
       showAdminToolsSection = false;
-    } else { // Admin View (or default if not client and not login)
+    } else { // Admin View (or default if not client and not login, or role is 'admin')
       mainNavItems = [
         {
           id: 'admin-dashboard-link',
@@ -89,6 +98,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
           href: '/', 
           onClick: () => window.location.href = '/',
         },
+        // Admin no longer has Monitoring/Notifications in main nav as per previous request
       ];
       adminToolsNavItems = siteConfig.adminNav.map(item => ({
         ...item,
@@ -101,6 +111,9 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
       showAdminToolsSection = true;
     }
   }
+
+  // If role is not yet determined (currentUserRole is null), we might show a loading state or default menu
+  // For now, it will default to admin-like menu if not explicitly client and not login page.
 
   return (
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
@@ -138,11 +151,12 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
             <span className="group-data-[collapsible=icon]:hidden">Settings</span>
           </Link>
         </Button>
-        <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" asChild>
-          <Link href="/login"> 
+        <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" onClick={() => {
+            localStorage.removeItem('userRole');
+            router.push('/login');
+        }}>
             <LogOut className="mr-2 h-4 w-4 group-data-[collapsible=icon]:mr-0" />
             <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-          </Link>
         </Button>
       </SidebarFooter>
     </Sidebar>

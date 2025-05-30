@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,15 +15,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 
 export function UserNav() {
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter(); 
 
   // Placeholder user data
   const user = {
-    name: "Admin User",
-    email: "admin@capnio.pro",
+    name: "Admin User", // This could be dynamic based on logged in user
+    email: "admin@capnio.pro", // This could be dynamic
     avatar: "https://placehold.co/100x100.png", 
   };
 
@@ -33,7 +34,7 @@ export function UserNav() {
   }
 
   const handleLogout = () => {
-    // In a real app, you'd also clear any auth state here
+    localStorage.removeItem('userRole'); // Clear the role on logout
     router.push('/login');
   };
 
@@ -59,7 +60,7 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/profile"> {/* Assuming you might create a /profile page */}
+            <Link href="/profile"> 
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
               <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>

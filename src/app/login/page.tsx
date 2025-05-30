@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,28 +16,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    // Clear user role on navigating to login page
+    localStorage.removeItem('userRole');
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // --- SIMULATED LOGIN ---
-    // In a real application, you would call your authentication API here.
-    // For this prototype, we'll simulate admin and client login.
-
     if (email === 'admin@capnio.pro' && password === 'password') {
-      // Simulate successful admin login
       console.log('Admin login successful (simulated)');
-      // TODO: In a real app, set auth context/session and redirect
-      router.push('/'); // Redirect to admin dashboard (main page for now)
+      localStorage.setItem('userRole', 'admin');
+      router.push('/'); 
     } else if (email.endsWith('@client.com') && password === 'clientpass') {
-      // Simulate successful client login
       console.log('Client login successful (simulated)');
-      // TODO: In a real app, set auth context/session and redirect
+      localStorage.setItem('userRole', 'client');
       router.push('/client/dashboard');
     } else {
-      setError('Invalid email or password. (Try admin@capnio.pro / password)');
+      setError('Invalid email or password. (Try admin@capnio.pro / password or user@client.com / clientpass)');
     }
-    // --- END SIMULATED LOGIN ---
   };
 
   return (
