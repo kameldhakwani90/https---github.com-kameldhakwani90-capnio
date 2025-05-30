@@ -7,11 +7,32 @@ import { Cog, PlusCircle, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
-// Dummy data for sensor type list - replace with actual data fetching in a real app
+// Dummy data for sensor type list - enriched for editing
 const dummySensorTypes = [
-  { id: "st-001", name: "Sonde Ambiante THL v2.1", categories: ["Température", "Humidité"], description: "Mesure température et humidité ambiantes." },
-  { id: "st-002", name: "Capteur de Pression P-500", categories: ["Pression"], description: "Capteur de pression industriel haute précision." },
-  { id: "st-003", name: "Détecteur CO2 Z-Air", categories: ["Qualité de l'air (CO2, VOC, PM)"], description: "Moniteur de dioxyde de carbone." },
+  { 
+    id: "st-001", 
+    name: "Sonde Ambiante THL v2.1", 
+    categories: ["Température", "Humidité"], 
+    description: "Mesure température et humidité ambiantes.",
+    examplePayload: { "t": 23.5, "h": 55.2, "bat_v": 3.1 }, // Example payload as object
+    mapping: {"t": "temp", "h": "hum", "bat_v": "battery_voltage"} // Example mapping
+  },
+  { 
+    id: "st-002", 
+    name: "Capteur de Pression P-500", 
+    categories: ["Pression"], 
+    description: "Capteur de pression industriel haute précision.",
+    examplePayload: { "pressure_value": 1012.5, "signal": -75 },
+    mapping: {"pressure_value": "press", "signal": "rssi" }
+  },
+  { 
+    id: "st-003", 
+    name: "Détecteur CO2 Z-Air", 
+    categories: ["Qualité de l'air (CO2, VOC, PM)"], 
+    description: "Moniteur de dioxyde de carbone.",
+    examplePayload: { "co2_ppm": 450, "voc_index": 120 },
+    mapping: { "co2_ppm": "co2", "voc_index": "voc" }
+  },
 ];
 
 export default function AdminSensorTypesListPage() {
@@ -59,8 +80,10 @@ export default function AdminSensorTypesListPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{sensorType.description}</TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" aria-label="Modifier le type de capteur">
-                          <Edit className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" aria-label="Modifier le type de capteur" asChild>
+                          <Link href={`/admin/sensors/${sensorType.id}/edit`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
                         </Button>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Supprimer le type de capteur">
                           <Trash2 className="h-4 w-4" />
