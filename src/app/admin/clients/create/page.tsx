@@ -1,21 +1,35 @@
 
+"use client";
+
+import * as React from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Building, Phone, Mail } from "lucide-react";
+import { UserPlus, Building, Phone, Mail, CalendarIcon, Gauge } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function AdminCreateClientPage() {
-  // In a real app, this would use react-hook-form or similar for form handling
+  const [subscriptionEndDate, setSubscriptionEndDate] = React.useState<Date | undefined>();
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const clientData = Object.fromEntries(formData.entries());
+    const clientDataFromForm = Object.fromEntries(formData.entries());
+    
+    const clientData = {
+      ...clientDataFromForm,
+      subscriptionEndDate: subscriptionEndDate ? format(subscriptionEndDate, "yyyy-MM-dd") : null,
+    };
+    
     console.log("Create client data (simulated):", clientData);
-    // TODO: Call API to create client
     alert("Client account creation simulated. Check console for data.");
     event.currentTarget.reset();
+    setSubscriptionEndDate(undefined); // Reset date picker state
   };
 
   return (
@@ -64,6 +78,45 @@ export default function AdminCreateClientPage() {
                     Phone Number
                   </Label>
                   <Input id="phone" name="phone" type="tel" placeholder="e.g., +1-555-123-4567" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="subscriptionEndDate" className="flex items-center">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    Subscription End Date
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !subscriptionEndDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {subscriptionEndDate ? format(subscriptionEndDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={subscriptionEndDate}
+                        onSelect={setSubscriptionEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {/* Hidden input to include in FormData if needed, or handle purely from state */}
+                  {subscriptionEndDate && <input type="hidden" name="subscriptionEndDate" value={format(subscriptionEndDate, "yyyy-MM-dd")} />}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxSensors" className="flex items-center">
+                    <Gauge className="mr-2 h-4 w-4 text-muted-foreground" />
+                    Max Authorized Sensors
+                  </Label>
+                  <Input id="maxSensors" name="maxSensors" type="number" placeholder="e.g., 100" min="0" />
                 </div>
               </div>
               
