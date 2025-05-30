@@ -1,3 +1,5 @@
+import type { Cog, FileText, FlaskConical, UserPlus } from "lucide-react"; // Added UserPlus
+
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
@@ -30,14 +32,22 @@ export const siteConfig = {
      {
       title: "Sensor Config",
       href: "/admin/sensors",
+      // icon: Cog, // Icon assignment is handled in AppLayout/AppSidebar for now
     },
     {
       title: "Formula Config",
       href: "/admin/formulas",
+      // icon: FileText,
     },
     {
       title: "Formula Validator",
       href: "/admin/formulas/validate",
+      // icon: FlaskConical,
+    },
+    {
+      title: "Create Client Account",
+      href: "/admin/clients/create",
+      // icon: UserPlus, // Icon for create client
     },
   ]
 };

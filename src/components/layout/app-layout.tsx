@@ -5,8 +5,9 @@ import React from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "./header";
 import { AppSidebar } from "./app-sidebar";
-import { Home, Cpu, Thermometer, Activity, LayoutGrid, HardDrive, Settings, BarChart, Bell, ShieldAlert, FileText, Cog, ClipboardList, FlaskConical } from "lucide-react";
+import { Home, Cpu, Thermometer, Activity, LayoutGrid, HardDrive, Settings, BarChart, Bell, ShieldAlert, FileText, Cog, ClipboardList, FlaskConical, UserPlus } from "lucide-react";
 import { siteConfig } from "@/config/site";
+import { usePathname } from 'next/navigation'; // To hide sidebar on login page
 
 const dummyTreeData: NavItem[] = [
   {
@@ -90,17 +91,17 @@ const dummyTreeData: NavItem[] = [
     id: 'sites-management',
     label: 'Site Management',
     type: 'group',
-    icon: Cog,
-    href: '/sites/register',
-    onClick: () => window.location.href = '/sites/register',
+    icon: Home, // Changed from Cog to Home for site management
+    href: '/sites', // Link to main sites page, not register
+    onClick: () => window.location.href = '/sites',
   },
   {
     id: 'machines-management',
     label: 'Machine Management',
     type: 'group',
     icon: ClipboardList,
-    href: '/machines/register',
-    onClick: () => window.location.href = '/machines/register',
+    href: '/machines', // Link to main machines page, not register
+    onClick: () => window.location.href = '/machines',
   }
 ];
 
@@ -112,6 +113,12 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, onSelectItem, selectedItem: initialSelectedItem }: AppLayoutProps) {
   const [currentItem, setCurrentItem] = React.useState<NavItem | null>(initialSelectedItem || null);
+  const pathname = usePathname();
+
+  // Do not render AppLayout structure for login page
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
 
   const handleSelectItem = (item: NavItem) => {
     setCurrentItem(item);
@@ -120,25 +127,7 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
     }
   };
   
-  // Update adminNav items with icons
-  const adminNavItemsWithIcons = siteConfig.adminNav.map(item => {
-    let icon = FileText;
-    if (item.href.includes('sensor')) icon = Cog;
-    if (item.href.includes('formula') && !item.href.includes('validate')) icon = FileText;
-    if (item.href.includes('validate')) icon = FlaskConical;
-    return {
-      ...item,
-      type: 'group' as NavItem['type'],
-      id: item.href,
-      label: item.title,
-      icon: icon,
-      onClick: () => { if (item.href) window.location.href = item.href; }
-    };
-  });
-  
-  // Add adminNavItems to dummyTreeData or pass separately to AppSidebar
-   const fullNavTree = [...dummyTreeData];
-
+  const fullNavTree = [...dummyTreeData]; // Admin items are now handled directly in AppSidebar
 
   return (
     <SidebarProvider defaultOpen={true} open={undefined} onOpenChange={undefined}>
@@ -152,14 +141,11 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
           />
           <SidebarInset>
             <main className="flex-1 p-4 md:p-6 lg:p-8">
-              {/* Pass currentItem to children if they need it, or use a context */}
               {React.Children.map(children, child => {
                 if (React.isValidElement(child)) {
-                  // Do not pass selectedItem to plain DOM elements (e.g., 'div', 'span')
                   if (typeof child.type === 'string') {
                     return child;
                   }
-                  // Pass selectedItem to React components
                   return React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem });
                 }
                 return child;
