@@ -1,3 +1,4 @@
+
 "use client";
 import type { NavItem } from "@/types";
 import React from "react";
@@ -109,8 +110,8 @@ interface AppLayoutProps {
   selectedItem?: NavItem | null;
 }
 
-export function AppLayout({ children, onSelectItem, selectedItem }: AppLayoutProps) {
-  const [currentItem, setCurrentItem] = React.useState<NavItem | null>(selectedItem || null);
+export function AppLayout({ children, onSelectItem, selectedItem: initialSelectedItem }: AppLayoutProps) {
+  const [currentItem, setCurrentItem] = React.useState<NavItem | null>(initialSelectedItem || null);
 
   const handleSelectItem = (item: NavItem) => {
     setCurrentItem(item);
@@ -152,11 +153,17 @@ export function AppLayout({ children, onSelectItem, selectedItem }: AppLayoutPro
           <SidebarInset>
             <main className="flex-1 p-4 md:p-6 lg:p-8">
               {/* Pass currentItem to children if they need it, or use a context */}
-              {React.Children.map(children, child =>
-                React.isValidElement(child)
-                  ? React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem })
-                  : child
-              )}
+              {React.Children.map(children, child => {
+                if (React.isValidElement(child)) {
+                  // Do not pass selectedItem to plain DOM elements (e.g., 'div', 'span')
+                  if (typeof child.type === 'string') {
+                    return child;
+                  }
+                  // Pass selectedItem to React components
+                  return React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem });
+                }
+                return child;
+              })}
             </main>
           </SidebarInset>
         </div>
