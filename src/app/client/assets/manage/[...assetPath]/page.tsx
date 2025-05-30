@@ -15,7 +15,6 @@ import {
     type Site, 
     type Zone, 
     type Machine, 
-    type Status,
     getZoneOverallStatus, 
     getSiteOverallStatus, 
     getStatusIcon,      
@@ -50,7 +49,6 @@ const findAssetByPath = (
   return currentAsset ? { asset: currentAsset, path: breadcrumbPath } : undefined;
 };
 
-// Re-usable SubSiteCard, similar to dashboard but adapted for management context
 const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> = ({ site, currentAssetPath }) => {
   const siteStatus = getSiteOverallStatus(site); 
   const SiteIcon = site.isConceptualSubSite ? Layers : HomeIcon;
@@ -88,15 +86,50 @@ const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> =
   );
 };
 
-
-const ZoneItemForManagement: React.FC<{ zone: Zone; siteId: string }> = ({ zone, siteId }) => {
-    const router = useRouter();
-    const zoneStatus = getZoneOverallStatus(zone); 
-    const MachineIcon = Server; 
-
+const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ machine, siteId, zoneId, router }) => {
+    const CurrentMachineIcon = machine.icon || Server;
     const handleMachineAlertNavigation = (machineId: string) => {
         router.push(`/client/machine-alerts/${machineId}`);
     };
+    const handleManageMachine = (machineId: string) => {
+        router.push(`/client/assets/manage-machine/${siteId}/${zoneId}/${machineId}`);
+    };
+
+    return (
+        <div className="flex justify-between items-center p-2.5 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2">
+                <CurrentMachineIcon className="h-5 w-5 text-muted-foreground" />
+                <div>
+                    <p className="font-medium">{machine.name} <span className="text-xs text-muted-foreground">({machine.type})</span></p>
+                    <div className="flex items-center gap-1 text-xs">
+                        {getStatusIcon(machine.status, "h-4 w-4")}
+                        <span className={cn(
+                            machine.status === 'red' && 'text-red-600',
+                            machine.status === 'orange' && 'text-orange-600',
+                            machine.status === 'green' && 'text-green-600',
+                        )}>
+                        {getStatusText(machine.status)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center gap-1">
+                {machine.status !== 'green' && machine.activeControlInAlert && (
+                    <Button size="sm" variant="ghost" className="text-orange-600 hover:text-orange-700 hover:bg-orange-100" onClick={() => handleMachineAlertNavigation(machine.id)}>
+                        <AlertTriangle className="mr-1 h-4 w-4" /> Alert Details
+                    </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => handleManageMachine(machine.id)}>
+                    <Settings2 className="mr-1 h-4 w-4" /> Manage
+                </Button>
+            </div>
+        </div>
+    );
+};
+
+
+const ZoneItemForManagement: React.FC<{ zone: Zone; siteId: string; router: ReturnType<typeof useRouter> }> = ({ zone, siteId, router }) => {
+    const zoneStatus = getZoneOverallStatus(zone); 
 
     return (
         <AccordionItem value={zone.id} className="border-b bg-muted/30 rounded-md mb-2">
@@ -119,44 +152,16 @@ const ZoneItemForManagement: React.FC<{ zone: Zone; siteId: string }> = ({ zone,
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-3 pt-2 space-y-3">
-                <div className="flex justify-end gap-2 my-2">
-                    <Button variant="outline" size="sm" onClick={() => alert(`Editing zone: ${zone.name} (Not implemented)`)}><Edit3 className="mr-1 h-3 w-3" /> Edit Zone</Button>
-                    <Button variant="outline" size="sm" onClick={() => alert(`Adding machine to: ${zone.name} (Not implemented)`)}><PlusCircle className="mr-1 h-3 w-3" /> Add Machine</Button>
-                    <Button variant="destructive" size="sm" onClick={() => alert(`Deleting zone: ${zone.name} (Not implemented)`)}><Trash2 className="mr-1 h-3 w-3" /> Delete Zone</Button>
+                <div className="flex flex-wrap justify-end gap-2 my-2">
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${siteId}/${zone.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Edit Zone</Button>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${siteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Add Machine</Button>
+                    <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${siteId}/${zone.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Delete Zone</Button>
                 </div>
                 {zone.machines.length > 0 ? (
                     <div className="space-y-1">
-                        {zone.machines.map(machine => {
-                            const CurrentMachineIcon = machine.icon || MachineIcon;
-                            return (
-                                <div key={machine.id} className="flex justify-between items-center p-2.5 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center gap-2">
-                                        <CurrentMachineIcon className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="font-medium">{machine.name} <span className="text-xs text-muted-foreground">({machine.type})</span></p>
-                                            <div className="flex items-center gap-1 text-xs">
-                                                {getStatusIcon(machine.status, "h-4 w-4")}
-                                                <span className={cn(
-                                                    machine.status === 'red' && 'text-red-600',
-                                                    machine.status === 'orange' && 'text-orange-600',
-                                                    machine.status === 'green' && 'text-green-600',
-                                                )}>
-                                                {getStatusText(machine.status)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        {machine.status !== 'green' && machine.activeControlInAlert && (
-                                            <Button size="sm" variant="ghost" className="text-orange-600 hover:text-orange-700 hover:bg-orange-100" onClick={() => handleMachineAlertNavigation(machine.id)}>
-                                                <AlertTriangle className="mr-1 h-4 w-4" /> Alert Details
-                                            </Button>
-                                        )}
-                                        <Button size="sm" variant="ghost" onClick={() => alert(`Managing machine: ${machine.name} (Not implemented)`)}><Settings2 className="mr-1 h-4 w-4" /> Manage</Button>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {zone.machines.map(machine => (
+                           <MachineItemDisplay key={machine.id} machine={machine} siteId={siteId} zoneId={zone.id} router={router} />
+                        ))}
                     </div>
                 ) : <p className="text-sm text-muted-foreground p-2 text-center">No machines in this zone.</p>}
             </AccordionContent>
@@ -267,7 +272,7 @@ export default function ManageAssetPage() {
               {currentAsset.zones && currentAsset.zones.length > 0 ? (
                 <Accordion type="multiple" className="w-full space-y-2">
                   {currentAsset.zones.map(zone => (
-                    <ZoneItemForManagement key={zone.id} zone={zone} siteId={currentAsset.id} />
+                    <ZoneItemForManagement key={zone.id} zone={zone} siteId={currentAsset.id} router={router} />
                   ))}
                 </Accordion>
               ) : (
