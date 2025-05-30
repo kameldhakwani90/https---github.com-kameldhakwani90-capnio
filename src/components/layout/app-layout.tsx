@@ -5,50 +5,14 @@ import React from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "./header";
 import { AppSidebar } from "./app-sidebar";
-import { LayoutGrid, ShieldAlert, Bell, Network } from "lucide-react"; // Updated icons
+// Icons for AppSidebar will be managed there based on role
+// import { LayoutGrid, ShieldAlert, Bell, Network } from "lucide-react"; 
 import { siteConfig } from "@/config/site";
-import { usePathname } from 'next/navigation'; // To hide sidebar on login page
+import { usePathname } from 'next/navigation';
 
-// Simplified main navigation tree for a cleaner sidebar
-const mainNavTree: NavItem[] = [
-  {
-    id: 'dashboard-link',
-    label: 'Dashboard',
-    type: 'group', // Treated as a direct link
-    icon: LayoutGrid,
-    href: '/',
-    onClick: () => window.location.href = '/',
-  },
-  {
-    id: 'monitoring-link',
-    label: 'Monitoring',
-    type: 'group',
-    icon: ShieldAlert,
-    href: '/monitoring',
-    onClick: () => window.location.href = '/monitoring',
-  },
-  {
-    id: 'notifications-link',
-    label: 'Notifications',
-    type: 'group',
-    icon: Bell,
-    href: '/notifications',
-    onClick: () => window.location.href = '/notifications',
-    // Example of showing a count, you'd fetch this data
-    // data: { notificationCount: 5 } 
-  },
-  {
-    id: 'assets-link',
-    label: 'Asset Management',
-    type: 'group',
-    icon: Network, // Icon for managing sites/machines/zones
-    href: '/assets',
-    onClick: () => window.location.href = '/assets',
-  },
-  // Placeholder for an expandable "Configuration" or "Settings" section if needed at top level
-  // For now, admin links are handled separately in AppSidebar based on siteConfig.adminNav
-];
-
+// mainNavTree is less relevant here now, as AppSidebar constructs its own
+// navigation based on role. This can be removed or kept minimal.
+// For now, AppSidebar doesn't directly use a navTree prop from here.
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -60,7 +24,6 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
   const [currentItem, setCurrentItem] = React.useState<NavItem | null>(initialSelectedItem || null);
   const pathname = usePathname();
 
-  // Do not render AppLayout structure for login page
   if (pathname === '/login') {
     return <>{children}</>;
   }
@@ -70,7 +33,6 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
     if (onSelectItem) {
       onSelectItem(item);
     }
-    // If item has an href and no specific onClick, navigate
     if (item.href && !item.onClick) {
       window.location.href = item.href;
     }
@@ -82,7 +44,7 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
         <Header />
         <div className="flex flex-1">
           <AppSidebar 
-            navTree={mainNavTree} 
+            // navTree={mainNavTree} // Not strictly needed as AppSidebar builds its own tree
             onSelectItem={handleSelectItem} 
             selectedItemId={currentItem?.id}
           />
@@ -93,10 +55,12 @@ export function AppLayout({ children, onSelectItem, selectedItem: initialSelecte
                   if (typeof child.type === 'string') {
                     return child;
                   }
-                  // It's a React component, pass selectedItem if it's not the InfoPanel on dashboard
-                  // Or if the component is expecting it.
-                  // For now, pass to all custom components.
-                  return React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem });
+                  // Pass selectedItem prop to custom React components
+                  // This was refined to avoid passing to DOM elements directly
+                  if (typeof child.type !== 'string') {
+                     return React.cloneElement(child as React.ReactElement<any>, { selectedItem: currentItem });
+                  }
+                  return child;
                 }
                 return child;
               })}
