@@ -4,9 +4,9 @@
 
 @layer base {
   :root {
-    /* Light Theme */
+    /* Light Theme based on user image */
     --background: 0 0% 100%; /* White */
-    --foreground: 240 10% 3.9%; /* Dark Gray */
+    --foreground: 240 10% 3.9%; /* Dark Gray for text */
 
     --muted: 240 4.8% 95.9%; /* Light Gray */
     --muted-foreground: 240 3.8% 46.1%; /* Medium Gray */
@@ -20,13 +20,14 @@
     --border: 240 5.9% 90%; /* Light Gray Border */
     --input: 240 5.9% 90%; /* Light Gray Input */
 
-    --primary: 262.1 83.3% 57.8%; /* A pleasant Purple/Blue */
+    /* Primary will be used for general accents, but sidebar active state will use specific sidebar variables */
+    --primary: 262.1 83.3% 57.8%; /* A pleasant Purple/Blue - keeping for non-sidebar elements */
     --primary-foreground: 0 0% 98%; /* Light text for primary elements */
 
     --secondary: 240 4.8% 95.9%; /* Light Gray */
     --secondary-foreground: 240 10% 3.9%; /* Dark Gray */
 
-    --accent: 240 4.8% 95.9%; /* Light Gray */
+    --accent: 210 40% 96.1%; /* Lighter blue for general accents if needed */
     --accent-foreground: 240 10% 3.9%; /* Dark Gray */
 
     --destructive: 0 84.2% 60.2%; /* Red */
@@ -36,15 +37,20 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar specific colors for light theme */
-    --sidebar-background: 240 4.8% 97.9%; /* Very light gray, slightly off-white */
-    --sidebar-foreground: 240 10% 3.9%;   /* Dark Gray */
-    --sidebar-primary: 262.1 83.3% 57.8%; /* Same as main primary */
-    --sidebar-primary-foreground: 0 0% 98%; /* Light text */
-    --sidebar-accent: 240 4.8% 90.9%;    /* Slightly darker gray for accent */
-    --sidebar-accent-foreground: 240 10% 3.9%; /* Dark Gray */
-    --sidebar-border: 240 5.9% 88%;      /* Border for sidebar elements */
-    --sidebar-ring: 262.1 83.3% 57.8%;   /* Ring color */
+    /* Sidebar specific colors for light theme based on image */
+    --sidebar-background: 220 20% 97%; /* Very light gray, similar to hsl(0, 0%, 97%) */
+    --sidebar-foreground: 240 10% 20%;   /* Darker Gray for text/icons in sidebar */
+    
+    /* Active sidebar item: pink background, dark text */
+    --sidebar-primary: 345 75% 92%; /* Light Pink/Rose background for active item (e.g., hsl(345, 75%, 92%)) */
+    --sidebar-primary-foreground: 345 60% 30%; /* Darker pink/rose or black for text on active item */
+    
+    /* Hover sidebar item */
+    --sidebar-accent: 220 20% 92%;    /* Slightly darker gray or lighter pink for hover */
+    --sidebar-accent-foreground: 240 10% 20%; /* Dark Gray for hover text */
+    
+    --sidebar-border: 220 15% 88%;      /* Border for sidebar elements */
+    --sidebar-ring: 345 75% 92%;   /* Ring color - pinkish */
 
     --chart-1: 262.1 83.3% 57.8%;
     --chart-2: 180 60% 45%;
@@ -52,8 +58,6 @@
     --chart-4: 120 70% 40%;
     --chart-5: 300 75% 50%;
   }
-
-  /* No .dark class needed if light is the default */
 }
 
 @layer base {
