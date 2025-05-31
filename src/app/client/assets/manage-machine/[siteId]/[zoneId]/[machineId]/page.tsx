@@ -5,16 +5,16 @@ import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link"; 
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion"; // Keep main Accordion imports
-import * as AccordionPrimitive from "@radix-ui/react-accordion"; // Import primitives for custom header
+import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data.tsx"; 
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown } from "lucide-react"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,6 @@ interface AdminControl {
   checklist?: ChecklistItem[]; 
 }
 
-// Combined and extended dummy admin controls
 const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
@@ -510,12 +509,15 @@ export default function ManageMachinePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <Tabs defaultValue="config" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-2"> 
+              <TabsList className="grid w-full grid-cols-3"> 
                 <TabsTrigger value="config">
                   <Settings2 className="mr-2 h-4 w-4" /> Configuration des Contrôles
                 </TabsTrigger>
                 <TabsTrigger value="monitoring">
-                  <LineChartIcon className="mr-2 h-4 w-4" /> Suivi & Données
+                  <Gauge className="mr-2 h-4 w-4" /> Suivi &amp; Métriques
+                </TabsTrigger>
+                <TabsTrigger value="sensors">
+                  <RadioTower className="mr-2 h-4 w-4" /> Capteurs Liés
                 </TabsTrigger>
               </TabsList>
 
@@ -656,7 +658,7 @@ export default function ManageMachinePage() {
                         {getMachineStatusIcon(machine.status, "h-6 w-6")}
                         État Actuel: {getMachineStatusText(machine.status)}
                     </CardTitle>
-                    <CardDescription>Vue d'ensemble du statut et des contrôles actifs de la machine.</CardDescription>
+                    <CardDescription>Vue d'ensemble du statut et des alertes actives de la machine.</CardDescription>
                   </CardHeader>
                   <CardContent>
                      {machine.activeControlInAlert && (
@@ -670,85 +672,73 @@ export default function ManageMachinePage() {
                             </Button>
                         </div>
                     )}
-                    
-                    <h3 className="text-lg font-semibold mb-2">Contrôles Actifs</h3>
-                    {activeMachineControls.length > 0 ? (
-                      <div className="space-y-2">
-                        {activeMachineControls.map(control => {
-                          const isAlerting = machine.activeControlInAlert?.controlId === control.id;
-                          const controlStatusText = isAlerting ? "En Alerte" : "OK";
-                          const controlStatusIcon = isAlerting 
-                            ? <AlertTriangle className="h-4 w-4 text-destructive" /> 
-                            : <CheckCircle2 className="h-4 w-4 text-green-500" />;
-
-                          return (
-                             <Link
-                                key={control.id}
-                                href={`/client/machine-control-monitoring/${siteId}/${zoneId}/${machineId}/${control.id}`}
-                                className="block p-3 border rounded-md bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <p className="font-medium">{control.nomDuControle}</p>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        {controlStatusIcon} {controlStatusText}
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              </Link>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">Aucun contrôle n'est actuellement actif pour cette machine.</p>
-                    )}
                   </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><RadioTower className="h-5 w-5 text-primary"/>Capteurs</CardTitle>
-                        <CardDescription>Liste des capteurs directement liés à cette machine et des capteurs ambiants de la zone.</CardDescription>
+                        <CardTitle>Données des Contrôles Actifs</CardTitle>
+                        <CardDescription>Aperçu des métriques et statuts pour chaque contrôle activé sur cette machine.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        {machineSensors.length > 0 && (
-                            <div>
-                                <h4 className="font-medium text-md mb-1.5">Capteurs de la Machine :</h4>
-                                <div className="space-y-2">
-                                {machineSensors.map(sensor => (
-                                    <div key={sensor.id} className="flex items-center justify-between p-2 border rounded-md bg-background/50">
-                                        <div>
-                                            <p className="text-sm font-medium">{sensor.name}</p>
-                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
+                    <CardContent>
+                        {activeMachineControls.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {activeMachineControls.map(control => {
+                            const isAlerting = machine.activeControlInAlert?.controlId === control.id;
+                            const controlStatusText = isAlerting ? "En Alerte" : "OK";
+                            const controlStatusIcon = isAlerting 
+                                ? <AlertTriangle className="h-4 w-4 text-destructive" /> 
+                                : <CheckCircle2 className="h-4 w-4 text-green-500" />;
+                            const currentControlConfig = controlConfigs[control.id];
+
+                            // Try to display a key metric or thresholds
+                            let metricSummary = "Paramètres non affichés.";
+                            if (currentControlConfig?.params && control.expectedParams?.length) {
+                                const firstParam = control.expectedParams[0];
+                                const firstParamValue = currentControlConfig.params[firstParam.id];
+                                if (firstParamValue !== undefined) {
+                                     metricSummary = `${firstParam.label}: ${firstParamValue}`;
+                                     if(control.expectedParams.length > 1) metricSummary += " ...";
+                                } else {
+                                     metricSummary = "Configuration des seuils en attente.";
+                                }
+                            } else if (control.variablesUtilisees.length > 0) {
+                                metricSummary = `Monitore: ${control.variablesUtilisees.join(', ')}`;
+                            }
+
+
+                            return (
+                                <Card key={control.id} className="shadow-sm hover:shadow-md transition-shadow">
+                                    <CardHeader className="pb-2">
+                                        <div className="flex justify-between items-start">
+                                            <CardTitle className="text-md">{control.nomDuControle}</CardTitle>
+                                            {controlStatusIcon}
                                         </div>
-                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
-                        )}
-                        {ambientSensors.length > 0 && (
-                             <div>
-                                <h4 className="font-medium text-md mb-1.5 mt-3">Capteurs Ambiants de la Zone ({zone?.name}) :</h4>
-                                <div className="space-y-2">
-                                {ambientSensors.map(sensor => (
-                                    <div key={sensor.id} className="flex items-center justify-between p-2 border rounded-md bg-background/50">
-                                        <div>
-                                            <p className="text-sm font-medium">{sensor.name}</p>
-                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
-                                        </div>
-                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
-                        )}
-                        {machineSensors.length === 0 && ambientSensors.length === 0 && (
-                            <p className="text-muted-foreground text-sm">Aucun capteur associé à cette machine ou à sa zone.</p>
+                                        <CardDescription className="text-xs">{controlStatusText}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="text-sm">
+                                        <p className="text-muted-foreground truncate" title={metricSummary}>{metricSummary}</p>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="w-full"
+                                            onClick={() => router.push(`/client/machine-control-monitoring/${siteId}/${zoneId}/${machineId}/${control.id}`)}
+                                        >
+                                            Voir le détail du suivi <ChevronRight className="ml-1 h-4 w-4" />
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            );
+                            })}
+                        </div>
+                        ) : (
+                        <p className="text-muted-foreground text-center py-4">Aucun contrôle n'est actuellement actif pour cette machine.</p>
                         )}
                     </CardContent>
                 </Card>
+                
 
                 {chartData.length > 0 && machine.activeControlInAlert ? (
                   <Card>
@@ -781,7 +771,7 @@ export default function ManageMachinePage() {
                 ) : (
                    <Card>
                      <CardHeader><CardTitle>Graphiques des Capteurs</CardTitle></CardHeader>
-                     <CardContent><p className="text-muted-foreground">Aucune donnée d'alerte active à afficher. (À terme: graphiques des capteurs principaux)</p></CardContent>
+                     <CardContent><p className="text-muted-foreground">Aucune donnée d'alerte active à afficher pour le graphique principal. Les graphiques spécifiques sont visibles sur les pages de détail de chaque contrôle actif.</p></CardContent>
                    </Card>
                 )}
                 
@@ -789,7 +779,52 @@ export default function ManageMachinePage() {
                     <CardHeader><CardTitle>Journal des Événements Récents</CardTitle></CardHeader>
                     <CardContent><p className="text-muted-foreground">Aucun événement récent pour cette machine (simulation).</p></CardContent>
                 </Card>
+              </TabsContent>
 
+              <TabsContent value="sensors" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><RadioTower className="h-5 w-5 text-primary"/>Capteurs Liés à {machine.name}</CardTitle>
+                        <CardDescription>Liste des capteurs directement liés à cette machine et des capteurs ambiants de la zone.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {machineSensors.length > 0 && (
+                            <div>
+                                <h3 className="font-semibold text-lg mb-2">Capteurs de la Machine :</h3>
+                                <div className="space-y-2">
+                                {machineSensors.map(sensor => (
+                                    <div key={sensor.id} className="flex items-center justify-between p-3 border rounded-md bg-background/70 shadow-sm">
+                                        <div>
+                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
+                                        </div>
+                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        )}
+                        {ambientSensors.length > 0 && (
+                             <div>
+                                <h3 className="font-semibold text-lg mb-2 mt-4">Capteurs Ambiants de la Zone ({zone?.name}) :</h3>
+                                <div className="space-y-2">
+                                {ambientSensors.map(sensor => (
+                                    <div key={sensor.id} className="flex items-center justify-between p-3 border rounded-md bg-background/70 shadow-sm">
+                                        <div>
+                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
+                                        </div>
+                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        )}
+                        {machineSensors.length === 0 && ambientSensors.length === 0 && (
+                            <p className="text-muted-foreground text-sm text-center py-4">Aucun capteur n'est actuellement associé à cette machine ou à sa zone.</p>
+                        )}
+                    </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </CardContent>
