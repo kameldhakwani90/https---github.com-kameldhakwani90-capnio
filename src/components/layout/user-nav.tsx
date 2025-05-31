@@ -1,6 +1,8 @@
 
 "use client";
 
+import React, { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,26 +17,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export function UserNav() {
-  const router = useRouter(); 
+  const router = useRouter();
+  const pathname = usePathname();
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
-  // Placeholder user data
-  const user = {
-    name: "Admin User", // This could be dynamic based on logged in user
-    email: "admin@capnio.pro", // This could be dynamic
-    avatar: "https://placehold.co/100x100.png", 
+  useEffect(() => {
+    const role = localStorage.getItem('userRole');
+    setCurrentUserRole(role);
+  }, [pathname]); // Re-check role if pathname changes
+
+  const userDetails = {
+    name: "User",
+    email: "user@example.com",
+    avatar: "https://placehold.co/100x100.png",
   };
+
+  if (currentUserRole === 'admin') {
+    userDetails.name = "Admin User";
+    userDetails.email = "admin@capnio.pro";
+  } else if (currentUserRole === 'client') {
+    userDetails.name = "Client User";
+    userDetails.email = "user@client.com"; 
+  }
+
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
     const initials = names.map(n => n[0]).join('');
-    return initials.toUpperCase();
+    return initials.toUpperCase() || 'U';
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('userRole'); // Clear the role on logout
+    localStorage.removeItem('userRole'); 
     router.push('/login');
   };
 
@@ -43,24 +59,24 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8" data-ai-hint="user profile">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarImage src={userDetails.avatar} alt={userDetails.name} />
+            <AvatarFallback>{getInitials(userDetails.name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">{userDetails.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
+              {userDetails.email}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/profile"> 
+            <Link href="/profile"> {/* Assuming a /profile page might exist or be created */}
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
               <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>
