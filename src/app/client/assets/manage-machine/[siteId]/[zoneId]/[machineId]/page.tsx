@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,28 +9,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter } from "@/app/client/sites/[...sitePath]/page"; // Import full structure for finding machine
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/app/client/sites/[...sitePath]/page";
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
 
-// --- Data Structures (Simulated for this page) ---
-// Re-using ConfiguredControl from sites/[...sitePath]/page.tsx
-// We need AdminControl definition here or from a shared place
 
 interface AdminControl {
   id: string;
   nomDuControle: string;
   typesDeMachinesConcernees: string[];
-  typesDeCapteursNecessaires: string[]; // Labels, e.g., ["Température", "Courant"]
-  variablesUtilisees: string[]; // System variable IDs, e.g., ["temp", "current"]
+  typesDeCapteursNecessaires: string[]; 
+  variablesUtilisees: string[]; 
   formuleDeCalcul?: string;
   formuleDeVerification: string;
   description: string;
-  expectedParams?: SiteControlParameter[]; // Using the one from sitePath for consistency
+  expectedParams?: SiteControlParameter[]; 
 }
 
-// Dummy Admin Defined Controls (copied and adapted from admin section or similar)
 const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
@@ -49,8 +53,8 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     id: "control-002",
     nomDuControle: "Contrôle Consommation Électrique Moteur",
     typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC"],
-    typesDeCapteursNecessaires: ["Tension", "Courant"], // These are labels, mapping to variablesUtilisees
-    variablesUtilisees: ["tension", "courant", "conso"], // System variable names
+    typesDeCapteursNecessaires: ["Tension", "Courant"],
+    variablesUtilisees: ["tension", "courant", "conso"], 
     formuleDeCalcul: "conso = sensor['tension'].value * sensor['courant'].value",
     formuleDeVerification: "conso <= machine.params['seuil_max_conso']",
     description: "Calcule et vérifie la consommation électrique des moteurs.",
@@ -71,11 +75,11 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     ]
   },
    {
-    id: "control-srv-temp", // Control for Servers
+    id: "control-srv-temp",
     nomDuControle: "Surveillance Température Serveur",
     typesDeMachinesConcernees: ["Serveur", "PC"],
-    typesDeCapteursNecessaires: ["Température Serveur"], // Label for sensor type
-    variablesUtilisees: ["temp_srv"], // System variable name
+    typesDeCapteursNecessaires: ["Température Serveur"],
+    variablesUtilisees: ["temp_srv"], 
     formuleDeVerification: "sensor['temp_srv'].value <= machine.params['seuil_max_temp_srv']",
     description: "Surveille la température interne du serveur pour éviter la surchauffe.",
     expectedParams: [
@@ -84,12 +88,8 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   },
 ];
 
-// Function to find a machine by its ID within the full sites data structure
 function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
-    // Simplified finding logic for this flat structure example
-    // In a real app with nested sites/zones, this would be recursive
     let targetSite: Site | undefined;
-
     const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
         for (const s of sitesArr) {
             if (s.id === sId) return s;
@@ -101,7 +101,6 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         return undefined;
     };
     targetSite = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
-
     if (!targetSite) return undefined;
 
     let targetZone: FullZoneType | undefined;
@@ -119,20 +118,15 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
     if (!targetZone) return undefined;
 
     const machine = targetZone.machines.find(m => m.id === machineIdPath);
-
     if (machine) {
         const augmentedMachine: FullMachineType = { ...machine };
         if (!augmentedMachine.availableSensors) {
-            // Simulate some available sensors based on machine type or zone sensors
-            // For simplicity, we'll use what's already defined in DUMMY_CLIENT_SITES_DATA if present,
-            // or a generic one otherwise.
             const zoneSensors = targetZone?.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
-
             augmentedMachine.availableSensors = [
                 ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: s.provides || []})),
-                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: s.provides || []})) // Mark ambient sensors
+                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: s.provides || []}))
             ];
              if (augmentedMachine.availableSensors.length === 0) {
                  augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
@@ -141,13 +135,24 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         if (!augmentedMachine.configuredControls) {
             augmentedMachine.configuredControls = {};
         }
+        // Simulate some historical data if not present in activeControlInAlert for demo
+        if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
+            augmentedMachine.activeControlInAlert.historicalData = [
+                { name: 'T-4', value: Math.random() * 10 + 65 },
+                { name: 'T-3', value: Math.random() * 10 + 66 },
+                { name: 'T-2', value: Math.random() * 10 + 67 },
+                { name: 'T-1', value: Math.random() * 10 + 68 },
+                { name: 'Maintenant', value: Math.random() * 10 + 70 },
+            ];
+            augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || "Valeur Simulée";
+        }
+
         return augmentedMachine;
     }
     return undefined;
 }
 
-
-export default function ManageMachineControlsPage() {
+export default function ManageMachinePage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
@@ -159,7 +164,7 @@ export default function ManageMachineControlsPage() {
   const [machine, setMachine] = useState<FullMachineType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [configurations, setConfigurations] = useState<Record<string, ConfiguredControl>>({});
+  const [controlConfigs, setControlConfigs] = useState<Record<string, ConfiguredControl>>({});
 
   useEffect(() => {
     if (!siteId || !zoneId || !machineId) {
@@ -167,9 +172,7 @@ export default function ManageMachineControlsPage() {
       setIsLoading(false);
       return;
     }
-
     const foundMachine = findMachineFromGlobalData(siteId, zoneId, machineId);
-
     if (foundMachine) {
       setMachine(foundMachine);
       const initialConfigs: Record<string, ConfiguredControl> = {};
@@ -186,7 +189,7 @@ export default function ManageMachineControlsPage() {
           }
         });
       });
-      setConfigurations(initialConfigs);
+      setControlConfigs(initialConfigs);
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -195,10 +198,10 @@ export default function ManageMachineControlsPage() {
   }, [siteId, zoneId, machineId]);
 
   const handleControlActivationChange = (controlId: string, isActive: boolean) => {
-    setConfigurations(prev => ({
+    setControlConfigs(prev => ({
       ...prev,
       [controlId]: {
-        ...(prev[controlId] || { params: {}, sensorMappings: {} }), // Ensure object exists
+        ...(prev[controlId] || { params: {}, sensorMappings: {} }),
         isActive,
       },
     }));
@@ -210,7 +213,7 @@ export default function ManageMachineControlsPage() {
       processedValue = parseFloat(value);
       if (isNaN(processedValue)) processedValue = '';
     }
-    setConfigurations(prev => ({
+    setControlConfigs(prev => ({
       ...prev,
       [controlId]: {
         ...(prev[controlId]!),
@@ -223,7 +226,7 @@ export default function ManageMachineControlsPage() {
   };
 
   const handleSensorMappingChange = (controlId: string, variableId: string, sensorInstanceId: string) => {
-    setConfigurations(prev => ({
+    setControlConfigs(prev => ({
       ...prev,
       [controlId]: {
         ...(prev[controlId]!),
@@ -236,15 +239,25 @@ export default function ManageMachineControlsPage() {
   };
 
   const handleSaveConfiguration = () => {
-    console.log("Saving machine control configurations:", { machineId, configurations });
+    console.log("Saving machine control configurations:", { machineId, controlConfigs });
     toast({
       title: "Configuration Sauvegardée",
-      description: `Les configurations des contrôles pour ${machine?.name} ont été sauvegardées (simulation).`,
+      description: `Les configurations pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
-    // In a real app, update DUMMY_CLIENT_SITES_DATA or send to backend.
-    // Then potentially navigate back.
-    router.push(`/client/assets/manage/${siteId}`);
   };
+
+  const applicableAdminControls = useMemo(() => {
+    if (!machine) return [];
+    return DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.filter(control =>
+      control.typesDeMachinesConcernees.length === 0 || control.typesDeMachinesConcernees.includes(machine.type)
+    );
+  }, [machine]);
+
+  const activeMachineControls = useMemo(() => {
+    if (!machine) return [];
+    return applicableAdminControls.filter(adminCtrl => controlConfigs[adminCtrl.id]?.isActive);
+  }, [machine, applicableAdminControls, controlConfigs]);
+
 
   if (isLoading) {
     return <AppLayout><div className="p-6 text-center">Chargement des détails de la machine...</div></AppLayout>;
@@ -255,7 +268,6 @@ export default function ManageMachineControlsPage() {
       <AppLayout>
         <div className="p-6 text-center">
           <h1 className="text-2xl font-bold text-destructive">Machine non trouvée</h1>
-          <p className="text-muted-foreground mb-4">Impossible de charger les détails pour cette machine.</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="mr-2 h-4 w-4" /> Retour
           </Button>
@@ -263,10 +275,6 @@ export default function ManageMachineControlsPage() {
       </AppLayout>
     );
   }
-
-  const applicableControls = DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.filter(control =>
-    control.typesDeMachinesConcernees.length === 0 || control.typesDeMachinesConcernees.includes(machine.type)
-  );
 
   const getMachineIconDisplay = (type: string) => {
     if (type === "Frigo" || type === "Congélateur") return Thermometer;
@@ -276,7 +284,14 @@ export default function ManageMachineControlsPage() {
     return HardDrive;
   };
   const MachineIconToDisplay = getMachineIconDisplay(machine.type);
-
+  
+  const chartData = machine.activeControlInAlert?.historicalData || [];
+  const chartConfig = {
+    value: {
+      label: machine.activeControlInAlert?.relevantSensorVariable || "Donnée",
+      color: "hsl(var(--chart-1))",
+    },
+  };
 
   return (
     <AppLayout>
@@ -290,121 +305,215 @@ export default function ManageMachineControlsPage() {
         <Card className="shadow-xl">
           <CardHeader className="border-b">
             <div className="flex items-center gap-3">
-                <MachineIconToDisplay className="h-8 w-8 text-primary" />
-                <div>
-                    <CardTitle className="text-3xl">Gérer: {machine.name}</CardTitle>
-                    <CardDescription>Type: {machine.type} | Site: {siteId} | Zone: {zoneId}</CardDescription>
-                </div>
+              <MachineIconToDisplay className="h-8 w-8 text-primary" />
+              <div>
+                <CardTitle className="text-3xl">Gérer: {machine.name}</CardTitle>
+                <CardDescription>Type: {machine.type} | Site: {siteId} | Zone: {zoneId}</CardDescription>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-6 space-y-8">
-            <h2 className="text-2xl font-semibold flex items-center gap-2">
-              <Settings2 className="h-6 w-6 text-primary/80" />
-              Configuration des Contrôles Métier
-            </h2>
+          <CardContent className="pt-6">
+            <Tabs defaultValue="config" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 md:w-[calc(50%-0.25rem)]"> {/* Adjusted width for 2 tabs */}
+                <TabsTrigger value="config">
+                  <Settings2 className="mr-2 h-4 w-4" /> Configuration des Contrôles
+                </TabsTrigger>
+                <TabsTrigger value="monitoring">
+                  <LineChartIcon className="mr-2 h-4 w-4" /> Suivi & Données
+                </TabsTrigger>
+              </TabsList>
 
-            {applicableControls.length === 0 && (
-              <p className="text-muted-foreground">Aucun contrôle métier applicable n'est défini pour ce type de machine.</p>
-            )}
-
-            <div className="space-y-6">
-              {applicableControls.map((control) => {
-                const config = configurations[control.id] || { isActive: false, params: {}, sensorMappings: {} };
-                return (
-                  <Card key={control.id} className="bg-muted/30 shadow-md">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl">{control.nomDuControle}</CardTitle>
-                        <div className="flex items-center space-x-2">
-                          <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
-                            {config.isActive ? "Activé" : "Désactivé"}
-                          </Label>
-                          <Switch
-                            id={`switch-${control.id}`}
-                            checked={config.isActive}
-                            onCheckedChange={(checked) => handleControlActivationChange(control.id, checked)}
-                          />
-                        </div>
-                      </div>
-                      <CardDescription>{control.description}</CardDescription>
-                    </CardHeader>
-                    {config.isActive && (
-                      <CardContent className="space-y-4 pt-2">
-                        {control.expectedParams && control.expectedParams.length > 0 && (
-                          <div className="space-y-3 p-3 border rounded-md bg-background">
-                            <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
-                            {control.expectedParams.map(param => (
-                              <div key={param.id} className="space-y-1">
-                                <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
-                                <Input
-                                  id={`${control.id}-${param.id}`}
-                                  type={param.type === 'number' ? 'number' : 'text'}
-                                  value={config.params[param.id] ?? ''}
-                                  onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
-                                  placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}`: ""}
-                                />
+              <TabsContent value="config" className="mt-4">
+                <div className="space-y-6">
+                  {applicableAdminControls.map((control) => {
+                    const config = controlConfigs[control.id] || { isActive: false, params: {}, sensorMappings: {} };
+                    return (
+                      <Card key={control.id} className="bg-muted/30 shadow-md">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-xl">{control.nomDuControle}</CardTitle>
+                            <div className="flex items-center space-x-2">
+                              <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
+                                {config.isActive ? "Activé" : "Désactivé"}
+                              </Label>
+                              <Switch
+                                id={`switch-${control.id}`}
+                                checked={config.isActive}
+                                onCheckedChange={(checked) => handleControlActivationChange(control.id, checked)}
+                              />
+                            </div>
+                          </div>
+                          <CardDescription>{control.description}</CardDescription>
+                        </CardHeader>
+                        {config.isActive && (
+                          <CardContent className="space-y-4 pt-2">
+                            {control.expectedParams && control.expectedParams.length > 0 && (
+                              <div className="space-y-3 p-3 border rounded-md bg-background">
+                                <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
+                                {control.expectedParams.map(param => (
+                                  <div key={param.id} className="space-y-1">
+                                    <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
+                                    <Input
+                                      id={`${control.id}-${param.id}`}
+                                      type={param.type === 'number' ? 'number' : 'text'}
+                                      value={config.params[param.id] ?? ''}
+                                      onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
+                                      placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
+                                    />
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            )}
+                            {control.variablesUtilisees && control.variablesUtilisees.length > 0 && (
+                              <div className="space-y-3 p-3 border rounded-md bg-background">
+                                <h4 className="text-md font-semibold text-muted-foreground">Mappage des Capteurs Requis :</h4>
+                                {control.variablesUtilisees.map(variableId => {
+                                  const variableLabel = control.typesDeCapteursNecessaires.find(
+                                    tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0]) || tcLabel.toLowerCase().includes(variableId)
+                                  ) || variableId;
+                                  const compatibleSensors = machine?.availableSensors?.filter(sensor =>
+                                    sensor.provides?.includes(variableId)
+                                  ) || [];
+                                  return (
+                                    <div key={variableId} className="space-y-1">
+                                      <Label htmlFor={`${control.id}-map-${variableId}`}>
+                                        Nécessite: {variableLabel} (<code>{variableId}</code>)
+                                      </Label>
+                                      <Select
+                                        value={config.sensorMappings[variableId] || "__NONE__"}
+                                        onValueChange={(sensorInstanceId) =>
+                                          handleSensorMappingChange(control.id, variableId, sensorInstanceId)
+                                        }
+                                      >
+                                        <SelectTrigger id={`${control.id}-map-${variableId}`}>
+                                          <SelectValue placeholder="Sélectionner un capteur..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__NONE__">-- Non Mappé --</SelectItem>
+                                          {compatibleSensors.length > 0 ? (
+                                            compatibleSensors.map(sensor => (
+                                              <SelectItem key={sensor.id} value={sensor.id}>
+                                                {sensor.name} (Fournit: {sensor.provides?.join(', ') || 'N/A'})
+                                              </SelectItem>
+                                            ))
+                                          ) : (
+                                            <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </CardContent>
                         )}
+                      </Card>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end pt-8 mt-6 border-t">
+                  <Button size="lg" onClick={handleSaveConfiguration} disabled={isLoading}>
+                    <Save className="mr-2 h-5 w-5" />
+                    Sauvegarder la Configuration
+                  </Button>
+                </div>
+              </TabsContent>
 
-                        {control.variablesUtilisees && control.variablesUtilisees.length > 0 && (
-                           <div className="space-y-3 p-3 border rounded-md bg-background">
-                            <h4 className="text-md font-semibold text-muted-foreground">Mappage des Capteurs Requis :</h4>
-                            {control.variablesUtilisees.map(variableId => {
-                              const variableLabel = control.typesDeCapteursNecessaires.find(
-                                tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0])
-                              ) || variableId;
-
-                              const compatibleSensors = machine?.availableSensors?.filter(sensor =>
-                                sensor.provides?.includes(variableId)
-                              ) || [];
-
-                              return (
-                                <div key={variableId} className="space-y-1">
-                                  <Label htmlFor={`${control.id}-map-${variableId}`}>
-                                    Nécessite: {variableLabel} (<code>{variableId}</code>)
-                                  </Label>
-                                  <Select
-                                    value={config.sensorMappings[variableId] || "__NONE__"}
-                                    onValueChange={(sensorInstanceId) =>
-                                      handleSensorMappingChange(control.id, variableId, sensorInstanceId)
-                                    }
-                                  >
-                                    <SelectTrigger id={`${control.id}-map-${variableId}`}>
-                                      <SelectValue placeholder="Sélectionner un capteur..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="__NONE__">-- Non Mappé --</SelectItem>
-                                      {compatibleSensors.length > 0 ? (
-                                        compatibleSensors.map(sensor => (
-                                          <SelectItem key={sensor.id} value={sensor.id}>
-                                            {sensor.name} (Fournit: {sensor.provides?.join(', ') || 'N/A'})
-                                          </SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </CardContent>
+              <TabsContent value="monitoring" className="mt-4 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        {getMachineStatusIcon(machine.status, "h-6 w-6")}
+                        État Actuel: {getMachineStatusText(machine.status)}
+                    </CardTitle>
+                    <CardDescription>Vue d'ensemble du statut et des contrôles actifs de la machine.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                     {machine.activeControlInAlert && (
+                        <div className="p-3 mb-4 bg-destructive/10 border border-destructive/30 rounded-md shadow-sm">
+                            <h4 className="font-semibold text-base mb-1 text-destructive flex items-center">
+                                <AlertTriangle className="mr-2 h-5 w-5"/> Alerte Active: {machine.activeControlInAlert.controlName}
+                            </h4>
+                            <p className="text-foreground">{machine.activeControlInAlert.alertDetails}</p>
+                            <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-destructive" onClick={() => router.push(`/client/machine-alerts/${machine.id}`)}>
+                                Voir les détails de l'alerte
+                            </Button>
+                        </div>
                     )}
-                  </Card>
-                );
-              })}
-            </div>
+                    
+                    <h3 className="text-lg font-semibold mb-2">Contrôles Actifs</h3>
+                    {activeMachineControls.length > 0 ? (
+                      <div className="space-y-2">
+                        {activeMachineControls.map(control => {
+                          const isAlerting = machine.activeControlInAlert?.controlId === control.id;
+                          const controlStatusText = isAlerting ? "En Alerte" : "OK";
+                          const controlStatusIcon = isAlerting 
+                            ? <AlertTriangle className="h-4 w-4 text-destructive" /> 
+                            : <CheckCircle2 className="h-4 w-4 text-green-500" />;
 
-            <div className="flex justify-end pt-8 mt-6 border-t">
-              <Button size="lg" onClick={handleSaveConfiguration} disabled={isLoading}>
-                <Save className="mr-2 h-5 w-5" />
-                Sauvegarder la Configuration
-              </Button>
-            </div>
+                          return (
+                            <div key={control.id} className="p-3 border rounded-md bg-background/50 flex justify-between items-center">
+                              <div>
+                                <p className="font-medium">{control.nomDuControle}</p>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    {controlStatusIcon} {controlStatusText}
+                                </div>
+                              </div>
+                              {/* Placeholder for future "View Control Details" link */}
+                              {/* <Button variant="link" size="sm">Voir suivi</Button> */}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">Aucun contrôle n'est actuellement actif pour cette machine.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {chartData.length > 0 && machine.activeControlInAlert ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <LineChartIcon className="h-5 w-5 text-primary" />
+                        Historique de l'Alerte : {chartConfig.value.label}
+                      </CardTitle>
+                      <CardDescription>Données historiques relatives à l'alerte en cours.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer config={chartConfig} className="h-[250px] w-full aspect-auto">
+                        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis 
+                            dataKey="name" 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickMargin={8}
+                            tickFormatter={(value) => typeof value === 'string' ? value.slice(0, 5) : value}
+                          />
+                          <YAxis tickLine={false} axisLine={false} tickMargin={8} width={30}/>
+                          <RechartsTooltip cursor={true} content={<ChartTooltipContent indicator="line" />} />
+                          <Legend />
+                          <Line dataKey="value" name={chartConfig.value.label} type="monotone" stroke="var(--color-value)" strokeWidth={2} dot={true}/>
+                        </LineChart>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+                ) : (
+                   <Card>
+                     <CardHeader><CardTitle>Graphiques des Capteurs</CardTitle></CardHeader>
+                     <CardContent><p className="text-muted-foreground">Aucune donnée d'alerte active à afficher. (À terme: graphiques des capteurs principaux)</p></CardContent>
+                   </Card>
+                )}
+                
+                <Card>
+                    <CardHeader><CardTitle>Journal des Événements Récents</CardTitle></CardHeader>
+                    <CardContent><p className="text-muted-foreground">Aucun événement récent pour cette machine (simulation).</p></CardContent>
+                </Card>
+
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

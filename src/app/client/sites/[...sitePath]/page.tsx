@@ -50,15 +50,14 @@ export interface ActiveControlInAlert {
 export interface Sensor {
   id: string;
   name: string;
-  typeModel: string; // e.g., "Sonde Ambiante THL v2.1" (from admin defined types)
+  typeModel: string; 
   scope: 'zone' | 'machine';
   piServerId?: string;
   affectedMachineIds?: string[];
-  status?: Status; // Optional: sensor status
-  provides?: string[]; // e.g. ["temp", "humidity"] - what this sensor instance reports
+  status?: Status; 
+  provides?: string[]; 
 }
 
-// For Machine Control Configuration
 export interface ControlParameter {
   id: string;
   label: string;
@@ -68,8 +67,8 @@ export interface ControlParameter {
 
 export interface ConfiguredControl {
   isActive: boolean;
-  params: Record<string, any>; // e.g., { seuil_min: 5, seuil_max: 30 }
-  sensorMappings: Record<string, string>; // e.g., { temp: 'sensor-id-123', humidity: 'sensor-id-456' }
+  params: Record<string, any>; 
+  sensorMappings: Record<string, string>; 
 }
 
 export interface Machine {
@@ -79,9 +78,8 @@ export interface Machine {
   status: Status;
   icon?: LucideIcon;
   activeControlInAlert?: ActiveControlInAlert;
-  // For machine control configuration page
-  availableSensors?: Array<{ id: string; name: string; provides: string[] }>; // Sensors usable by this machine
-  configuredControls?: Record<string, ConfiguredControl>; // Key is controlId
+  availableSensors?: Array<{ id: string; name: string; provides: string[] }>; 
+  configuredControls?: Record<string, ConfiguredControl>; 
 }
 
 export interface Zone {
@@ -89,7 +87,7 @@ export interface Zone {
   name: string;
   machines: Machine[];
   subZones?: Zone[];
-  sensors?: Sensor[]; // All sensors declared IN this zone
+  sensors?: Sensor[]; 
 }
 
 export interface Site {
@@ -115,10 +113,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           {
             id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green", icon: Server,
             availableSensors: [
-                { id: "srv-temp-interne", name: "Sonde Température Interne Serveur", provides: ["temp", "server_temp"] },
+                { id: "srv-temp-interne", name: "Sonde Température Interne Serveur", provides: ["temp", "temp_srv", "server_temp"] },
+                { id: "srv-fan-speed", name: "Capteur Vitesse Ventilateur Serveur", provides: ["fan_speed"] },
             ],
             configuredControls: {
-                "control-srv-temp": { // Example of a pre-configured control
+                "control-srv-temp": { 
                     isActive: true,
                     params: { seuil_max_temp_srv: 70 },
                     sensorMappings: { temp_srv: "srv-temp-interne"}
@@ -128,9 +127,17 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           {
             id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind,
             availableSensors: [
-                { id: "hvac-main-current", name: "Capteur Courant HVAC Principal", provides: ["courant", "current"] },
+                { id: "hvac-main-current", name: "Capteur Courant HVAC Principal", provides: ["courant", "current", "tension"] },
                 { id: "hvac-air-flow", name: "Capteur Débit Air HVAC", provides: ["flow_rate"] },
+                { id: "hvac-temp-output", name: "Sonde Température Sortie HVAC", provides: ["temp"] },
             ],
+            configuredControls: {
+                "control-002": { // Consommation électrique
+                    isActive: true,
+                    params: { seuil_max_conso: 3500 },
+                    sensorMappings: { courant: "hvac-main-current", tension: "hvac-main-current" } // Assuming tension also comes from current sensor for demo
+                }
+            }
           },
         ],
         sensors: [
@@ -143,13 +150,13 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 provides: ["temp", "humidity"]
             },
             {
-                id: "sensor-hvac-current",
-                name: "Capteur Courant HVAC",
+                id: "sensor-hvac-current-link", // Renamed to avoid conflict with availableSensor id
+                name: "Capteur Courant HVAC (Lien)",
                 typeModel: "Capteur de Courant Monophasé CM-100",
                 scope: "machine",
                 affectedMachineIds: ["machine-cc-admin-hvac"],
                 status: "green",
-                provides: ["current"]
+                provides: ["current"] // This sensor instance *provides* current.
             }
         ],
         subZones: [
@@ -171,6 +178,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     controlDescription: "Surveille la température interne du projecteur.",
                     alertDetails: "Température projecteur (65°C) élevée. Seuil: 60°C.",
                     relevantSensorVariable: "Température Projecteur",
+                     historicalData: [ { name: 'T-4', value: 58 }, { name: 'T-3', value: 60 }, { name: 'T-2', value: 62 }, { name: 'T-1', value: 64 }, { name: 'Maintenant', value: 65 }],
                 }
               }
             ]
@@ -231,7 +239,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     { id: "frigo-f01-temp", name: "Sonde Température Frigo F-01", provides: ["temp"] }
                 ],
                 configuredControls: {
-                    "control-001": { // Matches DUMMY_ADMIN_CONTROLS id
+                    "control-001": { 
                         isActive: true,
                         params: { seuil_min: -2, seuil_max: 5 },
                         sensorMappings: { temp: "frigo-f01-temp" }
@@ -312,8 +320,15 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             availableSensors: [
                 { id: "frigo-z2-temp", name: "Sonde Température Congélateur Z2", provides: ["temp", "temp_cong"] }
             ],
+             configuredControls: {
+                "control-001": { 
+                    isActive: true,
+                    params: { seuil_min: -22, seuil_max: -18 }, // Typical freezer temps
+                    sensorMappings: { temp: "frigo-z2-temp" }
+                }
+            },
             activeControlInAlert: {
-              controlId: "control-001b",
+              controlId: "control-001", // Using the same control ID but with different instance values
               controlName: "Contrôle Température Congélateur",
               controlDescription: "Maintien de la température du congélateur pour produits surgelés.",
               alertDetails: "Température (-15°C) proche du seuil d'alerte (-18°C). Cycle de dégivrage en retard.",
@@ -349,7 +364,7 @@ const getCombinedStatus = (statuses: Status[]): Status => {
 export const getZoneOverallStatus = (zone: Zone): Status => {
   const machineStatuses = zone.machines?.map(m => m.status) || [];
   const subZoneStatuses = zone.subZones?.map(sz => getZoneOverallStatus(sz)) || [];
-  const sensorStatuses = zone.sensors?.map(s => s.status || 'green') || []; // Assume green if no status
+  const sensorStatuses = zone.sensors?.map(s => s.status || 'green') || []; 
   return getCombinedStatus([...machineStatuses, ...subZoneStatuses, ...sensorStatuses]);
 };
 
@@ -448,14 +463,14 @@ const MachineItem: React.FC<{ machine: Machine; onMachineClick: (machineId: stri
 
 interface SiteDetailZoneItemProps {
   zone: Zone;
-  parentId: string; // Site ID
+  parentId: string; 
   onMachineClick: (machineId: string) => void;
   level?: number;
 }
 
 const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId, onMachineClick, level = 0 }) => {
   const zoneStatus = getZoneOverallStatus(zone);
-  const paddingLeft = `${level * 1.5}rem`; // Indent sub-zones
+  const paddingLeft = `${level * 1.5}rem`; 
 
   return (
     <AccordionItem value={`${parentId}-${zone.id}`} className="border-b-0 mb-1 last:mb-0" style={{ marginLeft: paddingLeft }}>
@@ -496,7 +511,7 @@ const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId,
               <SiteDetailZoneItem
                 key={subZone.id}
                 zone={subZone}
-                parentId={zone.id} // Parent ID for sub-zone is the ID of its parent zone
+                parentId={zone.id} 
                 onMachineClick={onMachineClick}
                 level={level + 1}
               />
