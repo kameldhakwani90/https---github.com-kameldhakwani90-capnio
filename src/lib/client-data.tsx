@@ -2,7 +2,7 @@
 "use client"; 
 
 import type { LucideIcon } from 'lucide-react';
-import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive, Package, ShoppingCart, Utensils, Factory, Truck, Apple, Beef, Snowflake, CalendarDays, Tractor, Spray, Sheep, Warehouse, Move, Flame, Droplets, Wheat } from "lucide-react"; 
+import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive, Package, ShoppingCart, Utensils, Factory, Truck, Apple, Beef, Snowflake, CalendarDays, Tractor, SprayCan, PawPrint, Warehouse, Move, Flame, Droplets, Wheat, Sprout } from "lucide-react"; 
 import { cn } from "@/lib/utils"; 
 
 export type Status = 'green' | 'orange' | 'red' | 'white';
@@ -99,25 +99,25 @@ const restaurantChecklistTempFrigo: ChecklistItem[] = [
     { id: 'chk-frigo-nettoyage', label: "S'assurer que le condenseur est propre et non obstrué." },
 ];
 
-const securityChecklistMotion: ChecklistItem[] = [
+export const securityChecklistMotion: ChecklistItem[] = [
     { id: 'chk-motion-cam', label: "Vérifier l'angle et la propreté de la caméra associée (si applicable)." },
     { id: 'chk-motion-path', label: "S'assurer qu'aucun objet n'obstrue le champ de détection." },
     { id: 'chk-motion-power', label: "Confirmer l'alimentation du détecteur." },
 ];
 
-const securityChecklistSmoke: ChecklistItem[] = [
+export const securityChecklistSmoke: ChecklistItem[] = [
     { id: 'chk-smoke-battery', label: "Tester la batterie du détecteur de fumée." },
     { id: 'chk-smoke-dust', label: "Nettoyer le détecteur de toute poussière accumulée." },
     { id: 'chk-smoke-path', label: "S'assurer que le détecteur n'est pas obstrué." },
 ];
 
-const farmChecklistSoilMoisture: ChecklistItem[] = [
+export const farmChecklistSoilMoisture: ChecklistItem[] = [
     { id: 'chk-soil-sensor-placement', label: "Vérifier que la sonde est correctement insérée dans le sol." },
     { id: 'chk-soil-irrigation-nozzles', label: "Inspecter les buses d'irrigation pour obstructions." },
     { id: 'chk-soil-water-source', label: "Confirmer que la source d'eau pour l'irrigation est disponible." },
 ];
 
-const farmChecklistAnimalEnclosure: ChecklistItem[] = [
+export const farmChecklistAnimalEnclosure: ChecklistItem[] = [
     { id: 'chk-animal-ventilation', label: "Vérifier le bon fonctionnement des ventilateurs." },
     { id: 'chk-animal-water', label: "S'assurer de la disponibilité d'eau fraîche pour les animaux." },
     { id: 'chk-animal-shade', label: "Vérifier la présence de zones d'ombre en cas de forte chaleur." },
@@ -131,7 +131,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     name: "Restaurants Melting Pot (France)",
     location: "France",
     icon: Utensils,
-    zones: [], // Main site is a container
+    zones: [], 
     subSites: [
       {
         id: "site-mp-paris",
@@ -168,20 +168,41 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 availableSensors: [{ id: "sensor-paris-congel1-temp", name: "Sonde Temp. Congel C1", provides: ["temp"] }],
                 configuredControls: { "control-001": { isActive: true, params: { "seuil_min": -22, "seuil_max": -18 }, sensorMappings: {"temp": "sensor-paris-congel1-temp"} } }
               },
-              { id: "machine-paris-cuisine-secu", name: "Hub Sécurité Cuisine", type: "Hub Sécurité", status: "green" }
+              { id: "machine-paris-cuisine-secu", name: "Hub Sécurité Cuisine", type: "Hub Sécurité", status: "green", 
+                availableSensors: [],
+                configuredControls: {
+                     "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "01:00", "heure_fin_surveillance": "07:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-paris-cuisine-motion"} },
+                     "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-paris-cuisine-fumee"} }
+                }
+              }
             ],
             sensors: [
               { id: "sensor-paris-cuisine-amb", name: "Ambiance Cuisine Paris", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"] },
-              { id: "sensor-paris-cuisine-fumee", name: "Détecteur Fumée Cuisine", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-paris-cuisine-secu" }
+              { id: "sensor-paris-cuisine-fumee", name: "Détecteur Fumée Cuisine", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-paris-cuisine-secu" },
+              { id: "sensor-paris-cuisine-motion", name: "Détecteur Mouvement Cuisine", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-paris-cuisine-secu" }
             ]
           },
-          { id: "zone-paris-salle", name: "Salle Restaurant Paris", machines: [], sensors: [
+          { id: "zone-paris-salle", name: "Salle Restaurant Paris", machines: [
+            { id: "machine-paris-salle-secu", name: "Hub Sécurité Salle", type: "Hub Sécurité", status: "green", 
+                availableSensors: [],
+                configuredControls: {
+                     "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "01:00", "heure_fin_surveillance": "07:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-paris-salle-motion"} }
+                }
+            }
+          ], sensors: [
               { id: "sensor-paris-salle-co2", name: "Qualité Air Salle Paris", typeModel: "Détecteur CO2 Z-Air", scope: "zone", status: "green", provides: ["co2"]},
-              { id: "sensor-paris-salle-motion", name: "Détecteur Mouvement Salle (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"] }
+              { id: "sensor-paris-salle-motion", name: "Détecteur Mouvement Salle (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-paris-salle-secu" }
           ]},
-          { id: "zone-paris-cave", name: "Cave à Vins Paris", machines: [], sensors: [
+          { id: "zone-paris-cave", name: "Cave à Vins Paris", machines: [
+            { id: "machine-paris-cave-secu", name: "Hub Sécurité Cave", type: "Hub Sécurité", status: "green", 
+                availableSensors: [],
+                configuredControls: {
+                     "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "00:00", "heure_fin_surveillance": "08:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-paris-cave-motion"} }
+                }
+            }
+          ], sensors: [
               { id: "sensor-paris-cave-temphum", name: "Ambiance Cave Paris", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity"] },
-              { id: "sensor-paris-cave-motion", name: "Détecteur Mouvement Cave (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"] }
+              { id: "sensor-paris-cave-motion", name: "Détecteur Mouvement Cave (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-paris-cave-secu" }
           ]}
         ]
       },
@@ -193,9 +214,15 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         icon: Utensils,
         zones: [
           { id: "zone-lyon-cuisine", name: "Cuisine Lyon", machines: [
-            { id: "machine-lyon-frigo1", name: "Réfrigérateur Positif Lyon", type: "Frigo", status: "green", availableSensors: [{id: "s-lyon-frigo1-temp", name: "Temp Frigo Lyon 1", provides:["temp"]}]}
+            { id: "machine-lyon-frigo1", name: "Réfrigérateur Positif Lyon", type: "Frigo", status: "green", availableSensors: [{id: "s-lyon-frigo1-temp", name: "Temp Frigo Lyon 1", provides:["temp"]}]},
+            { id: "machine-lyon-cuisine-secu", name: "Hub Sécurité Cuisine Lyon", type: "Hub Sécurité", status: "green", 
+                availableSensors: [],
+                configuredControls: {
+                     "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-lyon-cuisine-fumee"} }
+                }
+            }
           ], sensors: [
-            { id: "sensor-lyon-cuisine-fumee", name: "Détecteur Fumée Cuisine Lyon", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"] }
+            { id: "sensor-lyon-cuisine-fumee", name: "Détecteur Fumée Cuisine Lyon", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-lyon-cuisine-secu" }
           ]}
         ]
       }
@@ -208,19 +235,31 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     icon: ShoppingCart, 
     zones: [
       { id: "zone-fournil", name: "Fournil", machines: [
-        { id: "machine-fournil-fourpain", name: "Four à Pain 'Bongard'", type: "Four Professionnel", status: "green" },
+        { id: "machine-fournil-fourpain", name: "Four à Pain 'Bongard'", type: "Four Professionnel", status: "green", availableSensors: [{id: "s-fournil-fourpain-temp", name: "Temp Four à Pain", provides:["temp_four"]}] },
         { 
           id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green",
           availableSensors: [{ id: "sensor-levain-temp", name: "Sonde Temp. Levain", provides: ["temp"] }],
           configuredControls: { "control-001": { isActive: true, params: { "seuil_min": 2, "seuil_max": 5 }, sensorMappings: {"temp": "sensor-levain-temp"} } }
+        },
+        { id: "machine-fournil-secu", name: "Hub Sécurité Fournil", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                 "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-fournil-fumee"} }
+            }
         }
       ], sensors: [
-         { id: "sensor-fournil-fumee", name: "Détecteur Fumée Fournil", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"] }
+         { id: "sensor-fournil-fumee", name: "Détecteur Fumée Fournil", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-fournil-secu" }
       ]},
       { id: "zone-boutique", name: "Boutique", machines: [
-        { id: "machine-boutique-vitrine", name: "Vitrine Réfrigérée Pâtisseries", type: "Frigo", status: "orange", availableSensors: [{id: "s-boutique-vitrine-temp", name: "Temp Vitrine Pâtisserie", provides:["temp"]}]}
+        { id: "machine-boutique-vitrine", name: "Vitrine Réfrigérée Pâtisseries", type: "Vitrine Réfrigérée", status: "orange", availableSensors: [{id: "s-boutique-vitrine-temp", name: "Temp Vitrine Pâtisserie", provides:["temp"]}]},
+        { id: "machine-boutique-secu", name: "Hub Sécurité Boutique", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "20:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-boutique-motion"} }
+            }
+        }
       ], sensors: [
-          { id: "sensor-boutique-motion", name: "Détecteur Mouvement Boutique (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"] }
+          { id: "sensor-boutique-motion", name: "Détecteur Mouvement Boutique (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-boutique-secu" }
       ]}
     ]
   },
@@ -231,14 +270,20 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     icon: Truck,
     zones: [
       { id: "zone-liv-entrepot", name: "Entrepôt Central Rungis", machines: [
-        { id: "machine-rungis-secu", name: "Hub Sécurité Rungis", type: "Hub Sécurité", status: "green"},
-        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Frigo", status: "green",
+        { id: "machine-rungis-secu", name: "Hub Sécurité Rungis", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                 "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-rungis-fumee"} },
+                 "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "22:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-rungis-motion-quai"} }
+            }
+        },
+        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Chambre Froide", status: "green",
             availableSensors: [{id: "s-rungis-frigo-stock-temp", name: "Temp Ch. Froide Rungis", provides:["temp"]}],
             configuredControls: {"control-001": { isActive: true, params: { "seuil_min": 0, "seuil_max": 4 }, sensorMappings: {"temp": "s-rungis-frigo-stock-temp"} } }
         }
       ], sensors: [
         { id: "sensor-rungis-motion-quai", name: "Détecteur Mouvement Quai Rungis", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "orange", provides: ["motion_detected"], piServerId: "machine-rungis-secu",
-          activeControlInAlert: { controlId: "control-motion-security", controlName: "Détection de Mouvement (Sécurité Horodatée)", alertDetails: "Mouvement détecté sur le quai à 03:15.", status: "orange", currentValues: {"motion_detected": {value: true}}, thresholds: {"heure_debut_surveillance": "22:00", "heure_fin_surveillance": "06:00"}, controlDescription: "Alerte si un mouvement est détecté en dehors des heures d'ouverture.", checklist: securityChecklistMotion}
+          data: { activeControlInAlert: { controlId: "control-motion-security", controlName: "Détection de Mouvement (Sécurité Horodatée)", alertDetails: "Mouvement détecté sur le quai à 03:15.", status: "orange", currentValues: {"motion_detected": {value: true}}, thresholds: {"heure_debut_surveillance": "22:00", "heure_fin_surveillance": "06:00"}, controlDescription: "Alerte si un mouvement est détecté en dehors des heures d'ouverture.", checklist: securityChecklistMotion}}
         },
         { id: "sensor-rungis-fumee", name: "Détecteur Fumée Entrepôt Rungis", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-rungis-secu"}
       ]},
@@ -256,7 +301,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           availableSensors: [{id: "sensor-camion-fr01-gps-temp", name: "Tracker GPS/Temp Camion FR01", provides: ["gps_lat", "gps_lon", "temp_caisson", "temp"]}],
           configuredControls: {"control-temp-camion": {isActive: true, params: {"temp_max": 4}, sensorMappings: {"temp_caisson": "sensor-camion-fr01-gps-temp"}}}
         },
-        { id: "machine-camion-fr02", name: "Camion FR-02 (XY-789-ZZ)", type: "Camion Réfrigéré", status: "green" }
+        { id: "machine-camion-fr02", name: "Camion FR-02 (XY-789-ZZ)", type: "Camion Réfrigéré", status: "green", availableSensors: [{id: "sensor-camion-fr02-gps-temp", name: "Tracker GPS/Temp Camion FR02", provides: ["gps_lat", "gps_lon", "temp_caisson", "temp"]}] }
       ]}
     ]
   },
@@ -268,9 +313,15 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     icon: Factory,
     zones: [
       { id: "zone-usine-embouteillage", name: "Ligne d'Embouteillage Eau Minérale", machines: [
-        { id: "machine-embouteilleuse", name: "Embouteilleuse 'Krones'", type: "Equipement de Production", status: "green" }
+        { id: "machine-embouteilleuse", name: "Embouteilleuse 'Krones'", type: "Equipement de Production", status: "green", availableSensors: [{id: "s-emb-krones-vitesse", name: "Vitesse Emb. Krones", provides: ["speed"]}] },
+        { id: "machine-emb-secu", name: "Hub Sécurité Embouteillage", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-emb-fumee"} }
+            }
+        }
       ], sensors: [
-        { id: "sensor-emb-fumee", name: "Détecteur Fumée Ligne Emb.", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"] }
+        { id: "sensor-emb-fumee", name: "Détecteur Fumée Ligne Emb.", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-emb-secu" }
       ]},
       { 
         id: "zone-usine-maintenance", name: "Atelier Maintenance", machines: [
@@ -286,9 +337,15 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           },
           availableSensors: [{id: "sensor-comp-c1-presshuile", name: "Sonde Pression Huile C1", provides: ["pression_huile", "press"]}],
           configuredControls: { "control-003": {isActive: true, params: { "seuil_min_pression": 0.5}, sensorMappings: {"pression_huile": "sensor-comp-c1-presshuile"}}}
+        },
+        { id: "machine-maint-secu", name: "Hub Sécurité Maintenance", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                 "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "18:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-maint-motion"} }
+            }
         }
       ], sensors: [
-         { id: "sensor-maint-motion", name: "Détecteur Mouvement Atelier (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"] }
+         { id: "sensor-maint-motion", name: "Détecteur Mouvement Atelier (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-maint-secu" }
       ]}
     ]
   },
@@ -303,9 +360,15 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         id: "site-entrepot-viandes", name: "Entrepôt Viandes", location: "AgroStock - Section Viandes", isConceptualSubSite: true, icon: Beef,
         zones: [
           { id: "zone-viande-chf-bovin", name: "Chambre Froide Bovins (-2°C)", machines: [
-            { id: "machine-chf-bovin1", name: "Unité Réfrig. Bovin 1", type: "Frigo", status: "green", availableSensors: [{id: "s-bovin1-temp", name: "Temp Bovin 1", provides:["temp"]}] }
+            { id: "machine-chf-bovin1", name: "Unité Réfrig. Bovin 1", type: "Chambre Froide", status: "green", availableSensors: [{id: "s-bovin1-temp", name: "Temp Bovin 1", provides:["temp"]}]},
+            { id: "machine-viande-bovin-secu", name: "Hub Sécurité CHF Bovins", type: "Hub Sécurité", status: "green", 
+                availableSensors: [],
+                configuredControls: {
+                    "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-viande-bovin-fumee"} }
+                }
+            }
           ], sensors: [
-            { id: "sensor-viande-bovin-fumee", name: "Détecteur Fumée CHF Bovins", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"] }
+            { id: "sensor-viande-bovin-fumee", name: "Détecteur Fumée CHF Bovins", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-viande-bovin-secu" }
           ]},
           { id: "zone-viande-chf-volaille", name: "Chambre Congélation Volailles (-18°C)", machines: [
             { id: "machine-chf-volaille1", name: "Unité Congél. Volaille 1", type: "Congélateur", status: "green", availableSensors: [{id: "s-volaille1-temp", name: "Temp Volaille 1", provides:["temp"]}] }
@@ -319,20 +382,25 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"] }
           ]},
           { id: "zone-dattes-conditionnement", name: "Salle de Conditionnement Dattes", machines: [
-            { id: "machine-dattes-emballeuse", name: "Emballeuse Dattes D1", type: "Equipement de Production", status: "green" }
+            { id: "machine-dattes-emballeuse", name: "Emballeuse Dattes D1", type: "Equipement de Production", status: "green", availableSensors: [{id:"s-dattes-emballeuse-compteur", name: "Compteur Emballeuse", provides: ["count"]}] }
           ]}
         ]
       },
       {
         id: "site-entrepot-fruitsleg", name: "Entrepôt Fruits & Légumes", location: "AgroStock - Section F&L", isConceptualSubSite: true, icon: Apple,
         zones: [
-          { id: "zone-fl-reception", name: "Quai de Réception F&L", machines: [], sensors: [
-             { id: "sensor-fl-reception-motion", name: "Détecteur Mouvement Quai F&L (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"] }
+          { id: "zone-fl-reception", name: "Quai de Réception F&L", machines: [{id: "machine-fl-reception-secu", name: "Hub Sécurité Quai F&L", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "19:00", "heure_fin_surveillance": "05:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-fl-reception-motion"} }
+            }}], 
+            sensors: [
+             { id: "sensor-fl-reception-motion", name: "Détecteur Mouvement Quai F&L (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-fl-reception-secu" }
           ]},
           { 
             id: "zone-fl-chf-tropicaux", name: "Chambre Froide Fruits Tropicaux (+8°C)", machines: [
               { 
-                id: "machine-chf-tropic1", name: "Réfrigérateur Tropicaux T1", type: "Frigo", status: "red",
+                id: "machine-chf-tropic1", name: "Réfrigérateur Tropicaux T1", type: "Chambre Froide", status: "red",
                 activeControlInAlert: {
                   controlId: "control-001", controlName: "Contrôle Température Frigo",
                   alertDetails: "Température à 12°C. Seuil max: +10°C.", status: "red",
@@ -356,34 +424,44 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     icon: Tractor,
     zones: [
       { 
-        id: "zone-ferme-champs-ble", name: "Champs de Blé", icon: Wheat, machines: [
-          { id: "machine-ferme-irrigation-ble", name: "Système d'Irrigation Blé IR01", type: "Système d'Irrigation", status: "orange",
+        id: "zone-ferme-champs-lavande", name: "Champs de Lavande", icon: Sprout, machines: [
+          { id: "machine-ferme-irrigation-lavande", name: "Système d'Irrigation Lavande IL01", type: "Système d'Irrigation", status: "orange", icon: SprayCan,
             activeControlInAlert: {
               controlId: "control-soil-moisture", controlName: "Contrôle Humidité du Sol (Irrigation)",
-              alertDetails: "Humidité du sol pour blé à 25%. Seuil Min: 30%. Irrigation nécessaire.", status: "orange",
+              alertDetails: "Humidité du sol pour lavande à 25%. Seuil Min: 30%. Irrigation nécessaire.", status: "orange",
               currentValues: { "soil_moisture_percent": { value: 25, unit: "%" } }, thresholds: { "seuil_min_humidite_sol": 30 },
               controlDescription: "Déclenche une alerte si l'humidité du sol est trop basse.",
               checklist: farmChecklistSoilMoisture
             },
-            availableSensors: [{id: "s-ferme-irrigation-ble-status", name: "Etat Irrigation Blé", provides:["status"]}] // Placeholder for irrigation system status
+            availableSensors: [{id: "s-ferme-irrigation-lavande-status", name: "Etat Irrigation Lavande", provides:["status"]}]
           }
         ], 
         sensors: [
-          { id: "sensor-ferme-sol-ble1", name: "Sonde Humidité Sol - Blé P1", typeModel: "Sonde Humidité Sol AgroSense H1", scope: "zone", status: "orange", provides: ["soil_moisture_percent"] }
+          { id: "sensor-ferme-sol-lavande1", name: "Sonde Humidité Sol - Lavande P1", typeModel: "Sonde Humidité Sol AgroSense H1", scope: "zone", status: "orange", provides: ["soil_moisture_percent"] }
         ]
       },
       { 
         id: "zone-ferme-serres-legumes", name: "Serres Légumes (Tomates, Poivrons)", icon: Apple, machines: [
           { id: "machine-ferme-ventilation-serre1", name: "Ventilation Serre S1", type: "Ventilation Serre", status: "green", availableSensors:[{id: "s-vent-serre1-speed", name: "Vitesse Vent. Serre 1", provides:["speed"]}] },
-          { id: "machine-ferme-chauffage-serre1", name: "Chauffage Serre S1", type: "Chauffage Serre", status: "green", availableSensors:[{id: "s-chauf-serre1-power", name: "Puissance Chauf. Serre 1", provides:["power"]}] }
+          { id: "machine-ferme-chauffage-serre1", name: "Chauffage Serre S1", type: "Chauffage Serre", status: "green", 
+              availableSensors:[{id: "s-chauf-serre1-power", name: "Puissance Chauf. Serre 1", provides:["power"]}, {id: "s-chauf-serre1-temp", name: "Temp. Chauf. Serre 1", provides:["temp_enclos"]}],
+              configuredControls: {
+                  "control-animal-enclosure-temp": {isActive: true, params: { "temp_min_enclos": 15, "temp_max_enclos": 30 }, sensorMappings: {"temp_enclos": "s-chauf-serre1-temp"} }
+              }
+          }
         ], 
         sensors: [
           { id: "sensor-ferme-ambiance-serre1", name: "Ambiance Serre S1 (Temp/Hum)", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity", "temp_enclos"] }
         ]
       },
       { 
-        id: "zone-ferme-bergerie-moutons", name: "Bergerie Moutons", icon: Sheep, machines: [
-          { id: "machine-ferme-ventilation-bergerie", name: "Ventilation Bergerie B1", type: "Ventilation Enclos", status: "green" },
+        id: "zone-ferme-bergerie-moutons", name: "Bergerie Moutons", icon: PawPrint, machines: [
+          { id: "machine-ferme-ventilation-bergerie", name: "Ventilation Bergerie B1", type: "Ventilation Enclos", status: "green", 
+            availableSensors:[{id: "s-vent-bergerie-speed", name: "Vitesse Vent. Bergerie B1", provides:["speed"]}, {id: "s-vent-bergerie-temp", name: "Temp. Vent. Bergerie B1", provides:["temp_enclos"]}],
+            configuredControls: {
+                 "control-animal-enclosure-temp": {isActive: true, params: { "temp_min_enclos": 10, "temp_max_enclos": 28 }, sensorMappings: {"temp_enclos": "s-vent-bergerie-temp"} }
+            }
+          },
           { id: "machine-ferme-abreuvoir-moutons", name: "Abreuvoir Automatique Moutons AM1", type: "Abreuvoir Automatisé", status: "red",
              activeControlInAlert: {
               controlId: "control-water-level", controlName: "Contrôle Niveau Eau Abreuvoir",
@@ -400,7 +478,13 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       },
       { 
         id: "zone-ferme-hangar-materiel", name: "Hangar Matériel Agricole", icon: Warehouse, machines: [
-          { id: "machine-ferme-secu-hangar", name: "Hub Sécurité Hangar Ferme", type: "Hub Sécurité", status: "green"}
+          { id: "machine-ferme-secu-hangar", name: "Hub Sécurité Ferme", type: "Hub Sécurité", status: "green", 
+            availableSensors: [],
+            configuredControls: {
+                "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "21:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-ferme-motion-hangar"} },
+                "control-smoke-alarm": { isActive: true, params: {}, sensorMappings: {"smoke_detected": "sensor-ferme-fumee-hangar"} }
+            }
+          }
         ], 
         sensors: [
           { id: "sensor-ferme-motion-hangar", name: "Détecteur Mouvement Hangar", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-ferme-secu-hangar"},
@@ -409,7 +493,6 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       }
     ]
   },
-  // Serveur Pi (PC type) example, can be part of any site/zone
    {
     id: "site-pi-servers-demo",
     name: "Serveurs Pi Capnio (Exemples)",
@@ -461,8 +544,9 @@ export const getZoneOverallStatus = (zone: Zone): Status => {
     else if (m.status === 'orange') hasOrange = true;
   });
   (zone.sensors || []).forEach(s => {
-    if (s.status === 'red') hasRed = true;
-    else if (s.status === 'orange') hasOrange = true;
+    const sensorAlertStatus = s.data?.activeControlInAlert?.status;
+    if (sensorAlertStatus === 'red' || s.status === 'red') hasRed = true;
+    else if (sensorAlertStatus === 'orange' || s.status === 'orange') hasOrange = true;
   });
 
   if (zone.subZones) {
@@ -527,15 +611,17 @@ export const getStatusText = (status: Status): string => {
 };
 
 export const getMachineIcon = (type: string): LucideIcon => {
-    if (type.toLowerCase().includes("frigo") || type.toLowerCase().includes("congélateur")) return Snowflake;
+    if (type.toLowerCase().includes("frigo") || type.toLowerCase().includes("congélateur") || type.toLowerCase().includes("chambre froide") || type.toLowerCase().includes("vitrine réfrigérée")) return Snowflake;
     if (type.toLowerCase().includes("four")) return Flame; 
     if (type.toLowerCase().includes("électrique") || type.toLowerCase().includes("elec")) return Zap;
     if (type.toLowerCase().includes("compresseur") || type.toLowerCase().includes("pompe") || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
     if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("pi") || type.toLowerCase().includes("hub sécurité")) return Server;
     if (type.toLowerCase().includes("camion")) return Truck;
     if (type.toLowerCase().includes("tracteur")) return Tractor;
-    if (type.toLowerCase().includes("irrigation")) return Spray;
+    if (type.toLowerCase().includes("irrigation")) return SprayCan;
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
+    if (type.toLowerCase().includes("bergerie")) return PawPrint;
+    if (type.toLowerCase().includes("serre")) return Apple; 
     return HardDrive; 
 };
 
