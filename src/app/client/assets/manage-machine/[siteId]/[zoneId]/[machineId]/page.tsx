@@ -9,31 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status } from "@/app/client/sites/[...sitePath]/page"; // Import full structure for finding machine
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter } from "@/app/client/sites/[...sitePath]/page"; // Import full structure for finding machine
 import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 // --- Data Structures (Simulated for this page) ---
-
-// Simplified Machine Type for this page's context
-interface Machine extends FullMachineType {
-  availableSensors?: Array<{ id: string; name: string; provides: string[] }>; // e.g., provides: ['temp', 'humidity']
-  configuredControls?: Record<string, ConfiguredControl>;
-}
-
-interface ConfiguredControl {
-  isActive: boolean;
-  params: Record<string, any>; // e.g., { seuil_min: 5, seuil_max: 30 }
-  sensorMappings: Record<string, string>; // e.g., { temp: 'sensor-id-123', humidity: 'sensor-id-456' }
-}
-
-interface ControlParameter {
-  id: string;
-  label: string;
-  type: 'number' | 'text' | 'boolean'; // Add more types as needed
-  defaultValue?: any;
-}
+// Re-using ConfiguredControl from sites/[...sitePath]/page.tsx
+// We need AdminControl definition here or from a shared place
 
 interface AdminControl {
   id: string;
@@ -44,11 +27,11 @@ interface AdminControl {
   formuleDeCalcul?: string;
   formuleDeVerification: string;
   description: string;
-  expectedParams?: ControlParameter[];
+  expectedParams?: SiteControlParameter[]; // Using the one from sitePath for consistency
 }
 
-// Dummy Admin Defined Controls (copied and adapted from admin section)
-const DUMMY_ADMIN_CONTROLS: AdminControl[] = [
+// Dummy Admin Defined Controls (copied and adapted from admin section or similar)
+const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
     nomDuControle: "Contrôle Température Frigo",
@@ -65,9 +48,9 @@ const DUMMY_ADMIN_CONTROLS: AdminControl[] = [
   {
     id: "control-002",
     nomDuControle: "Contrôle Consommation Électrique Moteur",
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur"],
-    typesDeCapteursNecessaires: ["Tension", "Courant"],
-    variablesUtilisees: ["tension", "courant", "conso"],
+    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC"],
+    typesDeCapteursNecessaires: ["Tension", "Courant"], // These are labels, mapping to variablesUtilisees
+    variablesUtilisees: ["tension", "courant", "conso"], // System variable names
     formuleDeCalcul: "conso = sensor['tension'].value * sensor['courant'].value",
     formuleDeVerification: "conso <= machine.params['seuil_max_conso']",
     description: "Calcule et vérifie la consommation électrique des moteurs.",
@@ -87,54 +70,73 @@ const DUMMY_ADMIN_CONTROLS: AdminControl[] = [
       { id: 'seuil_min_pression', label: 'Seuil Pression Huile Minimum (bar)', type: 'number', defaultValue: 0.5 },
     ]
   },
+   {
+    id: "control-srv-temp", // Control for Servers
+    nomDuControle: "Surveillance Température Serveur",
+    typesDeMachinesConcernees: ["Serveur", "PC"],
+    typesDeCapteursNecessaires: ["Température Serveur"], // Label for sensor type
+    variablesUtilisees: ["temp_srv"], // System variable name
+    formuleDeVerification: "sensor['temp_srv'].value <= machine.params['seuil_max_temp_srv']",
+    description: "Surveille la température interne du serveur pour éviter la surchauffe.",
+    expectedParams: [
+      { id: 'seuil_max_temp_srv', label: 'Seuil Température Max Serveur (°C)', type: 'number', defaultValue: 75 },
+    ]
+  },
 ];
 
 // Function to find a machine by its ID within the full sites data structure
-function findMachineFromGlobalData(siteId: string, zoneId: string, machineId: string): Machine | undefined {
-    const site = DUMMY_CLIENT_SITES_DATA.find(s => s.id === siteId || s.subSites?.some(sub => sub.id === siteId)); // Check top-level or sub-sites
-    let targetSite = site;
-    if (!targetSite && site?.subSites) {
-        targetSite = site.subSites.find(s => s.id === siteId);
-    }
+function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
+    // Simplified finding logic for this flat structure example
+    // In a real app with nested sites/zones, this would be recursive
+    let targetSite: Site | undefined;
+
+    const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
+        for (const s of sitesArr) {
+            if (s.id === sId) return s;
+            if (s.subSites) {
+                const foundInSub = findInSitesArray(s.subSites, sId);
+                if (foundInSub) return foundInSub;
+            }
+        }
+        return undefined;
+    };
+    targetSite = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
+
     if (!targetSite) return undefined;
 
     let targetZone: FullZoneType | undefined;
-    function findZoneRecursive(zones: FullZoneType[], id: string): FullZoneType | undefined {
+    function findZoneRecursive(zones: FullZoneType[], zId: string): FullZoneType | undefined {
         for (const z of zones) {
-            if (z.id === id) return z;
+            if (z.id === zId) return z;
             if (z.subZones) {
-                const foundInSub = findZoneRecursive(z.subZones, id);
+                const foundInSub = findZoneRecursive(z.subZones, zId);
                 if (foundInSub) return foundInSub;
             }
         }
         return undefined;
     }
-    targetZone = findZoneRecursive(targetSite.zones, zoneId);
+    targetZone = findZoneRecursive(targetSite.zones, zoneIdPath);
     if (!targetZone) return undefined;
 
-    const machine = targetZone.machines.find(m => m.id === machineId);
-    
-    // Augment machine with simulated available sensors and default configuredControls if not present
+    const machine = targetZone.machines.find(m => m.id === machineIdPath);
+
     if (machine) {
-        const augmentedMachine: Machine = { ...machine };
+        const augmentedMachine: FullMachineType = { ...machine };
         if (!augmentedMachine.availableSensors) {
-            // Simulate some available sensors based on machine type
-            if (augmentedMachine.type === "Frigo" || augmentedMachine.type === "Congélateur") {
-                augmentedMachine.availableSensors = [
-                    { id: `${machine.id}-temp-sensor`, name: `Sonde Température ${machine.name}`, provides: ["temp"] },
-                    { id: `${machine.id}-door-sensor`, name: `Contacteur Porte ${machine.name}`, provides: ["door_status"] },
-                ];
-            } else if (augmentedMachine.type === "Compresseur") {
-                 augmentedMachine.availableSensors = [
-                    { id: `${machine.id}-pressure-sensor`, name: `Sonde Pression ${machine.name}`, provides: ["pression_huile", "pressure"] },
-                    { id: `${machine.id}-current-sensor`, name: `Capteur Courant ${machine.name}`, provides: ["courant"] },
-                    { id: `${machine.id}-voltage-sensor`, name: `Capteur Tension ${machine.name}`, provides: ["tension"] },
-                ];
-            } else {
-                 augmentedMachine.availableSensors = [
-                    { id: `${machine.id}-generic-sensor`, name: `Capteur Générique ${machine.name}`, provides: ["value"] },
-                 ];
-            }
+            // Simulate some available sensors based on machine type or zone sensors
+            // For simplicity, we'll use what's already defined in DUMMY_CLIENT_SITES_DATA if present,
+            // or a generic one otherwise.
+            const zoneSensors = targetZone?.sensors || [];
+            const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
+            const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
+
+            augmentedMachine.availableSensors = [
+                ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: s.provides || []})),
+                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: s.provides || []})) // Mark ambient sensors
+            ];
+             if (augmentedMachine.availableSensors.length === 0) {
+                 augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
+             }
         }
         if (!augmentedMachine.configuredControls) {
             augmentedMachine.configuredControls = {};
@@ -154,7 +156,7 @@ export default function ManageMachineControlsPage() {
   const zoneId = params.zoneId as string;
   const machineId = params.machineId as string;
 
-  const [machine, setMachine] = useState<Machine | null>(null);
+  const [machine, setMachine] = useState<FullMachineType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [configurations, setConfigurations] = useState<Record<string, ConfiguredControl>>({});
@@ -170,16 +172,14 @@ export default function ManageMachineControlsPage() {
 
     if (foundMachine) {
       setMachine(foundMachine);
-      // Initialize configurations from machine's existing configuredControls or defaults
       const initialConfigs: Record<string, ConfiguredControl> = {};
-      DUMMY_ADMIN_CONTROLS.forEach(control => {
+      DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.forEach(control => {
         const existingConfig = foundMachine.configuredControls?.[control.id];
         initialConfigs[control.id] = {
           isActive: existingConfig?.isActive || false,
-          params: { ...existingConfig?.params }, // Initialize with existing or empty
-          sensorMappings: { ...existingConfig?.sensorMappings }, // Initialize with existing or empty
+          params: { ...(existingConfig?.params || {}) },
+          sensorMappings: { ...(existingConfig?.sensorMappings || {}) },
         };
-        // Pre-fill default param values if not set
         control.expectedParams?.forEach(param => {
           if (initialConfigs[control.id].params[param.id] === undefined && param.defaultValue !== undefined) {
             initialConfigs[control.id].params[param.id] = param.defaultValue;
@@ -198,17 +198,17 @@ export default function ManageMachineControlsPage() {
     setConfigurations(prev => ({
       ...prev,
       [controlId]: {
-        ...(prev[controlId] || { params: {}, sensorMappings: {} }),
+        ...(prev[controlId] || { params: {}, sensorMappings: {} }), // Ensure object exists
         isActive,
       },
     }));
   };
 
-  const handleParamChange = (controlId: string, paramId: string, value: any, type: ControlParameter['type']) => {
+  const handleParamChange = (controlId: string, paramId: string, value: any, type: SiteControlParameter['type']) => {
     let processedValue = value;
     if (type === 'number') {
       processedValue = parseFloat(value);
-      if (isNaN(processedValue)) processedValue = ''; // Or some default/error state
+      if (isNaN(processedValue)) processedValue = '';
     }
     setConfigurations(prev => ({
       ...prev,
@@ -222,14 +222,14 @@ export default function ManageMachineControlsPage() {
     }));
   };
 
-  const handleSensorMappingChange = (controlId: string, variableId: string, sensorId: string) => {
+  const handleSensorMappingChange = (controlId: string, variableId: string, sensorInstanceId: string) => {
     setConfigurations(prev => ({
       ...prev,
       [controlId]: {
         ...(prev[controlId]!),
         sensorMappings: {
           ...(prev[controlId]!.sensorMappings),
-          [variableId]: sensorId === "__NONE__" ? "" : sensorId,
+          [variableId]: sensorInstanceId === "__NONE__" ? "" : sensorInstanceId,
         },
       },
     }));
@@ -237,13 +237,13 @@ export default function ManageMachineControlsPage() {
 
   const handleSaveConfiguration = () => {
     console.log("Saving machine control configurations:", { machineId, configurations });
-    // Here you would typically update DUMMY_CLIENT_SITES_DATA or send to a backend
-    // For simulation, we just log it.
     toast({
       title: "Configuration Sauvegardée",
       description: `Les configurations des contrôles pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
-    router.push(`/client/assets/manage/${siteId}`); // Navigate back to site management page
+    // In a real app, update DUMMY_CLIENT_SITES_DATA or send to backend.
+    // Then potentially navigate back.
+    router.push(`/client/assets/manage/${siteId}`);
   };
 
   if (isLoading) {
@@ -264,18 +264,18 @@ export default function ManageMachineControlsPage() {
     );
   }
 
-  const applicableControls = DUMMY_ADMIN_CONTROLS.filter(control =>
+  const applicableControls = DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.filter(control =>
     control.typesDeMachinesConcernees.length === 0 || control.typesDeMachinesConcernees.includes(machine.type)
   );
-  
-  const getMachineIcon = (type: string) => {
+
+  const getMachineIconDisplay = (type: string) => {
     if (type === "Frigo" || type === "Congélateur") return Thermometer;
     if (type === "Armoire Électrique") return Zap;
     if (type === "Compresseur" || type === "Pompe Hydraulique" || type === "HVAC") return Wind;
-    if (type === "Serveur") return Server;
+    if (type.toLowerCase().includes("serveur") || type === "PC") return Server;
     return HardDrive;
   };
-  const MachineIcon = getMachineIcon(machine.type);
+  const MachineIconToDisplay = getMachineIconDisplay(machine.type);
 
 
   return (
@@ -283,14 +283,14 @@ export default function ManageMachineControlsPage() {
       <div className="container mx-auto py-8">
         <div className="mb-6">
           <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}`)}>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion du site {/* Changed from "Retour à la zone" */}
+            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion du site
           </Button>
         </div>
 
         <Card className="shadow-xl">
           <CardHeader className="border-b">
             <div className="flex items-center gap-3">
-                <MachineIcon className="h-8 w-8 text-primary" />
+                <MachineIconToDisplay className="h-8 w-8 text-primary" />
                 <div>
                     <CardTitle className="text-3xl">Gérer: {machine.name}</CardTitle>
                     <CardDescription>Type: {machine.type} | Site: {siteId} | Zone: {zoneId}</CardDescription>
@@ -330,17 +330,16 @@ export default function ManageMachineControlsPage() {
                     </CardHeader>
                     {config.isActive && (
                       <CardContent className="space-y-4 pt-2">
-                        {/* Paramètres du Contrôle */}
                         {control.expectedParams && control.expectedParams.length > 0 && (
                           <div className="space-y-3 p-3 border rounded-md bg-background">
-                            <h4 className="text-md font-semibold text-muted-foreground">Paramètres Spécifiques :</h4>
+                            <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
                             {control.expectedParams.map(param => (
                               <div key={param.id} className="space-y-1">
                                 <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
                                 <Input
                                   id={`${control.id}-${param.id}`}
                                   type={param.type === 'number' ? 'number' : 'text'}
-                                  value={config.params[param.id] || ''}
+                                  value={config.params[param.id] ?? ''}
                                   onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
                                   placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}`: ""}
                                 />
@@ -349,20 +348,16 @@ export default function ManageMachineControlsPage() {
                           </div>
                         )}
 
-                        {/* Mappage des Capteurs */}
                         {control.variablesUtilisees && control.variablesUtilisees.length > 0 && (
                            <div className="space-y-3 p-3 border rounded-md bg-background">
                             <h4 className="text-md font-semibold text-muted-foreground">Mappage des Capteurs Requis :</h4>
                             {control.variablesUtilisees.map(variableId => {
-                              // Find the label for this system variable (e.g., "Température" for "temp")
-                              // This requires a mapping from system variable ID to a human-readable label
-                              // For now, we'll just use the ID. Ideally, typesDeCapteursNecessaires should be more structured.
                               const variableLabel = control.typesDeCapteursNecessaires.find(
-                                tc => tc.toLowerCase().includes(variableId.split('_')[0]) // crude match
+                                tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0])
                               ) || variableId;
 
                               const compatibleSensors = machine?.availableSensors?.filter(sensor =>
-                                sensor.provides.includes(variableId)
+                                sensor.provides?.includes(variableId)
                               ) || [];
 
                               return (
@@ -384,11 +379,11 @@ export default function ManageMachineControlsPage() {
                                       {compatibleSensors.length > 0 ? (
                                         compatibleSensors.map(sensor => (
                                           <SelectItem key={sensor.id} value={sensor.id}>
-                                            {sensor.name} (Fournit: {sensor.provides.join(', ')})
+                                            {sensor.name} (Fournit: {sensor.provides?.join(', ') || 'N/A'})
                                           </SelectItem>
                                         ))
                                       ) : (
-                                        <SelectItem value="__DISABLED__" disabled>Aucun capteur compatible disponible</SelectItem>
+                                        <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
                                       )}
                                     </SelectContent>
                                   </Select>
@@ -405,9 +400,9 @@ export default function ManageMachineControlsPage() {
             </div>
 
             <div className="flex justify-end pt-8 mt-6 border-t">
-              <Button size="lg" onClick={handleSaveConfiguration}>
+              <Button size="lg" onClick={handleSaveConfiguration} disabled={isLoading}>
                 <Save className="mr-2 h-5 w-5" />
-                Sauvegarder la Configuration des Contrôles
+                Sauvegarder la Configuration
               </Button>
             </div>
           </CardContent>
@@ -416,5 +411,3 @@ export default function ManageMachineControlsPage() {
     </AppLayout>
   );
 }
-
-    

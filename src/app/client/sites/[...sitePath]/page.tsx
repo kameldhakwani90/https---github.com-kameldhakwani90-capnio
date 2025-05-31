@@ -31,7 +31,7 @@ export interface HistoricalDataPoint {
 export interface ChecklistItem {
   id: string;
   label: string;
-  checked?: boolean; 
+  checked?: boolean;
 }
 
 export interface ActiveControlInAlert {
@@ -55,6 +55,21 @@ export interface Sensor {
   piServerId?: string;
   affectedMachineIds?: string[];
   status?: Status; // Optional: sensor status
+  provides?: string[]; // e.g. ["temp", "humidity"] - what this sensor instance reports
+}
+
+// For Machine Control Configuration
+export interface ControlParameter {
+  id: string;
+  label: string;
+  type: 'number' | 'text' | 'boolean';
+  defaultValue?: any;
+}
+
+export interface ConfiguredControl {
+  isActive: boolean;
+  params: Record<string, any>; // e.g., { seuil_min: 5, seuil_max: 30 }
+  sensorMappings: Record<string, string>; // e.g., { temp: 'sensor-id-123', humidity: 'sensor-id-456' }
 }
 
 export interface Machine {
@@ -64,8 +79,9 @@ export interface Machine {
   status: Status;
   icon?: LucideIcon;
   activeControlInAlert?: ActiveControlInAlert;
-  // Sensors directly attached to this machine could also be listed here if needed
-  // sensors?: Sensor[]; 
+  // For machine control configuration page
+  availableSensors?: Array<{ id: string; name: string; provides: string[] }>; // Sensors usable by this machine
+  configuredControls?: Record<string, ConfiguredControl>; // Key is controlId
 }
 
 export interface Zone {
@@ -96,16 +112,35 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         id: "zone-cc-admin",
         name: "Bâtiment Administratif Central",
         machines: [
-          { id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green", icon: Server },
-          { id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind },
+          {
+            id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green", icon: Server,
+            availableSensors: [
+                { id: "srv-temp-interne", name: "Sonde Température Interne Serveur", provides: ["temp", "server_temp"] },
+            ],
+            configuredControls: {
+                "control-srv-temp": { // Example of a pre-configured control
+                    isActive: true,
+                    params: { seuil_max_temp_srv: 70 },
+                    sensorMappings: { temp_srv: "srv-temp-interne"}
+                }
+            }
+          },
+          {
+            id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind,
+            availableSensors: [
+                { id: "hvac-main-current", name: "Capteur Courant HVAC Principal", provides: ["courant", "current"] },
+                { id: "hvac-air-flow", name: "Capteur Débit Air HVAC", provides: ["flow_rate"] },
+            ],
+          },
         ],
-        sensors: [ // Example ambient sensor added here
-            { 
-                id: "sensor-ambiant-cc-admin-temp", 
-                name: "Température Ambiante Hall", 
-                typeModel: "Sonde Ambiante THL v2.1", 
-                scope: "zone", 
-                status: "green" 
+        sensors: [
+            {
+                id: "sensor-ambiant-cc-admin-temp",
+                name: "Température Ambiante Hall",
+                typeModel: "Sonde Ambiante THL v2.1",
+                scope: "zone",
+                status: "green",
+                provides: ["temp", "humidity"]
             },
             {
                 id: "sensor-hvac-current",
@@ -113,10 +148,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 typeModel: "Capteur de Courant Monophasé CM-100",
                 scope: "machine",
                 affectedMachineIds: ["machine-cc-admin-hvac"],
-                status: "green"
+                status: "green",
+                provides: ["current"]
             }
         ],
-        subZones: [ 
+        subZones: [
           {
             id: "subzone-cc-admin-bureau101",
             name: "Bureau 101",
@@ -128,7 +164,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             id: "subzone-cc-admin-salle-reunion",
             name: "Salle de Réunion Alpha",
             machines: [
-              { id: "machine-projecteur-alpha", name: "Projecteur Salle Alpha", type: "Projecteur", status: "orange", icon: Settings2, 
+              { id: "machine-projecteur-alpha", name: "Projecteur Salle Alpha", type: "Projecteur", status: "orange", icon: Settings2,
                 activeControlInAlert: {
                     controlId: "control-proj-temp",
                     controlName: "Surchauffe Projecteur",
@@ -191,6 +227,16 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 type: "Frigo",
                 status: "red",
                 icon: Thermometer,
+                availableSensors: [
+                    { id: "frigo-f01-temp", name: "Sonde Température Frigo F-01", provides: ["temp"] }
+                ],
+                configuredControls: {
+                    "control-001": { // Matches DUMMY_ADMIN_CONTROLS id
+                        isActive: true,
+                        params: { seuil_min: -2, seuil_max: 5 },
+                        sensorMappings: { temp: "frigo-f01-temp" }
+                    }
+                },
                 activeControlInAlert: {
                   controlId: "control-001",
                   controlName: "Contrôle Température Frigo",
@@ -263,6 +309,9 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             type: "Frigo",
             status: "orange",
             icon: Thermometer,
+            availableSensors: [
+                { id: "frigo-z2-temp", name: "Sonde Température Congélateur Z2", provides: ["temp", "temp_cong"] }
+            ],
             activeControlInAlert: {
               controlId: "control-001b",
               controlName: "Contrôle Température Congélateur",
@@ -291,7 +340,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
 
 // Helper functions for status and display
 const getCombinedStatus = (statuses: Status[]): Status => {
-  if (statuses.length === 0) return 'green'; 
+  if (statuses.length === 0) return 'green';
   if (statuses.includes('red')) return 'red';
   if (statuses.includes('orange')) return 'orange';
   return 'green';
@@ -332,7 +381,7 @@ export const getStatusText = (status: Status): string => {
 
 interface FoundSiteInfo {
   site: Site;
-  path: { id: string; name: string }[]; 
+  path: { id: string; name: string }[];
 }
 
 const findSiteByPath = (
@@ -350,7 +399,7 @@ const findSiteByPath = (
       breadcrumbPath.push({ id: found.id, name: found.name });
       currentSearchSpace = found.subSites || [];
     } else {
-      return undefined; 
+      return undefined;
     }
   }
   return currentSite ? { site: currentSite, path: breadcrumbPath } : undefined;
@@ -444,9 +493,9 @@ const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId,
           <div className="mt-2 space-y-1 border-l-2 border-primary/20 pl-2">
              <p className="text-xs font-semibold text-muted-foreground mb-1">Sous-zones :</p>
             {zone.subZones.map(subZone => (
-              <SiteDetailZoneItem 
-                key={subZone.id} 
-                zone={subZone} 
+              <SiteDetailZoneItem
+                key={subZone.id}
+                zone={subZone}
                 parentId={zone.id} // Parent ID for sub-zone is the ID of its parent zone
                 onMachineClick={onMachineClick}
                 level={level + 1}
@@ -461,7 +510,7 @@ const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId,
 
 const SubSiteCard: React.FC<{ site: Site; currentPath: string[] }> = ({ site, currentPath }) => {
   const siteStatus = getSiteOverallStatus(site);
-  const SiteIcon = site.isConceptualSubSite ? Building : Home; 
+  const SiteIcon = site.isConceptualSubSite ? Building : Home;
   const href = `/client/sites/${[...currentPath, site.id].join('/')}`;
 
   return (
@@ -504,7 +553,7 @@ export default function SiteDetailPage() {
   const { sitePath } = params as { sitePath: string[] };
 
   const [currentSiteInfo, setCurrentSiteInfo] = React.useState<FoundSiteInfo | null | undefined>(undefined);
-  
+
   React.useEffect(() => {
     if (sitePath && Array.isArray(sitePath) && sitePath.length > 0) {
       const found = findSiteByPath(sitePath, DUMMY_CLIENT_SITES_DATA);
@@ -549,7 +598,7 @@ export default function SiteDetailPage() {
     const pathSegments = breadcrumbPath.slice(0, index + 1).map(p => p.id);
     return `/client/sites/${pathSegments.join('/')}`;
   };
-  
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -597,11 +646,11 @@ export default function SiteDetailPage() {
                 <h2 className="text-lg font-semibold mb-2 text-foreground/90">Zones Directes</h2>
                 <Accordion type="multiple" className="w-full space-y-1 bg-muted/30 p-2 rounded-lg">
                   {currentSite.zones.map((zone) => (
-                    <SiteDetailZoneItem 
-                      key={zone.id} 
-                      zone={zone} 
-                      parentId={currentSite.id} 
-                      onMachineClick={handleViewMachineAlertDetails} 
+                    <SiteDetailZoneItem
+                      key={zone.id}
+                      zone={zone}
+                      parentId={currentSite.id}
+                      onMachineClick={handleViewMachineAlertDetails}
                     />
                   ))}
                 </Accordion>
@@ -631,5 +680,3 @@ export default function SiteDetailPage() {
     </AppLayout>
   );
 }
-
-    
