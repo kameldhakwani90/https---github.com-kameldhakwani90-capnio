@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link"; // Import Link
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/app/client/sites/[...sitePath]/page";
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, type ChecklistItem } from "@/app/client/sites/[...sitePath]/page"; // Added ChecklistItem
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react"; // Added ChevronRight
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -33,8 +34,10 @@ interface AdminControl {
   formuleDeVerification: string;
   description: string;
   expectedParams?: SiteControlParameter[]; 
+  checklist?: ChecklistItem[]; // Added checklist
 }
 
+// DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE with checklists
 const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
@@ -47,6 +50,11 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     expectedParams: [
       { id: 'seuil_min', label: 'Seuil Température Minimum (°C)', type: 'number', defaultValue: 0 },
       { id: 'seuil_max', label: 'Seuil Température Maximum (°C)', type: 'number', defaultValue: 5 },
+    ],
+    checklist: [
+        { id: 'chk-frigo-1', label: "Vérifier que la porte du frigo est bien fermée et étanche." },
+        { id: 'chk-frigo-2', label: "Nettoyer le condenseur de toute poussière ou obstruction." },
+        { id: 'chk-frigo-3', label: "S'assurer que la ventilation autour du frigo n'est pas bloquée." },
     ]
   },
   {
@@ -60,6 +68,10 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     description: "Calcule et vérifie la consommation électrique des moteurs.",
     expectedParams: [
       { id: 'seuil_max_conso', label: 'Seuil Consommation Max (W)', type: 'number', defaultValue: 2000 },
+    ],
+    checklist: [
+        { id: 'chk-moteur-1', label: "Inspecter visuellement le moteur pour des signes de surchauffe ou de dommage." },
+        { id: 'chk-moteur-2', label: "Vérifier que les connexions électriques sont bien serrées et non corrodées." },
     ]
   },
   {
@@ -72,6 +84,10 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     description: "Alerte si la pression d'huile du compresseur est trop basse.",
     expectedParams: [
       { id: 'seuil_min_pression', label: 'Seuil Pression Huile Minimum (bar)', type: 'number', defaultValue: 0.5 },
+    ],
+    checklist: [
+        { id: 'chk-comp-1', label: "Vérifier le niveau d'huile du compresseur." },
+        { id: 'chk-comp-2', label: "Rechercher des fuites d'huile potentielles." },
     ]
   },
    {
@@ -84,6 +100,11 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     description: "Surveille la température interne du serveur pour éviter la surchauffe.",
     expectedParams: [
       { id: 'seuil_max_temp_srv', label: 'Seuil Température Max Serveur (°C)', type: 'number', defaultValue: 75 },
+    ],
+    checklist: [
+        { id: 'chk-srv-1', label: "S'assurer que les ventilateurs du serveur fonctionnent correctement." },
+        { id: 'chk-srv-2', label: "Vérifier que les entrées et sorties d'air du serveur ne sont pas obstruées." },
+        { id: 'chk-srv-3', label: "Contrôler la température ambiante de la salle des serveurs." },
     ]
   },
 ];
@@ -135,17 +156,18 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         if (!augmentedMachine.configuredControls) {
             augmentedMachine.configuredControls = {};
         }
-        // Simulate some historical data if not present in activeControlInAlert for demo
+        
         if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
             augmentedMachine.activeControlInAlert.historicalData = [
-                { name: 'T-4', value: Math.random() * 10 + 65 },
-                { name: 'T-3', value: Math.random() * 10 + 66 },
-                { name: 'T-2', value: Math.random() * 10 + 67 },
-                { name: 'T-1', value: Math.random() * 10 + 68 },
-                { name: 'Maintenant', value: Math.random() * 10 + 70 },
+                { name: 'T-4', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 65) - 5 },
+                { name: 'T-3', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 66) - 4 },
+                { name: 'T-2', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 67) - 3 },
+                { name: 'T-1', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 68) - 2 },
+                { name: 'Maintenant', value: parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 70 },
             ];
-            augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || "Valeur Simulée";
+            augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(augmentedMachine.activeControlInAlert.currentValues || {})[0] || "Valeur Simulée";
         }
+
 
         return augmentedMachine;
     }
@@ -244,6 +266,8 @@ export default function ManageMachinePage() {
       title: "Configuration Sauvegardée",
       description: `Les configurations pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
+    // Here you would typically update DUMMY_CLIENT_SITES_DATA or send to a backend
+    // For now, just a log and toast
   };
 
   const applicableAdminControls = useMemo(() => {
@@ -314,7 +338,7 @@ export default function ManageMachinePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <Tabs defaultValue="config" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:w-[calc(50%-0.25rem)]"> {/* Adjusted width for 2 tabs */}
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-2"> 
                 <TabsTrigger value="config">
                   <Settings2 className="mr-2 h-4 w-4" /> Configuration des Contrôles
                 </TabsTrigger>
@@ -371,9 +395,14 @@ export default function ManageMachinePage() {
                                   const variableLabel = control.typesDeCapteursNecessaires.find(
                                     tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0]) || tcLabel.toLowerCase().includes(variableId)
                                   ) || variableId;
-                                  const compatibleSensors = machine?.availableSensors?.filter(sensor =>
-                                    sensor.provides?.includes(variableId)
-                                  ) || [];
+                                  
+                                  const compatibleSensors = machine?.availableSensors?.filter(sensor => {
+                                    // A sensor is compatible if it provides AT LEAST ONE of the variable types.
+                                    // Example: variableId = "temp", sensor.provides = ["temp", "humidity"] -> compatible
+                                    // Example: variableId = "temp_cpu", sensor.provides = ["temp_cpu"] -> compatible
+                                    return sensor.provides?.some(p => p.toLowerCase() === variableId.toLowerCase());
+                                  }) || [];
+
                                   return (
                                     <div key={variableId} className="space-y-1">
                                       <Label htmlFor={`${control.id}-map-${variableId}`}>
@@ -398,6 +427,13 @@ export default function ManageMachinePage() {
                                             ))
                                           ) : (
                                             <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
+                                          )}
+                                           {machine?.availableSensors && machine.availableSensors.filter(s => !compatibleSensors.includes(s)).length > 0 && (
+                                              machine.availableSensors.filter(s => !compatibleSensors.includes(s)).map(sensor => (
+                                                <SelectItem key={sensor.id} value={sensor.id} disabled>
+                                                  {sensor.name} (Non compatible: {sensor.provides?.join(', ') || 'N/A'})
+                                                </SelectItem>
+                                              ))
                                           )}
                                         </SelectContent>
                                       </Select>
@@ -453,16 +489,21 @@ export default function ManageMachinePage() {
                             : <CheckCircle2 className="h-4 w-4 text-green-500" />;
 
                           return (
-                            <div key={control.id} className="p-3 border rounded-md bg-background/50 flex justify-between items-center">
-                              <div>
-                                <p className="font-medium">{control.nomDuControle}</p>
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    {controlStatusIcon} {controlStatusText}
+                             <Link
+                                key={control.id}
+                                href={`/client/machine-control-monitoring/${siteId}/${zoneId}/${machineId}/${control.id}`}
+                                className="block p-3 border rounded-md bg-background/50 hover:bg-muted/50 transition-colors cursor-pointer"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium">{control.nomDuControle}</p>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        {controlStatusIcon} {controlStatusText}
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                 </div>
-                              </div>
-                              {/* Placeholder for future "View Control Details" link */}
-                              {/* <Button variant="link" size="sm">Voir suivi</Button> */}
-                            </div>
+                              </Link>
                           );
                         })}
                       </div>
@@ -520,3 +561,6 @@ export default function ManageMachinePage() {
     </AppLayout>
   );
 }
+
+
+    
