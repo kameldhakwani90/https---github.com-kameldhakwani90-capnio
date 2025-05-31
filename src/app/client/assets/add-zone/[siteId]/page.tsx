@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DUMMY_CLIENT_SITES_DATA, type Site } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -28,7 +28,6 @@ export default function AddZoneToSitePage() {
       setIsLoading(false);
       return;
     }
-    // Simulate fetching site data
     let foundSite: Site | undefined;
     function findSite(sites: Site[], id: string): Site | undefined {
         for (const s of sites) {
@@ -54,10 +53,9 @@ export default function AddZoneToSitePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Simulate adding zone
     console.log("Adding zone to site:", siteId, { name: zoneName });
     alert(`Zone "${zoneName}" added to site "${site?.name}" (simulated).`);
-    router.back(); // Go back to the site management page
+    router.back(); 
   };
   
   if (isLoading) {
@@ -103,7 +101,6 @@ export default function AddZoneToSitePage() {
                   required 
                 />
               </div>
-              {/* Add more fields for zone details as needed */}
               <div className="flex justify-end pt-4">
                 <Button type="submit">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Zone
@@ -116,5 +113,3 @@ export default function AddZoneToSitePage() {
     </AppLayout>
   );
 }
-
-    

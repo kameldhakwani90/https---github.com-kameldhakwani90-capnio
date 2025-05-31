@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
 
-// Re-using AdminControl interface and dummy data from ManageMachinePage for consistency
-// In a real app, this would come from a shared service/store
 interface AdminControlDefinition {
   id: string;
   nomDuControle: string;
@@ -162,10 +160,7 @@ const DUMMY_ADMIN_CONTROLS_DEFINITIONS: AdminControlDefinition[] = [
   }
 ];
 
-
-// Helper to find a machine (can be moved to a shared util)
 function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
-    // ... (same implementation as in ManageMachinePage)
     let targetSite: Site | undefined;
     const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
         for (const s of sitesArr) {
@@ -196,7 +191,6 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
     return targetZone.machines.find(m => m.id === machineIdPath);
 }
 
-// Helper to find an admin control definition
 function findAdminControlById(controlId: string): AdminControlDefinition | undefined {
   return DUMMY_ADMIN_CONTROLS_DEFINITIONS.find(c => c.id === controlId);
 }
@@ -258,22 +252,15 @@ export default function MachineControlMonitoringPage() {
   const isControlInAlert = machine.activeControlInAlert?.controlId === controlId;
   const controlStatus: Status = isControlInAlert ? machine.activeControlInAlert!.status || 'red' : (configuredControl?.isActive ? 'green' : 'white');
   const controlStatusText = isControlInAlert ? getMachineStatusText(controlStatus) : (configuredControl?.isActive ? "OK" : "Inactif");
-  const controlStatusIcon = isControlInAlert ? getMachineStatusIcon(controlStatus) : (configuredControl?.isActive ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <Info className="h-5 w-5 text-gray-400" />);
+  const controlStatusIcon = isControlInAlert ? getMachineStatusIcon(controlStatus, "h-5 w-5") : (configuredControl?.isActive ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <Info className="h-5 w-5 text-gray-400" />);
 
-  const chartData = isControlInAlert ? machine.activeControlInAlert?.historicalData || [] : []; // Placeholder for non-alert data
+  const chartData = isControlInAlert && machine.activeControlInAlert?.historicalData ? machine.activeControlInAlert.historicalData : []; 
   const relevantSensorVariable = isControlInAlert ? machine.activeControlInAlert?.relevantSensorVariable : "N/A";
   const chartConfig = { value: { label: relevantSensorVariable, color: "hsl(var(--chart-1))" } };
   
-  const currentChecklist = isControlInAlert ? machine.activeControlInAlert?.checklist : adminControl.checklist;
+  const currentChecklist = isControlInAlert && machine.activeControlInAlert?.checklist ? machine.activeControlInAlert.checklist : adminControl.checklist;
 
-  const getMachineIconDisplay = (type: string) => {
-    if (type === "Frigo" || type === "Congélateur") return Thermometer;
-    if (type === "Armoire Électrique") return Zap;
-    if (type === "Compresseur" || type === "Pompe Hydraulique" || type === "HVAC") return Wind;
-    if (type.toLowerCase().includes("serveur") || type === "PC") return Server;
-    return HardDrive;
-  };
-  const MachineIconToDisplay = getMachineIconDisplay(machine.type);
+  const MachineIconToDisplay = getMachineIcon(machine.type);
 
 
   return (

@@ -19,11 +19,11 @@ import {
     getZoneOverallStatus, 
     getSiteOverallStatus, 
     getStatusIcon,      
-    getStatusText       
-} from "@/app/client/sites/[...sitePath]/page"; 
+    getStatusText,
+    getMachineIcon       
+} from "@/lib/client-data"; // Updated import
 import { cn } from "@/lib/utils";
 
-// Enhanced types for asset management focus
 interface BreadcrumbSegment {
   id: string;
   name: string;
@@ -34,10 +34,9 @@ interface FoundAssetInfo {
   asset: Site | Zone;
   assetType: 'site' | 'zone';
   breadcrumbPath: BreadcrumbSegment[];
-  rootSiteId: string; // ID of the top-level site in this path
+  rootSiteId: string; 
 }
 
-// Function to find a Site or Zone by a hierarchical path
 const findAssetInHierarchy = (
   pathArray: string[],
   topLevelSites: Site[]
@@ -55,7 +54,6 @@ const findAssetInHierarchy = (
     const segmentId = pathArray[i];
     if (currentAssetType === 'site') {
       const site = currentAsset as Site;
-      // Try to find in subSites first
       let nextAsset: Site | Zone | undefined = site.subSites?.find(ss => ss.id === segmentId);
       if (nextAsset) {
         currentAsset = nextAsset;
@@ -63,7 +61,6 @@ const findAssetInHierarchy = (
         breadcrumbPath.push({ id: nextAsset.id, name: nextAsset.name, type: 'site' });
         continue;
       }
-      // If not in subSites, try in zones
       nextAsset = site.zones?.find(z => z.id === segmentId);
       if (nextAsset) {
         currentAsset = nextAsset;
@@ -71,30 +68,20 @@ const findAssetInHierarchy = (
         breadcrumbPath.push({ id: nextAsset.id, name: nextAsset.name, type: 'zone' });
         continue;
       }
-      return undefined; // Segment not found
-    } else { // currentAssetType === 'zone'
+      return undefined; 
+    } else { 
       const zone = currentAsset as Zone;
       const nextSubZone = zone.subZones?.find(sz => sz.id === segmentId);
       if (nextSubZone) {
         currentAsset = nextSubZone;
-        currentAssetType = 'zone'; // Stays 'zone'
+        currentAssetType = 'zone'; 
         breadcrumbPath.push({ id: nextSubZone.id, name: nextSubZone.name, type: 'zone' });
         continue;
       }
-      return undefined; // Segment not found
+      return undefined; 
     }
   }
   return currentAsset ? { asset: currentAsset, assetType: currentAssetType, breadcrumbPath, rootSiteId } : undefined;
-};
-
-
-const getMachineIcon = (type: string) => {
-    if (type === "Frigo" || type === "Congélateur") return Thermometer;
-    if (type === "Armoire Électrique" || type.toLowerCase().includes("elec")) return Zap;
-    if (type === "Compresseur" || type === "Pompe Hydraulique" || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
-    if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc")) return Server;
-    if (type.toLowerCase().includes("robot") || type.toLowerCase().includes("presse") || type.toLowerCase().includes("grue")) return Settings2;
-    return HardDrive; 
 };
 
 
@@ -234,8 +221,8 @@ const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: stri
 
 interface ZoneItemForManagementProps {
   zone: Zone; 
-  rootSiteId: string; // The ID of the top-level site for certain actions
-  currentPathSegments: string[]; // Path segments leading to the parent of this zone list
+  rootSiteId: string; 
+  currentPathSegments: string[]; 
   router: ReturnType<typeof useRouter>;
   level?: number;
 }
@@ -256,7 +243,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
         <AccordionItem value={`${currentPathSegments.join('-')}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
             <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
                 <div className="flex items-center justify-between w-full">
-                    <Link href={zoneNavLink} className="flex items-center gap-2 group" onClick={(e) => e.stopPropagation()}>
+                    <Link href={zoneNavLink} className="flex items-center gap-2 group" onClick={(e) => { e.preventDefault(); router.push(zoneNavLink); }}>
                         <Layers className="h-5 w-5 text-primary/80 group-hover:text-primary" />
                         <span className="font-medium text-md group-hover:text-primary group-hover:underline">{zone.name}</span>
                     </Link>
@@ -278,7 +265,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sub-zone/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Sous-Zone</Button>
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
-                    <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${rootSiteId}/${zone.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
+                    <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${zone.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                 </div>
                 
                 {isEmptyZoneOverall ? (
@@ -317,7 +304,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                                 Sous-Zones ({zone.subZones!.length})
                             </AccordionTrigger>
                             <AccordionContent className="p-0"> 
-                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1"  defaultValue={zone.subZones!.map(sz => `${zone.id}-${sz.id}`)}>
+                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1"  defaultValue={zone.subZones!.map(sz => `${currentPathSegments.join('-')}-${zone.id}-${sz.id}`)}>
                                   {zone.subZones!.map(subZone => (
                                     <ZoneItemForManagement 
                                       key={subZone.id} 
@@ -390,7 +377,7 @@ export default function ManageAssetPage() {
   const handleEditAssetDetails = () => {
     if (assetType === 'site') {
       router.push(`/client/assets/edit-site/${asset.id}`);
-    } else { // assetType === 'zone'
+    } else { 
       router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`);
     }
   };
@@ -398,13 +385,13 @@ export default function ManageAssetPage() {
   const handleAddPrimaryZoneOrSubZone = () => { 
     if (assetType === 'site') {
       router.push(`/client/assets/add-zone/${asset.id}`);
-    } else { // assetType === 'zone'
+    } else { 
        router.push(`/client/assets/add-sub-zone/${rootSiteId}/${asset.id}`);
     }
   };
   
   const mainCardTitle = asset.name;
-  const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : rootSiteId}`;
+  const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : DUMMY_CLIENT_SITES_DATA.find(s=>s.id ===rootSiteId)?.name}`;
 
   return (
     <AppLayout>
@@ -442,7 +429,6 @@ export default function ManageAssetPage() {
           </CardHeader>
           <CardContent className="pt-6 space-y-8">
             
-            {/* Display for a Site asset */}
             {assetType === 'site' && (
               <>
                 <section>
@@ -453,13 +439,13 @@ export default function ManageAssetPage() {
                     </Button>
                   </div>
                   {(asset as Site).zones && (asset as Site).zones.length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-2" defaultValue={(asset as Site).zones.map(z => `${asset.id}-${z.id}`)}>
+                    <Accordion type="multiple" className="w-full space-y-2" defaultValue={(asset as Site).zones.map(z => `${currentAssetInfo.asset.id}-${z.id}`)}>
                       {(asset as Site).zones.map(zone => (
                         <ZoneItemForManagement 
                           key={zone.id} 
                           zone={zone} 
                           rootSiteId={rootSiteId} 
-                          currentPathSegments={breadcrumbPath.map(b => b.id)} // Path to current site
+                          currentPathSegments={breadcrumbPath.map(b => b.id)} 
                           router={router} 
                           level={0}
                         />
@@ -477,7 +463,6 @@ export default function ManageAssetPage() {
                   <section>
                     <div className="flex justify-between items-center mb-4 pb-2 border-b">
                         <h2 className="text-2xl font-semibold flex items-center gap-2"><HomeIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
-                         {/* Add Sub-Site button could go here if needed */}
                     </div>
                     <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                       {(asset as Site).subSites!.map(subSite => (
@@ -489,7 +474,6 @@ export default function ManageAssetPage() {
               </>
             )}
 
-            {/* Display for a Zone asset */}
             {assetType === 'zone' && (
               <section>
                  <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -503,7 +487,7 @@ export default function ManageAssetPage() {
                         <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
                         <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
                         <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
-                        <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${rootSiteId}/${asset.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
+                        <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${asset.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                     </div>
                     
                     <Accordion type="multiple" className="w-full space-y-1.5 mt-3" defaultValue={['machines', 'ambient-sensors', 'sub-zones']}>
@@ -539,15 +523,15 @@ export default function ManageAssetPage() {
                                 Sous-Zones ({(asset as Zone).subZones!.length})
                             </AccordionTrigger>
                             <AccordionContent className="p-0"> 
-                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1" defaultValue={(asset as Zone).subZones!.map(sz => `${asset.id}-${sz.id}`)} >
+                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1" defaultValue={(asset as Zone).subZones!.map(sz => `${breadcrumbPath.map(b => b.id).join('-')}-${asset.id}-${sz.id}`)} >
                                   {(asset as Zone).subZones!.map(subZone => (
                                     <ZoneItemForManagement 
                                       key={subZone.id} 
                                       zone={subZone} 
                                       rootSiteId={rootSiteId}
-                                      currentPathSegments={breadcrumbPath.map(b => b.id)} // Path to current focused zone
+                                      currentPathSegments={breadcrumbPath.map(b => b.id)} 
                                       router={router} 
-                                      level={0} // Sub-zones of a focused zone start at level 0 visually
+                                      level={0} 
                                     />
                                   ))}
                                 </Accordion>

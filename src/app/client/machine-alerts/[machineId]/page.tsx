@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, FileText, Info, LineChart as LineChartIcon, ListChecks, Server, Thermometer, Settings2, Wind } from "lucide-react";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Machine, type Zone, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, type Status } from "@/app/client/sites/[...sitePath]/page"; // Re-using types and data
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Machine, type Zone, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, type Status, getStatusIcon, getStatusText, getMachineIcon } from "@/lib/client-data"; // CORRECTED IMPORT
 import { cn } from "@/lib/utils";
 import {
   ChartContainer,
@@ -20,13 +20,19 @@ import {
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from "recharts";
 
-// Helper function to find a machine by its ID across all sites and zones
 const findMachineById = (machineId: string): Machine | undefined => {
   for (const site of DUMMY_CLIENT_SITES_DATA) {
     const findInSite = (currentSite: Site): Machine | undefined => {
       for (const zone of currentSite.zones) {
         const foundMachine = zone.machines.find(m => m.id === machineId);
         if (foundMachine) return foundMachine;
+        if (zone.subZones) { // Check subZones recursively
+            for (const subZone of zone.subZones) {
+                 const foundInSubZone = subZone.machines.find(m => m.id === machineId);
+                 if (foundInSubZone) return foundInSubZone;
+                 // Potentially recurse deeper if subZones can have subZones with machines
+            }
+        }
       }
       if (currentSite.subSites) {
         for (const subSite of currentSite.subSites) {
@@ -42,29 +48,10 @@ const findMachineById = (machineId: string): Machine | undefined => {
   return undefined;
 };
 
-const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
-  const defaultClassName = "h-5 w-5";
-  const combinedClassName = className ? `${defaultClassName} ${className}` : defaultClassName;
-  switch (status) {
-    case 'red': return <AlertTriangle className={cn(combinedClassName, "text-red-500")} />;
-    case 'orange': return <Info className={cn(combinedClassName, "text-orange-500")} />;
-    case 'green': return <CheckCircle2 className={cn(combinedClassName, "text-green-500")} />;
-    default: return <Info className={cn(combinedClassName, "text-gray-400")} />;
-  }
-};
-
-const getStatusText = (status: Status): string => {
-  switch (status) {
-    case 'red': return 'Problème Critique';
-    case 'orange': return 'Avertissement';
-    case 'green': return 'Opérationnel';
-    default: return 'Indéterminé';
-  }
-};
 
 const chartConfigBase = {
   value: {
-    label: "Value", // Default, will be overridden
+    label: "Value", 
     color: "hsl(var(--chart-1))",
   },
 };
@@ -108,7 +95,7 @@ export default function MachineAlertDetailPage() {
     );
   }
 
-  const MachineIcon = machine.icon || Server;
+  const MachineIcon = machine.icon || getMachineIcon(machine.type) || Server;
   const chartData = activeControl.historicalData || [];
   const dynamicChartConfig = {
     value: {
@@ -265,7 +252,4 @@ export default function MachineAlertDetailPage() {
   );
 }
 
-// Re-export necessary types if they were moved out of sitePath/page.tsx
-// For now, they are imported from there.
-// Consider creating a shared types file (e.g., src/types/client-assets.ts)
-// if DUMMY_CLIENT_SITES_DATA is also moved to a shared service.
+    

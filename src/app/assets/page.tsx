@@ -6,21 +6,9 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Network, PlusCircle, Home, Building } from "lucide-react"; // Added Home, Building
-import type { Site, Status } from "@/app/client/sites/[...sitePath]/page"; // Assuming types can be imported
-import { DUMMY_CLIENT_SITES_DATA } from "@/app/client/sites/[...sitePath]/page"; // Import dummy data for now
-
-// For Asset Management, we might only show top-level sites or all sites client has access to.
-// For this example, let's use the same DUMMY_CLIENT_SITES_DATA as the dashboard
-// but only render the top-level entries.
-
-const getSiteOverallStatus = (site: Site): Status => {
-  // Simplified status for asset management card for now, can be expanded later
-  // This is just to have some visual cue, actual status calculation might be complex
-  if (site.zones.some(z => z.machines.some(m => m.status === 'red'))) return 'red';
-  if (site.zones.some(z => z.machines.some(m => m.status === 'orange'))) return 'orange';
-  return 'green';
-};
+import { Network, PlusCircle, Home, Building } from "lucide-react";
+import type { Site, Status } from "@/lib/client-data"; // Updated import
+import { DUMMY_CLIENT_SITES_DATA, getSiteOverallStatus } from "@/lib/client-data"; // Updated import
 
 const getStatusColorClass = (status: string) => {
   switch (status) {
@@ -33,9 +21,6 @@ const getStatusColorClass = (status: string) => {
 
 
 export default function AssetManagementPage() {
-  // Filter for top-level sites (sites that are not subSites of another explicitly listed site)
-  // Or simply use all sites from DUMMY_CLIENT_SITES_DATA if it's structured as top-level.
-  // For this example, we consider all entries in DUMMY_CLIENT_SITES_DATA as manageable top-level asset groups.
   const manageableSites = DUMMY_CLIENT_SITES_DATA;
 
   return (
@@ -47,7 +32,7 @@ export default function AssetManagementPage() {
             <h1 className="text-3xl font-bold">Asset Management</h1>
           </div>
           <Button asChild>
-            <Link href="/sites/register"> {/* Link to existing admin-styled page for now */}
+            <Link href="/sites/register"> 
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Site
             </Link>
           </Button>
@@ -84,7 +69,6 @@ export default function AssetManagementPage() {
                     </CardHeader>
                     <CardContent className="flex-grow">
                       <p className="text-sm text-muted-foreground">
-                        {/* Placeholder for brief stats, e.g., zones/machines count */}
                         {site.zones.length} zone(s), {site.subSites?.length || 0} sub-site(s).
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">Click to manage this site.</p>

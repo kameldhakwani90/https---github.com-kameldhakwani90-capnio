@@ -9,13 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, type Machine } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, type Machine } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, PlusCircle, Router as PiIcon, Thermometer, Zap, Wind, Cog } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for admin-defined sensor types (replace with actual data source)
 const DUMMY_ADMIN_DEFINED_SENSOR_TYPES = [
   { id: "st-001", name: "Sonde Ambiante THL v2.1 (Temp/Hum)" },
   { id: "st-002", name: "Capteur de Pression P-500" },
@@ -24,14 +23,12 @@ const DUMMY_ADMIN_DEFINED_SENSOR_TYPES = [
   { id: "st-005", name: "Capteur de Vibration VibraSense M" },
 ];
 
-// Dummy data for available Pi Servers in the zone/site (replace with actual data source)
 const DUMMY_AVAILABLE_PI_SERVERS = [
   { id: "pi-001", name: "Pi Serveur - Local Technique" },
   { id: "pi-002", name: "Pi Serveur - Atelier A" },
   { id: "pi-003", name: "Pi Serveur - Entrepôt Principal" },
 ];
 
-// Helper function to find a site and a specific zone within it, and its machines
 function findSiteAndZoneMachines(sites: Site[], siteId: string, zoneId: string): { site?: Site, zone?: Zone, machines: Machine[] } {
   const site = sites.find(s => s.id === siteId);
   if (!site) return { machines: [] };
@@ -116,7 +113,7 @@ export default function AddSensorToZonePage() {
 
     const sensorData = {
       name: sensorName,
-      piServerId: selectedPiServer === "__NONE__" ? "" : selectedPiServer, // Handle __NONE__ case
+      piServerId: selectedPiServer === "__NONE__" ? "" : selectedPiServer,
       adminSensorTypeId: selectedAdminSensorType,
       scope: sensorScope,
       affectedMachineIds: sensorScope === "machine" ? selectedMachines : [],

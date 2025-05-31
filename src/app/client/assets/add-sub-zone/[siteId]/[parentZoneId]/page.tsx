@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, PlusCircle, Layers } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
-// Helper function to find a site or zone (could be moved to a shared util)
 function findSiteOrZone(sites: Site[], siteId: string, zoneId?: string): { site?: Site, zone?: Zone } {
     const site = sites.find(s => s.id === siteId);
     if (!site) return {};
@@ -67,11 +66,8 @@ export default function AddSubZonePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Simulate adding sub-zone
     console.log(`Adding sub-zone to site "${parentSite?.name}", parent zone "${parentZone?.name}":`, { name: subZoneName });
     alert(`Sous-zone "${subZoneName}" ajoutée à la zone "${parentZone?.name}" (simulation).`);
-    // Typically, you'd update your data source here.
-    // For now, navigate back to the manage page of the parent site.
     router.push(`/client/assets/manage/${siteId}`); 
   };
   
@@ -121,7 +117,6 @@ export default function AddSubZonePage() {
                   required 
                 />
               </div>
-              {/* Add more fields for sub-zone details as needed */}
               <div className="flex justify-end pt-4">
                 <Button type="submit">
                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter la Sous-Zone
@@ -134,5 +129,3 @@ export default function AddSubZonePage() {
     </AppLayout>
   );
 }
-
-    

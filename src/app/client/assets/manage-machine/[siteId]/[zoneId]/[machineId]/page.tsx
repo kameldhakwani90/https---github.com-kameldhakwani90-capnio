@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import Link from "next/link"; // Import Link
+import Link from "next/link"; 
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/app/client/sites/[...sitePath]/page"; // Added ChecklistItem
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react"; // Added ChevronRight
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/lib/client-data"; // Updated import
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -37,7 +37,6 @@ interface AdminControl {
   checklist?: ChecklistItem[]; 
 }
 
-// DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE with checklists
 const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
@@ -196,28 +195,39 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
     if (!targetZone) return undefined;
 
     const machine = targetZone.machines.find(m => m.id === machineIdPath);
-    if (machine) {
+   if (machine) {
         const augmentedMachine: FullMachineType = { ...machine };
         if (!augmentedMachine.availableSensors) {
             const zoneSensors = targetZone?.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
+             // Ensure `provides` is an array for all sensors
             augmentedMachine.availableSensors = [
-                ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: s.provides || []})),
-                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: s.provides || []}))
+                ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: Array.isArray(s.provides) ? s.provides : []})),
+                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: Array.isArray(s.provides) ? s.provides : []}))
             ];
-             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC') { // PC might not have sensors in this demo
+             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC') {
                  augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
              }
         }
-        if (!augmentedMachine.configuredControls) {
-            augmentedMachine.configuredControls = {};
+         if (!augmentedMachine.configuredControls) {
+            augmentedMachine.configuredControls = {}; // Initialize if undefined
         }
         
         if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
-            const baseValue = parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 
-                              parseFloat(augmentedMachine.activeControlInAlert.currentValues?.[Object.keys(augmentedMachine.activeControlInAlert.currentValues)[0]]?.value as string) || 
-                              70; // Default base if no specific value found
+            const currentValues = augmentedMachine.activeControlInAlert.currentValues;
+            let baseValue = 70; // Default base
+            if (currentValues && Object.keys(currentValues).length > 0) {
+                const firstKey = Object.keys(currentValues)[0];
+                const val = currentValues[firstKey]?.value;
+                if (typeof val === 'number') {
+                    baseValue = val;
+                } else if (typeof val === 'string') {
+                    const parsedVal = parseFloat(val);
+                    if (!isNaN(parsedVal)) baseValue = parsedVal;
+                }
+            }
+            
             augmentedMachine.activeControlInAlert.historicalData = [
                 { name: 'T-4', value: Math.random() * 10 + baseValue - 5 },
                 { name: 'T-3', value: Math.random() * 10 + baseValue - 4 },
@@ -225,7 +235,7 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
                 { name: 'T-1', value: Math.random() * 10 + baseValue - 2 },
                 { name: 'Maintenant', value: baseValue },
             ];
-            augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(augmentedMachine.activeControlInAlert.currentValues || {})[0] || "Valeur Simulée";
+            augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(currentValues || {})[0] || "Valeur Simulée";
         }
 
 
@@ -326,8 +336,6 @@ export default function ManageMachinePage() {
       title: "Configuration Sauvegardée",
       description: `Les configurations pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
-    // Here you would typically update DUMMY_CLIENT_SITES_DATA or send to a backend
-    // For now, just a log and toast
   };
 
   const applicableAdminControls = useMemo(() => {

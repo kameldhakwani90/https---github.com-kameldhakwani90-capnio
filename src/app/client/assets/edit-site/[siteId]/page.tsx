@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DUMMY_CLIENT_SITES_DATA, type Site } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -29,11 +29,6 @@ export default function EditSiteDetailsPage() {
       setIsLoading(false);
       return;
     }
-    // Simulate fetching site data
-    // In a real app, this would be an API call.
-    // We need a way to find a site by ID from the DUMMY_CLIENT_SITES_DATA,
-    // potentially searching recursively if sub-sites could be edited this way.
-    // For now, assuming top-level site editing.
     let siteToEdit: Site | undefined;
     
     function findSite(sites: Site[], id: string): Site | undefined {
@@ -60,10 +55,9 @@ export default function EditSiteDetailsPage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Simulate saving data
     console.log("Updated site details:", { id: siteId, name: siteName, location: siteLocation });
     alert("Site details updated (simulated).");
-    router.back(); // Go back to the management page
+    router.back(); 
   };
   
   if (isLoading) {
@@ -118,7 +112,6 @@ export default function EditSiteDetailsPage() {
                   required
                 />
               </div>
-              {/* Add more fields for site details as needed */}
               <div className="flex justify-end pt-4">
                 <Button type="submit">
                   <Save className="mr-2 h-4 w-4" /> Save Changes
@@ -131,5 +124,3 @@ export default function EditSiteDetailsPage() {
     </AppLayout>
   );
 }
-
-    

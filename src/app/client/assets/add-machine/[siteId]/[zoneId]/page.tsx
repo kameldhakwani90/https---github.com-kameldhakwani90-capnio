@@ -7,13 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/app/client/sites/[...sitePath]/page";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; // Updated import
 import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Dummy machine types, in a real app, fetch this from your backend or a shared constant
 const AVAILABLE_MACHINE_TYPES = [
   { id: "mt-001", name: "Frigo" },
   { id: "mt-002", name: "Pompe Hydraulique" },
@@ -26,8 +25,6 @@ const AVAILABLE_MACHINE_TYPES = [
   { id: "mt-009", name: "Autre Machine Générique" },
 ];
 
-
-// Helper function to find a site and a specific zone within it
 function findSiteAndZone(sites: Site[], siteId: string, zoneId: string): { site?: Site, zone?: Zone } {
   const site = sites.find(s => s.id === siteId);
   if (!site) return {};
@@ -56,9 +53,8 @@ export default function AddMachineToZonePage() {
   const [machineName, setMachineName] = useState("");
   const [machineModel, setMachineModel] = useState("");
   const [selectedGenericMachineType, setSelectedGenericMachineType] = useState<string>("");
-  const [selectedMachineTypeToAdd, setSelectedMachineTypeToAdd] = useState<string>("generic"); // "generic" or "pi_server"
+  const [selectedMachineTypeToAdd, setSelectedMachineTypeToAdd] = useState<string>("generic"); 
   
-  // Pi Server Setup State
   const [piSetupStep, setPiSetupStep] = useState<"instructions" | "wifiConfig" | "confirmation">("instructions");
   const [piSsid, setPiSsid] = useState("");
   const [piPassword, setPiPassword] = useState("");
@@ -102,7 +98,7 @@ export default function AddMachineToZonePage() {
     const genericMachineData = {
       name: machineName,
       model: machineModel,
-      type: selectedGenericMachineType, // Using the selected type
+      type: selectedGenericMachineType, 
     };
     console.log("Adding generic machine to site/zone:", siteId, zoneId, genericMachineData);
     toast({ title: "Machine Ajoutée (Simulation)", description: `La machine "${machineName}" de type "${selectedGenericMachineType}" a été ajoutée à la zone "${parentZone?.name}".` });
@@ -344,5 +340,3 @@ export default function AddMachineToZonePage() {
     </AppLayout>
   );
 }
-
-    
