@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion"; // Keep main Accordion imports
+import * as AccordionPrimitive from "@radix-ui/react-accordion"; // Import primitives for custom header
 import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data.tsx"; 
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3 } from "lucide-react"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -272,7 +273,7 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
     const machine = targetZone.machines.find(m => m.id === machineIdPath);
     if (machine) {
         const augmentedMachine: FullMachineType = { ...machine };
-        if (!augmentedMachine.availableSensors) { // Ensure availableSensors is populated if not already
+        if (!augmentedMachine.availableSensors) { 
             const zoneSensors = targetZone?.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
@@ -525,13 +526,15 @@ export default function ManageMachinePage() {
                         const config = controlConfigs[control.id] || { isActive: false, params: {}, sensorMappings: {} };
                         return (
                         <AccordionItem key={control.id} value={control.id} className="border rounded-md bg-muted/30 shadow-sm">
-                            <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
-                                <div className="flex items-center justify-between w-full">
+                            <AccordionPrimitive.Header className="flex items-center justify-between w-full py-3 px-4 hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
+                                <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline", "[&[data-state=open]>svg]:rotate-180")}>
                                     <div className="flex-grow">
-                                        <CardTitle className="text-lg text-left">{control.nomDuControle}</CardTitle>
-                                        <CardDescription className="text-xs text-left mt-0.5">{control.description}</CardDescription>
+                                        <CardTitle className="text-lg">{control.nomDuControle}</CardTitle>
+                                        <CardDescription className="text-xs mt-0.5">{control.description}</CardDescription>
                                     </div>
-                                    <div className="flex items-center space-x-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-2" />
+                                </AccordionPrimitive.Trigger>
+                                <div className="flex items-center space-x-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
                                     <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
                                         {config.isActive ? "Activé" : "Désactivé"}
                                     </Label>
@@ -540,9 +543,8 @@ export default function ManageMachinePage() {
                                         checked={config.isActive}
                                         onCheckedChange={(checked) => handleControlActivationChange(control.id, checked)}
                                     />
-                                    </div>
                                 </div>
-                            </AccordionTrigger>
+                            </AccordionPrimitive.Header>
                             <AccordionContent className="pt-0 pb-4 px-4">
                             {config.isActive && (
                                 <div className="space-y-4 pt-3 border-t mt-3">
@@ -796,3 +798,5 @@ export default function ManageMachinePage() {
     </AppLayout>
   );
 }
+
+    
