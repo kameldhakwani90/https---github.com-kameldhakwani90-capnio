@@ -116,7 +116,7 @@ export default function AddSensorToZonePage() {
 
     const sensorData = {
       name: sensorName,
-      piServerId: selectedPiServer,
+      piServerId: selectedPiServer === "__NONE__" ? "" : selectedPiServer, // Handle __NONE__ case
       adminSensorTypeId: selectedAdminSensorType,
       scope: sensorScope,
       affectedMachineIds: sensorScope === "machine" ? selectedMachines : [],
@@ -187,7 +187,7 @@ export default function AddSensorToZonePage() {
                     <SelectValue placeholder="Sélectionnez un serveur Pi..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Aucun --</SelectItem>
+                    <SelectItem value="__NONE__">-- Aucun --</SelectItem>
                     {DUMMY_AVAILABLE_PI_SERVERS.map(pi => (
                       <SelectItem key={pi.id} value={pi.id}>{pi.name}</SelectItem>
                     ))}
@@ -261,5 +261,3 @@ export default function AddSensorToZonePage() {
     </AppLayout>
   );
 }
-
-    
