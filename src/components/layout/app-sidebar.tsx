@@ -2,7 +2,7 @@
 "use client";
 
 import type { NavItem } from "@/types";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,102 +18,109 @@ import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid, Cpu } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
 
 interface AppSidebarProps {
   onSelectItem: (item: NavItem) => void;
   selectedItemId?: string;
 }
 
-const getAdminIcon = (href: string) => {
+const getAdminIcon = (href?: string) => {
+  if (!href) return FileText;
   if (href.includes('/admin/clients')) return Users;
   if (href.includes('/admin/sensors')) return Cog;
-  if (href.includes('/admin/controls')) return Settings; 
+  if (href.includes('/admin/controls')) return Settings;
   if (href.includes('/admin/machine-types')) return Cpu;
-  if (href.includes('/admin/formulas/validate')) return FlaskConical; // Note: formulas validate might become controls validate
-  return FileText; 
+  if (href.includes('/admin/formulas/validate')) return FlaskConical;
+  return FileText;
 };
 
 export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter(); // Initialize useRouter
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // localStorage is only available on the client side
     const role = localStorage.getItem('userRole');
     setCurrentUserRole(role);
-  }, [pathname]); // Re-check role if pathname changes, in case of SPA navigations affecting context
+  }, [pathname]);
 
-  const isClientView = currentUserRole === 'client';
   const isLoginPage = pathname === '/login';
 
-  let mainNavItems: NavItem[] = [];
-  let adminToolsNavItems: NavItem[] = [];
-  let showAdminToolsSection = false;
+  const { mainNavItems, adminToolsNavItems, showAdminToolsSection } = useMemo(() => {
+    let mainNIs: NavItem[] = [];
+    let adminTIs: NavItem[] = [];
+    let showATS = false;
 
-  if (!isLoginPage) {
-    if (isClientView) {
-      mainNavItems = [
-        {
-          id: 'client-dashboard-link',
-          label: 'Dashboard',
-          type: 'group',
-          icon: LayoutGrid,
-          href: '/client/dashboard', // Specific client dashboard
-          onClick: () => window.location.href = '/client/dashboard',
-        },
-        {
-          id: 'client-monitoring-link',
-          label: 'Monitoring',
-          type: 'group',
-          icon: ShieldAlert,
-          href: '/monitoring', // Shared URL
-          onClick: () => window.location.href = '/monitoring',
-        },
-        {
-          id: 'client-notifications-link',
-          label: 'Notifications',
-          type: 'group',
-          icon: Bell,
-          href: '/notifications', // Shared URL
-          onClick: () => window.location.href = '/notifications',
-        },
-        {
-          id: 'client-assets-link',
-          label: 'Asset Management',
-          type: 'group',
-          icon: Network,
-          href: '/assets', // Shared URL
-          onClick: () => window.location.href = '/assets',
-        },
-      ];
-      showAdminToolsSection = false;
-    } else { // Admin View (or default if not client and not login, or role is 'admin')
-      mainNavItems = [
-        {
-          id: 'admin-dashboard-link',
-          label: 'Dashboard',
-          type: 'group',
-          icon: LayoutGrid,
-          href: '/', 
-          onClick: () => window.location.href = '/',
-        },
-        // Admin no longer has Monitoring/Notifications in main nav as per previous request
-      ];
-      adminToolsNavItems = siteConfig.adminNav.map(item => ({
-        ...item,
-        id: item.href, 
-        label: item.title,
-        icon: getAdminIcon(item.href),
-        type: 'group' as NavItem['type'], 
-        onClick: () => { if(item.href) window.location.href = item.href; }
-      }));
-      showAdminToolsSection = true;
+    const currentRoleIsClient = currentUserRole === 'client';
+
+    if (!isLoginPage) {
+      if (currentRoleIsClient) {
+        mainNIs = [
+          {
+            id: 'client-dashboard-link',
+            label: 'Dashboard',
+            type: 'group',
+            icon: LayoutGrid,
+            href: '/client/dashboard',
+            onClick: () => window.location.href = '/client/dashboard',
+          },
+          {
+            id: 'client-monitoring-link',
+            label: 'Monitoring',
+            type: 'group',
+            icon: ShieldAlert,
+            href: '/monitoring',
+            onClick: () => window.location.href = '/monitoring',
+          },
+          {
+            id: 'client-notifications-link',
+            label: 'Notifications',
+            type: 'group',
+            icon: Bell,
+            href: '/notifications',
+            onClick: () => window.location.href = '/notifications',
+          },
+          {
+            id: 'client-assets-link',
+            label: 'Asset Management',
+            type: 'group',
+            icon: Network,
+            href: '/assets',
+            onClick: () => window.location.href = '/assets',
+          },
+        ];
+        showATS = false;
+      } else { // Admin View (or default if role is null or 'admin')
+        mainNIs = [
+          {
+            id: 'admin-dashboard-link',
+            label: 'Dashboard',
+            type: 'group',
+            icon: LayoutGrid,
+            href: '/',
+            onClick: () => window.location.href = '/',
+          },
+        ];
+        if (siteConfig.adminNav) {
+            adminTIs = siteConfig.adminNav.map(item => ({
+            ...item,
+            id: item.href || `admin-tool-${item.title.replace(/\s+/g, '-').toLowerCase()}`, // Ensure ID is unique
+            label: item.title,
+            icon: getAdminIcon(item.href),
+            type: 'group' as NavItem['type'],
+            onClick: () => { if(item.href) window.location.href = item.href; }
+            }));
+            showATS = true;
+        } else {
+            adminTIs = [];
+            showATS = false;
+        }
+      }
     }
-  }
+    return { mainNavItems: mainNIs, adminToolsNavItems: adminTIs, showAdminToolsSection: showATS };
+  }, [currentUserRole, pathname, isLoginPage]);
 
-  // If role is not yet determined (currentUserRole is null), we might show a loading state or default menu
-  // For now, it will default to admin-like menu if not explicitly client and not login page.
 
   return (
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
@@ -136,7 +143,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
               <SidebarGroupLabel className="group-data-[collapsible=icon]:justify-center">Admin Tools</SidebarGroupLabel>
               <SidebarNav 
                 items={adminToolsNavItems} 
-                onSelectItem={(item) => { if(item.href) window.location.href = item.href; }} 
+                onSelectItem={(item) => { if(item.href) { window.location.href = item.href; } else if (item.onClick) { item.onClick(); } }} 
                 selectedItemId={selectedItemId} 
               />
             </SidebarGroup>
