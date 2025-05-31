@@ -9,7 +9,8 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower, HardDrive, Thermometer, Zap, Wind } from "lucide-react"; 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower, HardDrive, Thermometer, Zap, Wind, Info } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     type Site, 
@@ -21,7 +22,7 @@ import {
     getStatusIcon,      
     getStatusText,
     getMachineIcon       
-} from "@/lib/client-data"; // Updated import
+} from "@/lib/client-data"; 
 import { cn } from "@/lib/utils";
 
 interface BreadcrumbSegment {
@@ -260,11 +261,64 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-3 pt-2 space-y-3">
-                <div className="flex flex-wrap justify-end gap-2 my-2">
+                <div className="flex flex-wrap justify-end items-center gap-2 my-2">
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${zone.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sub-zone/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Sous-Zone</Button>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
+                    
+                    <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sub-zone/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Sous-Zone</Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm">
+                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Sous-Zone ?</h4>
+                                <p className="text-muted-foreground mb-2">Une sous-zone détaille encore plus une zone existante, utile pour des suivis très localisés.</p>
+                                <p className="font-semibold mb-1">Exemples :</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                    <li>Dans "Cuisine" (restaurant): "Poste Froid", "Plonge".</li>
+                                    <li>Dans "Rayon Frais" (magasin): "Étagère Produits Laitiers".</li>
+                                    <li>Dans "Ligne d'Assemblage" (usine): "Poste Contrôle Qualité".</li>
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm">
+                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Machine ?</h4>
+                                <p className="text-muted-foreground mb-2">Une machine est un équipement spécifique à surveiller (Réfrigérateur, Four, Pompe, etc.) ou un "Serveur Pi Capnio" qui collecte des données.</p>
+                                <p className="font-semibold mb-1">Exemples :</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                    <li>Machine Générique: "Vitrine Réfrigérée N°3", "Compresseur Atlas C10".</li>
+                                    <li>Serveur Pi: "Boîtier Pi - Cuisine", "Collecteur Pi - Atelier B".</li>
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm">
+                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'un Capteur ?</h4>
+                                <p className="text-muted-foreground mb-2">Un capteur mesure des données (température, humidité, etc.). Déclarez-le ici en choisissant son type et son emplacement (ambiant ou sur machine).</p>
+                                <p className="font-semibold mb-1">Exemples :</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                    <li>Sonde de température pour frigo.</li>
+                                    <li>Capteur de CO2 pour qualité de l'air.</li>
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    
                     <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${zone.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                 </div>
                 
@@ -392,6 +446,24 @@ export default function ManageAssetPage() {
   
   const mainCardTitle = asset.name;
   const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : DUMMY_CLIENT_SITES_DATA.find(s=>s.id ===rootSiteId)?.name}`;
+  
+  const addZoneButtonLabel = assetType === 'site' ? "Ajouter une Zone au Site" : "Ajouter une Sous-Zone";
+  const addZonePopoverTitle = assetType === 'site' ? "Qu'est-ce qu'une Zone ?" : "Qu'est-ce qu'une Sous-Zone ?";
+  const addZonePopoverExplanation = assetType === 'site' 
+    ? "Une zone vous permet de diviser un site en sections plus petites pour une meilleure organisation et surveillance." 
+    : "Une sous-zone affine davantage une zone existante, utile pour des suivis très localisés.";
+  const addZonePopoverExamples = assetType === 'site' 
+    ? [
+        "Pour un magasin: Rayon Boulangerie, Réserve Fraîche.",
+        "Pour un restaurant: Cuisine, Salle Principale.",
+        "Pour une usine: Ligne d'Emballage, Atelier Maintenance."
+      ] 
+    : [
+        "Dans 'Cuisine' (restaurant): Poste Froid, Plonge.",
+        "Dans 'Rayon Frais' (magasin): Étagère Produits Laitiers.",
+        "Dans 'Ligne d'Assemblage' (usine): Poste Contrôle Qualité."
+      ];
+
 
   return (
     <AppLayout>
@@ -434,9 +506,24 @@ export default function ManageAssetPage() {
                 <section>
                   <div className="flex justify-between items-center mb-4 pb-2 border-b">
                     <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-6 w-6 text-primary/70"/>Zones</h2>
-                    <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une Zone au Site
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> {addZoneButtonLabel}
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="icon" aria-label="Information sur les Zones/Sous-Zones"><Info className="h-4 w-4" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm">
+                                <h4 className="font-medium leading-none mb-1">{addZonePopoverTitle}</h4>
+                                <p className="text-muted-foreground mb-2">{addZonePopoverExplanation}</p>
+                                <p className="font-semibold mb-1">Exemples :</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                    {addZonePopoverExamples.map((ex, i) => <li key={i}>{ex}</li>)}
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                   </div>
                   {(asset as Site).zones && (asset as Site).zones.length > 0 ? (
                     <Accordion type="multiple" className="w-full space-y-2" defaultValue={(asset as Site).zones.map(z => `${currentAssetInfo.asset.id}-${z.id}`)}>
@@ -478,15 +565,64 @@ export default function ManageAssetPage() {
               <section>
                  <div className="flex justify-between items-center mb-4 pb-2 border-b">
                     <h2 className="text-2xl font-semibold">Contenu de la Zone: {asset.name}</h2>
-                     <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une Sous-Zone
-                    </Button>
+                     <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> {addZoneButtonLabel}
+                        </Button>
+                        <Popover>
+                             <PopoverTrigger asChild>
+                                <Button variant="outline" size="icon" aria-label="Information sur les Zones/Sous-Zones"><Info className="h-4 w-4" /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 text-sm">
+                                <h4 className="font-medium leading-none mb-1">{addZonePopoverTitle}</h4>
+                                <p className="text-muted-foreground mb-2">{addZonePopoverExplanation}</p>
+                                <p className="font-semibold mb-1">Exemples :</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                    {addZonePopoverExamples.map((ex, i) => <li key={i}>{ex}</li>)}
+                                </ul>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                   </div>
                   <div className="px-4 pb-3 pt-2 space-y-3">
-                    <div className="flex flex-wrap justify-end gap-2 my-2">
+                    <div className="flex flex-wrap justify-end items-center gap-2 my-2">
                         <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
+                        
+                        <div className="flex items-center gap-1">
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 text-sm">
+                                    <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Machine ?</h4>
+                                    <p className="text-muted-foreground mb-2">Une machine est un équipement spécifique à surveiller (Réfrigérateur, Four, Pompe, etc.) ou un "Serveur Pi Capnio" qui collecte des données.</p>
+                                    <p className="font-semibold mb-1">Exemples :</p>
+                                    <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                        <li>Machine Générique: "Vitrine Réfrigérée N°3", "Compresseur Atlas C10".</li>
+                                        <li>Serveur Pi: "Boîtier Pi - Cuisine", "Collecteur Pi - Atelier B".</li>
+                                    </ul>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 text-sm">
+                                    <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'un Capteur ?</h4>
+                                    <p className="text-muted-foreground mb-2">Un capteur mesure des données (température, humidité, etc.). Déclarez-le ici en choisissant son type et son emplacement (ambiant ou sur machine).</p>
+                                    <p className="font-semibold mb-1">Exemples :</p>
+                                    <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                                        <li>Sonde de température pour frigo.</li>
+                                        <li>Capteur de CO2 pour qualité de l'air.</li>
+                                    </ul>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                         <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${asset.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                     </div>
                     

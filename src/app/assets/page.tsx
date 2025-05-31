@@ -6,9 +6,10 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Network, PlusCircle, Home, Building } from "lucide-react";
+import { Network, PlusCircle, Home, Building, Info } from "lucide-react";
 import type { Site, Status } from "@/lib/client-data"; 
 import { DUMMY_CLIENT_SITES_DATA, getSiteOverallStatus } from "@/lib/client-data"; 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const getStatusColorClass = (status: string) => {
   switch (status) {
@@ -31,21 +32,48 @@ export default function AssetManagementPage() {
             <Network className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Gestion des Actifs</h1>
           </div>
-          <Button asChild>
-            <Link href="/sites/register"> 
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Site
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link href="/sites/register"> 
+                <PlusCircle className="mr-2 h-4 w-4" /> Add New Site
+              </Link>
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Information sur les Sites">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" side="bottom" align="end">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">Qu'est-ce qu'un Site ?</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Un site représente votre emplacement physique principal ou une grande entité que vous souhaitez surveiller.
+                    </p>
+                    <p className="text-sm font-semibold">Exemples :</p>
+                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                      <li>Magasin "Les Halles Centrales"</li>
+                      <li>Entrepôt "Logistique Sud"</li>
+                      <li>Restaurant "Le Gourmet Paris"</li>
+                      <li>Usine "Alpha Production"</li>
+                      <li>Campus Universitaire</li>
+                    </ul>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </header>
 
         {manageableSites.length === 0 ? (
           <Card className="shadow-xl">
             <CardContent className="py-10 text-center">
                 <Network className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-xl font-semibold">No assets configured yet.</p>
-                <p className="text-muted-foreground">Start by adding your first site.</p>
+                <p className="text-xl font-semibold">Aucun actif configuré pour le moment.</p>
+                <p className="text-muted-foreground">Commencez par ajouter votre premier site.</p>
                 <Button asChild className="mt-6">
-                    <Link href="/sites/register">Add New Site</Link>
+                    <Link href="/sites/register">Ajouter un Nouveau Site</Link>
                 </Button>
             </CardContent>
           </Card>
@@ -69,9 +97,9 @@ export default function AssetManagementPage() {
                     </CardHeader>
                     <CardContent className="flex-grow">
                       <p className="text-sm text-muted-foreground">
-                        {site.zones.length} zone(s), {site.subSites?.length || 0} sub-site(s).
+                        {site.zones.length} zone(s), {site.subSites?.length || 0} sous-site(s).
                       </p>
-                      <p className="text-xs text-muted-foreground mt-2">Click to manage this site.</p>
+                      <p className="text-xs text-muted-foreground mt-2">Cliquez pour gérer ce site.</p>
                     </CardContent>
                   </Card>
                 </Link>
