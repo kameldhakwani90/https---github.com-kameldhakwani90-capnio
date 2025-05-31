@@ -97,13 +97,15 @@ const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> =
   );
 };
 
-const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ machine, siteId, zoneId, router }) => {
+const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: string; router: ReturnType<typeof useRouter>; allZoneSensors?: Sensor[]; }> = ({ machine, siteId, zoneId, router, allZoneSensors }) => {
     const CurrentMachineIcon = machine.icon || getMachineIcon(machine.type);
-    const handleMachineAlertNavigation = (machineId: string) => {
-        router.push(`/client/machine-alerts/${machineId}`);
+    const machineSensors = allZoneSensors?.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id)) || [];
+    
+    const handleMachineAlertNavigation = (mId: string) => {
+        router.push(`/client/machine-alerts/${mId}`);
     };
-    const handleManageMachine = (machineId: string) => {
-        router.push(`/client/assets/manage-machine/${siteId}/${zoneId}/${machineId}`);
+    const handleManageMachine = (mId: string) => {
+        router.push(`/client/assets/manage-machine/${siteId}/${zoneId}/${mId}`);
     };
 
     return (
@@ -123,6 +125,16 @@ const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: s
                         {getStatusText(machine.status)}
                         </span>
                     </div>
+                    {machineSensors.length > 0 && (
+                        <div className="mt-1">
+                            <span className="text-xs font-medium text-muted-foreground">Capteurs liés: </span>
+                            {machineSensors.map((sensor, index) => (
+                                <span key={sensor.id} className="text-xs text-muted-foreground italic">
+                                    {sensor.name}{index < machineSensors.length - 1 ? ', ' : ''}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="flex items-center gap-1">
@@ -198,7 +210,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
     const hasMachines = zone.machines && zone.machines.length > 0;
     const hasAmbientSensors = ambientSensors.length > 0;
     const hasSubZones = zone.subZones && zone.subZones.length > 0;
-    const isEmptyZone = !hasMachines && !hasAmbientSensors && !hasSubZones;
+    const isEmptyZoneOverall = !hasMachines && !hasAmbientSensors && !hasSubZones;
 
     return (
         <AccordionItem value={`${parentZoneId || siteId}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
@@ -229,7 +241,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                     <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${siteId}/${zone.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                 </div>
                 
-                {isEmptyZone ? (
+                {isEmptyZoneOverall ? (
                     <p className="text-sm text-muted-foreground p-2 text-center">Aucune machine, sous-zone ou capteur d'ambiance défini.</p>
                 ) : (
                     <Accordion type="multiple" className="w-full space-y-1.5 mt-3">
@@ -240,7 +252,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                                 </AccordionTrigger>
                                 <AccordionContent className="p-2 space-y-1.5">
                                     {zone.machines.map(machine => (
-                                       <MachineItemDisplay key={machine.id} machine={machine} siteId={siteId} zoneId={zone.id} router={router} />
+                                       <MachineItemDisplay key={machine.id} machine={machine} siteId={siteId} zoneId={zone.id} router={router} allZoneSensors={zone.sensors} />
                                     ))}
                                 </AccordionContent>
                             </AccordionItem>
@@ -264,7 +276,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                             <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
                                 Sous-Zones ({zone.subZones!.length})
                             </AccordionTrigger>
-                            <AccordionContent className="p-0"> {/* No padding for sub-zone accordion content, as ZoneItemForManagement handles its own structure */}
+                            <AccordionContent className="p-0"> 
                                 <Accordion type="multiple" className="w-full space-y-1.5 pt-1">
                                   {zone.subZones!.map(subZone => (
                                     <ZoneItemForManagement 
@@ -273,7 +285,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                                       siteId={siteId} 
                                       parentZoneId={zone.id} 
                                       router={router} 
-                                      level={level + 1} // Sub-zones are one level deeper visually
+                                      level={level + 1} 
                                     />
                                   ))}
                                 </Accordion>
@@ -435,3 +447,4 @@ export default function ManageAssetPage() {
     </AppLayout>
   );
 }
+
