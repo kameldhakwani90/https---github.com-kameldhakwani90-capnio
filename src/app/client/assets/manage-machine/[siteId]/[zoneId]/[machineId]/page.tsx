@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, type ChecklistItem } from "@/app/client/sites/[...sitePath]/page"; // Added ChecklistItem
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/app/client/sites/[...sitePath]/page"; // Added ChecklistItem
 import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react"; // Added ChevronRight
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +34,7 @@ interface AdminControl {
   formuleDeVerification: string;
   description: string;
   expectedParams?: SiteControlParameter[]; 
-  checklist?: ChecklistItem[]; // Added checklist
+  checklist?: ChecklistItem[]; 
 }
 
 // DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE with checklists
@@ -107,6 +107,63 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
         { id: 'chk-srv-3', label: "Contrôler la température ambiante de la salle des serveurs." },
     ]
   },
+  {
+    id: "control-srv-cpu",
+    nomDuControle: "Surveillance Utilisation CPU Serveur",
+    typesDeMachinesConcernees: ["Serveur", "PC"],
+    typesDeCapteursNecessaires: ["Utilisation CPU"],
+    variablesUtilisees: ["cpu_usage_percent"],
+    formuleDeVerification: "sensor['cpu_usage_percent'].value <= machine.params['seuil_max_cpu']",
+    description: "Alerte si l'utilisation du CPU dépasse un seuil critique.",
+    expectedParams: [{ id: 'seuil_max_cpu', label: 'Seuil Utilisation Max CPU (%)', type: 'number', defaultValue: 90 }],
+    checklist: [
+        { id: 'chk-cpu-1', label: "Identifier les processus consommant le plus de CPU." },
+        { id: 'chk-cpu-2', label: "Vérifier les mises à jour système et logicielles." }
+    ]
+  },
+  {
+    id: "control-srv-mem",
+    nomDuControle: "Surveillance Utilisation Mémoire Serveur",
+    typesDeMachinesConcernees: ["Serveur", "PC"],
+    typesDeCapteursNecessaires: ["Utilisation Mémoire"],
+    variablesUtilisees: ["mem_usage_percent"],
+    formuleDeVerification: "sensor['mem_usage_percent'].value <= machine.params['seuil_max_mem']",
+    description: "Alerte si l'utilisation de la mémoire vive (RAM) dépasse un seuil critique.",
+    expectedParams: [{ id: 'seuil_max_mem', label: 'Seuil Utilisation Max Mémoire (%)', type: 'number', defaultValue: 85 }],
+    checklist: [
+        { id: 'chk-mem-1', label: "Identifier les processus consommant le plus de mémoire." },
+        { id: 'chk-mem-2', label: "Vérifier les fuites de mémoire potentielles." }
+    ]
+  },
+  {
+    id: "control-srv-disk",
+    nomDuControle: "Surveillance Espace Disque Serveur",
+    typesDeMachinesConcernees: ["Serveur", "PC"],
+    typesDeCapteursNecessaires: ["Espace Disque Libre"],
+    variablesUtilisees: ["disk_free_gb"],
+    formuleDeVerification: "sensor['disk_free_gb'].value >= machine.params['seuil_min_disk_gb']",
+    description: "Alerte si l'espace disque libre tombe sous un seuil critique.",
+    expectedParams: [{ id: 'seuil_min_disk_gb', label: 'Seuil Espace Disque Libre Minimum (GB)', type: 'number', defaultValue: 20 }],
+    checklist: [
+        { id: 'chk-disk-1', label: "Supprimer les fichiers temporaires et inutiles." },
+        { id: 'chk-disk-2', label: "Archiver les anciennes données." },
+        { id: 'chk-disk-3', label: "Planifier une augmentation de la capacité disque si nécessaire." }
+    ]
+  },
+  {
+    id: "control-srv-latency",
+    nomDuControle: "Surveillance Latence Réseau Serveur",
+    typesDeMachinesConcernees: ["Serveur"],
+    typesDeCapteursNecessaires: ["Latence Ping"],
+    variablesUtilisees: ["ping_latency_ms"],
+    formuleDeVerification: "sensor['ping_latency_ms'].value <= machine.params['seuil_max_latency_ms']",
+    description: "Alerte si la latence réseau (ping vers une cible de référence) dépasse un seuil.",
+    expectedParams: [{ id: 'seuil_max_latency_ms', label: 'Seuil Latence Max (ms)', type: 'number', defaultValue: 100 }],
+    checklist: [
+        { id: 'chk-lat-1', label: "Vérifier la connectivité réseau physique." },
+        { id: 'chk-lat-2', label: "Contrôler la charge du réseau." }
+    ]
+  }
 ];
 
 function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
@@ -149,7 +206,7 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
                 ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: s.provides || []})),
                 ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: s.provides || []}))
             ];
-             if (augmentedMachine.availableSensors.length === 0) {
+             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC') { // PC might not have sensors in this demo
                  augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
              }
         }
@@ -158,12 +215,15 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         }
         
         if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
+            const baseValue = parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 
+                              parseFloat(augmentedMachine.activeControlInAlert.currentValues?.[Object.keys(augmentedMachine.activeControlInAlert.currentValues)[0]]?.value as string) || 
+                              70; // Default base if no specific value found
             augmentedMachine.activeControlInAlert.historicalData = [
-                { name: 'T-4', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 65) - 5 },
-                { name: 'T-3', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 66) - 4 },
-                { name: 'T-2', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 67) - 3 },
-                { name: 'T-1', value: Math.random() * 10 + (parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 68) - 2 },
-                { name: 'Maintenant', value: parseFloat(augmentedMachine.activeControlInAlert.currentValues?.['value']?.value as string) || 70 },
+                { name: 'T-4', value: Math.random() * 10 + baseValue - 5 },
+                { name: 'T-3', value: Math.random() * 10 + baseValue - 4 },
+                { name: 'T-2', value: Math.random() * 10 + baseValue - 3 },
+                { name: 'T-1', value: Math.random() * 10 + baseValue - 2 },
+                { name: 'Maintenant', value: baseValue },
             ];
             augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(augmentedMachine.activeControlInAlert.currentValues || {})[0] || "Valeur Simulée";
         }
@@ -397,9 +457,6 @@ export default function ManageMachinePage() {
                                   ) || variableId;
                                   
                                   const compatibleSensors = machine?.availableSensors?.filter(sensor => {
-                                    // A sensor is compatible if it provides AT LEAST ONE of the variable types.
-                                    // Example: variableId = "temp", sensor.provides = ["temp", "humidity"] -> compatible
-                                    // Example: variableId = "temp_cpu", sensor.provides = ["temp_cpu"] -> compatible
                                     return sensor.provides?.some(p => p.toLowerCase() === variableId.toLowerCase());
                                   }) || [];
 
@@ -428,8 +485,8 @@ export default function ManageMachinePage() {
                                           ) : (
                                             <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
                                           )}
-                                           {machine?.availableSensors && machine.availableSensors.filter(s => !compatibleSensors.includes(s)).length > 0 && (
-                                              machine.availableSensors.filter(s => !compatibleSensors.includes(s)).map(sensor => (
+                                           {machine?.availableSensors && machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).length > 0 && (
+                                              machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).map(sensor => (
                                                 <SelectItem key={sensor.id} value={sensor.id} disabled>
                                                   {sensor.name} (Non compatible: {sensor.provides?.join(', ') || 'N/A'})
                                                 </SelectItem>
@@ -561,6 +618,3 @@ export default function ManageMachinePage() {
     </AppLayout>
   );
 }
-
-
-    

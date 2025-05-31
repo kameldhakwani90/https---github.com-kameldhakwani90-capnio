@@ -45,6 +45,7 @@ export interface ActiveControlInAlert {
   historicalData?: HistoricalDataPoint[];
   relevantSensorVariable?: string;
   checklist?: ChecklistItem[];
+  status?: Status; // Add status to the alert itself
 }
 
 export interface Sensor {
@@ -115,27 +116,51 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             availableSensors: [
                 { id: "srv-temp-interne", name: "Sonde Température Interne Serveur", provides: ["temp", "temp_srv", "server_temp"] },
                 { id: "srv-fan-speed", name: "Capteur Vitesse Ventilateur Serveur", provides: ["fan_speed"] },
+                { id: "srv-cpu-load", name: "Moniteur Charge CPU", provides: ["cpu_usage_percent"] },
+                { id: "srv-mem-usage", name: "Moniteur Utilisation RAM", provides: ["mem_usage_percent"] },
+                { id: "srv-disk-space", name: "Moniteur Espace Disque /dev/sda1", provides: ["disk_free_gb"] },
+                { id: "srv-ping-gw", name: "Sonde Latence Gateway", provides: ["ping_latency_ms"] },
             ],
             configuredControls: {
                 "control-srv-temp": { 
                     isActive: true,
                     params: { seuil_max_temp_srv: 70 },
                     sensorMappings: { temp_srv: "srv-temp-interne"}
+                },
+                "control-srv-cpu": {
+                    isActive: true,
+                    params: { seuil_max_cpu: 90 },
+                    sensorMappings: { cpu_usage_percent: "srv-cpu-load" }
+                },
+                "control-srv-mem": {
+                    isActive: true,
+                    params: { seuil_max_mem: 85 },
+                    sensorMappings: { mem_usage_percent: "srv-mem-usage" }
+                },
+                "control-srv-disk": {
+                    isActive: true,
+                    params: { seuil_min_disk_gb: 20 },
+                    sensorMappings: { disk_free_gb: "srv-disk-space" }
+                },
+                "control-srv-latency": {
+                    isActive: true,
+                    params: { seuil_max_latency_ms: 100 },
+                    sensorMappings: { ping_latency_ms: "srv-ping-gw" }
                 }
             }
           },
           {
             id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind,
             availableSensors: [
-                { id: "hvac-main-current", name: "Capteur Courant HVAC Principal", provides: ["courant", "current", "tension"] },
+                { id: "hvac-main-current", name: "Capteur Courant HVAC Principal", provides: ["courant", "current", "tension"] }, // Assuming tension also comes from here for demo
                 { id: "hvac-air-flow", name: "Capteur Débit Air HVAC", provides: ["flow_rate"] },
                 { id: "hvac-temp-output", name: "Sonde Température Sortie HVAC", provides: ["temp"] },
             ],
             configuredControls: {
-                "control-002": { // Consommation électrique
+                "control-002": { 
                     isActive: true,
                     params: { seuil_max_conso: 3500 },
-                    sensorMappings: { courant: "hvac-main-current", tension: "hvac-main-current" } // Assuming tension also comes from current sensor for demo
+                    sensorMappings: { courant: "hvac-main-current", tension: "hvac-main-current" }
                 }
             }
           },
@@ -150,13 +175,13 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 provides: ["temp", "humidity"]
             },
             {
-                id: "sensor-hvac-current-link", // Renamed to avoid conflict with availableSensor id
+                id: "sensor-hvac-machine-current", // Renamed to avoid conflict with availableSensor id
                 name: "Capteur Courant HVAC (Lien)",
                 typeModel: "Capteur de Courant Monophasé CM-100",
                 scope: "machine",
                 affectedMachineIds: ["machine-cc-admin-hvac"],
                 status: "green",
-                provides: ["current"] // This sensor instance *provides* current.
+                provides: ["current"] 
             }
         ],
         subZones: [
@@ -173,12 +198,13 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             machines: [
               { id: "machine-projecteur-alpha", name: "Projecteur Salle Alpha", type: "Projecteur", status: "orange", icon: Settings2,
                 activeControlInAlert: {
-                    controlId: "control-proj-temp",
+                    controlId: "control-proj-temp", // Placeholder ID, should be defined in Admin Controls
                     controlName: "Surchauffe Projecteur",
                     controlDescription: "Surveille la température interne du projecteur.",
                     alertDetails: "Température projecteur (65°C) élevée. Seuil: 60°C.",
                     relevantSensorVariable: "Température Projecteur",
-                     historicalData: [ { name: 'T-4', value: 58 }, { name: 'T-3', value: 60 }, { name: 'T-2', value: 62 }, { name: 'T-1', value: 64 }, { name: 'Maintenant', value: 65 }],
+                    historicalData: [ { name: 'T-4', value: 58 }, { name: 'T-3', value: 60 }, { name: 'T-2', value: 62 }, { name: 'T-1', value: 64 }, { name: 'Maintenant', value: 65 }],
+                    status: 'orange'
                 }
               }
             ]
@@ -204,7 +230,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 status: "orange",
                 icon: Settings2,
                 activeControlInAlert: {
-                  controlId: "control-004",
+                  controlId: "control-004", // Placeholder ID
                   controlName: "Surveillance Couple Moteur Robot",
                   controlDescription: "Surveille le couple des moteurs du robot pour détecter les surcharges ou blocages.",
                   alertDetails: "Couple moteur axe Z (7.8 Nm) proche du seuil d'alerte (8.0 Nm).",
@@ -220,7 +246,8 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     { id: 'chk-robot-1', label: "Vérifier l'absence d'obstruction physique sur l'axe Z." },
                     { id: 'chk-robot-2', label: "Contrôler le niveau de lubrification de l'axe Z." },
                     { id: 'chk-robot-3', label: "Inspecter le câblage du moteur de l'axe Z pour tout dommage." },
-                  ]
+                  ],
+                  status: 'orange'
                 }
               },
             ],
@@ -263,7 +290,8 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                     { id: 'chk-frigo-2', label: "Nettoyer le condenseur de toute poussière ou obstruction." },
                     { id: 'chk-frigo-3', label: "S'assurer que la ventilation autour du frigo n'est pas bloquée." },
                     { id: 'chk-frigo-4', label: "Vérifier le thermostat et ses réglages." },
-                  ]
+                  ],
+                  status: 'red'
                 }
               },
             ],
@@ -323,12 +351,12 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
              configuredControls: {
                 "control-001": { 
                     isActive: true,
-                    params: { seuil_min: -22, seuil_max: -18 }, // Typical freezer temps
+                    params: { seuil_min: -22, seuil_max: -18 }, 
                     sensorMappings: { temp: "frigo-z2-temp" }
                 }
             },
             activeControlInAlert: {
-              controlId: "control-001", // Using the same control ID but with different instance values
+              controlId: "control-001", 
               controlName: "Contrôle Température Congélateur",
               controlDescription: "Maintien de la température du congélateur pour produits surgelés.",
               alertDetails: "Température (-15°C) proche du seuil d'alerte (-18°C). Cycle de dégivrage en retard.",
@@ -344,7 +372,8 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                  { id: 'chk-congel-1', label: "Vérifier l'étanchéité de la porte du congélateur." },
                  { id: 'chk-congel-2', label: "S'assurer que le cycle de dégivrage automatique fonctionne ou a été effectué récemment." },
                  { id: 'chk-congel-3', label: "Ne pas surcharger le congélateur pour permettre une bonne circulation de l'air." },
-              ]
+              ],
+              status: 'orange'
             }
           },
         ],
