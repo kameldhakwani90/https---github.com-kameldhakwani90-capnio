@@ -9,12 +9,13 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server } from "lucide-react"; 
+import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     type Site, 
     type Zone, 
     type Machine, 
+    type Sensor, // Import Sensor type
     getZoneOverallStatus, 
     getSiteOverallStatus, 
     getStatusIcon,      
@@ -128,27 +129,75 @@ const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: s
     );
 };
 
+const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ sensor, siteId, zoneId, router }) => {
+    // Placeholder for actions, actual sensor management page to be created
+    const handleManageSensor = (sensorId: string) => {
+        // router.push(`/client/assets/manage-sensor/${siteId}/${zoneId}/${sensorId}`); // Example future path
+        alert(`Gestion du capteur ${sensor.name} (ID: ${sensorId}) - Non implémenté`);
+    };
+    const handleDeleteSensor = (sensorId: string) => {
+        alert(`Suppression du capteur ${sensor.name} (ID: ${sensorId}) - Non implémenté`);
+    };
+
+    return (
+        <div className="flex justify-between items-center p-2.5 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2">
+                <RadioTower className="h-5 w-5 text-muted-foreground" />
+                <div>
+                    <p className="font-medium">{sensor.name}</p>
+                    <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel} | Portée: {sensor.scope === 'zone' ? 'Ambiant (Zone)' : 'Machine'}</p>
+                    {sensor.status && (
+                         <div className="flex items-center gap-1 text-xs">
+                            {getStatusIcon(sensor.status, "h-4 w-4")}
+                            <span className={cn(
+                                sensor.status === 'red' && 'text-red-600',
+                                sensor.status === 'orange' && 'text-orange-600',
+                                sensor.status === 'green' && 'text-green-600',
+                                'font-medium'
+                            )}>
+                            {getStatusText(sensor.status)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center gap-1">
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleManageSensor(sensor.id)}>
+                    <Settings2 className="mr-1 h-4 w-4" /> Gérer
+                </Button>
+                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 px-2" onClick={() => handleDeleteSensor(sensor.id)}>
+                    <Trash2 className="mr-1 h-4 w-4" /> Suppr.
+                </Button>
+            </div>
+        </div>
+    );
+};
+
 
 interface ZoneItemForManagementProps {
   zone: Zone; 
   siteId: string; 
-  parentZoneId?: string; // ID of the parent zone if this is a sub-zone
+  parentZoneId?: string; 
   router: ReturnType<typeof useRouter>;
   level?: number;
 }
 
 const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, siteId, parentZoneId, router, level = 0 }) => {
     const zoneStatus = getZoneOverallStatus(zone); 
-    const paddingLeft = level > 0 ? `${level * 1.5}rem` : '0'; // Indent sub-zones
+    const paddingLeft = level > 0 ? `${level * 1.5}rem` : '0'; 
 
-    const currentParentZoneId = parentZoneId || zone.id; // If it's a top-level zone, its own ID is the context for adding sub-zones *to itself*
+    const currentParentZoneId = parentZoneId || zone.id; 
+    
+    const ambientSensors = zone.sensors?.filter(s => s.scope === 'zone') || [];
+    // Machine-specific sensors could be listed here too, or under respective machines for clarity.
+    // For now, we'll focus on ambient sensors in this component.
 
     return (
         <AccordionItem value={zone.id} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
             <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-primary/80" /> {/* Use Layers for all zones/sub-zones */}
+                        <Layers className="h-5 w-5 text-primary/80" /> 
                         <span className="font-medium text-md">{zone.name}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -181,6 +230,15 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                     </div>
                 )}
 
+                {ambientSensors.length > 0 && (
+                     <div className="space-y-1.5 mt-4 pt-3 border-t">
+                        <h4 className="text-sm font-semibold text-muted-foreground mb-1.5">Capteurs Ambiants (Zone) :</h4>
+                        {ambientSensors.map(sensor => (
+                           <SensorItemDisplay key={sensor.id} sensor={sensor} siteId={siteId} zoneId={zone.id} router={router} />
+                        ))}
+                    </div>
+                )}
+
                 {zone.subZones && zone.subZones.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-border/50">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Sous-Zones :</h4>
@@ -190,7 +248,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                           key={subZone.id} 
                           zone={subZone} 
                           siteId={siteId} 
-                          parentZoneId={zone.id} // Pass current zone's ID as parent
+                          parentZoneId={zone.id} 
                           router={router} 
                           level={level + 1} 
                         />
@@ -199,8 +257,10 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                   </div>
                 )}
                 
-                {(!zone.machines || zone.machines.length === 0) && (!zone.subZones || zone.subZones.length === 0) && (
-                    <p className="text-sm text-muted-foreground p-2 text-center">Aucune machine ou sous-zone définie dans cette zone.</p>
+                {(!zone.machines || zone.machines.length === 0) && 
+                 (!zone.subZones || zone.subZones.length === 0) &&
+                 (ambientSensors.length === 0) && (
+                    <p className="text-sm text-muted-foreground p-2 text-center">Aucune machine, sous-zone ou capteur d'ambiance défini.</p>
                 )}
             </AccordionContent>
         </AccordionItem>
@@ -259,7 +319,7 @@ export default function ManageAssetPage() {
     router.push(`/client/assets/edit-site/${currentAsset.id}`);
   };
 
-  const handleAddZoneToSite = () => { // Renamed for clarity
+  const handleAddZoneToSite = () => { 
     router.push(`/client/assets/add-zone/${currentAsset.id}`);
   };
 
@@ -329,7 +389,6 @@ export default function ManageAssetPage() {
               <section>
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
                     <h2 className="text-2xl font-semibold flex items-center gap-2"><HomeIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
-                     {/* Button to add sub-site to current asset if needed, could go here */}
                 </div>
                 <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                   {currentAsset.subSites.map(subSite => (

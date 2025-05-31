@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { LucideIcon } from 'lucide-react';
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building, ChevronRight, PackageOpen, Settings2, Thermometer, Zap, Wind, LineChart as LineChartIcon } from "lucide-react";
+import { Home, Layers, Server, AlertTriangle, CheckCircle2, Info, Building, ChevronRight, PackageOpen, Settings2, Thermometer, Zap, Wind, LineChart as LineChartIcon, RadioTower } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,16 @@ export interface ActiveControlInAlert {
   checklist?: ChecklistItem[];
 }
 
+export interface Sensor {
+  id: string;
+  name: string;
+  typeModel: string; // e.g., "Sonde Ambiante THL v2.1" (from admin defined types)
+  scope: 'zone' | 'machine';
+  piServerId?: string;
+  affectedMachineIds?: string[];
+  status?: Status; // Optional: sensor status
+}
+
 export interface Machine {
   id: string;
   name: string;
@@ -54,13 +64,16 @@ export interface Machine {
   status: Status;
   icon?: LucideIcon;
   activeControlInAlert?: ActiveControlInAlert;
+  // Sensors directly attached to this machine could also be listed here if needed
+  // sensors?: Sensor[]; 
 }
 
 export interface Zone {
   id: string;
   name: string;
   machines: Machine[];
-  subZones?: Zone[]; // Added for sub-zone hierarchy
+  subZones?: Zone[];
+  sensors?: Sensor[]; // All sensors declared IN this zone
 }
 
 export interface Site {
@@ -86,7 +99,24 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           { id: "machine-cc-admin-srv", name: "Serveur Principal Admin", type: "Serveur", status: "green", icon: Server },
           { id: "machine-cc-admin-hvac", name: "Climatisation Centrale HVAC", type: "HVAC", status: "green", icon: Wind },
         ],
-        subZones: [ // Example of sub-zones
+        sensors: [ // Example ambient sensor added here
+            { 
+                id: "sensor-ambiant-cc-admin-temp", 
+                name: "Température Ambiante Hall", 
+                typeModel: "Sonde Ambiante THL v2.1", 
+                scope: "zone", 
+                status: "green" 
+            },
+            {
+                id: "sensor-hvac-current",
+                name: "Capteur Courant HVAC",
+                typeModel: "Capteur de Courant Monophasé CM-100",
+                scope: "machine",
+                affectedMachineIds: ["machine-cc-admin-hvac"],
+                status: "green"
+            }
+        ],
+        subZones: [ 
           {
             id: "subzone-cc-admin-bureau101",
             name: "Bureau 101",
@@ -270,7 +300,8 @@ const getCombinedStatus = (statuses: Status[]): Status => {
 export const getZoneOverallStatus = (zone: Zone): Status => {
   const machineStatuses = zone.machines?.map(m => m.status) || [];
   const subZoneStatuses = zone.subZones?.map(sz => getZoneOverallStatus(sz)) || [];
-  return getCombinedStatus([...machineStatuses, ...subZoneStatuses]);
+  const sensorStatuses = zone.sensors?.map(s => s.status || 'green') || []; // Assume green if no status
+  return getCombinedStatus([...machineStatuses, ...subZoneStatuses, ...sensorStatuses]);
 };
 
 export const getSiteOverallStatus = (site: Site): Status => {
@@ -405,8 +436,8 @@ const SiteDetailZoneItem: React.FC<SiteDetailZoneItemProps> = ({ zone, parentId,
             ))}
           </div>
         )}
-         {(!zone.machines || zone.machines.length === 0) && (!zone.subZones || zone.subZones.length === 0) && (
-           <p className="text-xs text-muted-foreground py-2 px-3">Aucune machine ou sous-zone définie.</p>
+         {(!zone.machines || zone.machines.length === 0) && (!zone.subZones || zone.subZones.length === 0) && (!zone.sensors || zone.sensors.filter(s => s.scope === 'zone').length === 0) && (
+           <p className="text-xs text-muted-foreground py-2 px-3">Aucune machine, sous-zone ou capteur d'ambiance défini.</p>
          )}
 
         {zone.subZones && zone.subZones.length > 0 && (
