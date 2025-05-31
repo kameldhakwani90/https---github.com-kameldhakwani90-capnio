@@ -9,7 +9,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server } from "lucide-react"; // Layers3 for sub-zone icon
+import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     type Site, 
@@ -168,6 +168,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${siteId}/${zone.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sub-zone/${siteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Sous-Zone</Button>
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${siteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${siteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
                     <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${siteId}/${zone.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                 </div>
                 
