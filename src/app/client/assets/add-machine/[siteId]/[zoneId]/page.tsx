@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; // Updated import
-import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive } from "lucide-react";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; 
+import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive, Tractor, Spray, Droplets } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -22,12 +22,34 @@ const AVAILABLE_MACHINE_TYPES = [
   { id: "mt-006", name: "Congélateur" },
   { id: "mt-007", name: "Serveur Informatique" },
   { id: "mt-008", name: "Ventilation / HVAC" },
-  { id: "mt-009", name: "Autre Machine Générique" },
+  { id: "mt-009", name: "Four Professionnel" },
+  { id: "mt-010", name: "Equipement de Production" }, // Generic for factory lines
+  { id: "mt-011", name: "Camion Réfrigéré" },
+  { id: "mt-012", name: "Hub Sécurité" }, // For motion/smoke sensor gateways
+  { id: "mt-013", name: "Système d'Irrigation" },
+  { id: "mt-014", name: "Ventilation Enclos" }, // Farm
+  { id: "mt-015", name: "Chauffage Enclos" }, // Farm
+  { id: "mt-016", name: "Ventilation Serre" }, // Farm
+  { id: "mt-017", name: "Chauffage Serre" }, // Farm
+  { id: "mt-018", name: "Abreuvoir Automatisé" }, // Farm
+  { id: "mt-019", name: "Vitrine Réfrigérée" },
+  { id: "mt-020", name: "Chambre Froide" }, // Large scale fridge
+  { id: "mt-021", name: "PC" }, // For Pi Servers if categorized as PC
+  { id: "mt-022", name: "Générique" }, // Fallback
 ];
+
 
 function findSiteAndZone(sites: Site[], siteId: string, zoneId: string): { site?: Site, zone?: Zone } {
   const site = sites.find(s => s.id === siteId);
-  if (!site) return {};
+  if (!site) { // Check top-level sites first
+    for (const topSite of sites) { // If not found, check subSites recursively
+        if(topSite.subSites) {
+            const foundInSub = findSiteAndZone(topSite.subSites, siteId, zoneId);
+            if (foundInSub.site) return foundInSub;
+        }
+    }
+    return {};
+  }
 
   function findZoneRecursive(zones: Zone[], id: string): Zone | undefined {
     for (const z of zones) {
@@ -96,12 +118,17 @@ export default function AddMachineToZonePage() {
       return;
     }
     const genericMachineData = {
+      id: `machine-${Date.now().toString()}`,
       name: machineName,
       model: machineModel,
-      type: selectedGenericMachineType, 
+      type: selectedGenericMachineType,
+      status: "green" as "green", // Default status
+      configuredControls: {},
+      availableSensors: [] 
     };
     console.log("Adding generic machine to site/zone:", siteId, zoneId, genericMachineData);
     toast({ title: "Machine Ajoutée (Simulation)", description: `La machine "${machineName}" de type "${selectedGenericMachineType}" a été ajoutée à la zone "${parentZone?.name}".` });
+    // TODO: Add this machine to DUMMY_CLIENT_SITES_DATA for real-time update in demo
     router.push(`/client/assets/manage/${siteId}`);
   };
 
@@ -116,10 +143,18 @@ export default function AddMachineToZonePage() {
       return;
     }
     setIsConnectingPi(true);
+    const piMachineData = {
+      id: `machine-pi-${Date.now().toString()}`,
+      name: piServerName,
+      type: "PC", // Standard type for Pi Servers for now
+      status: "green" as "green",
+      model: "Raspberry Pi (Capnio)",
+      // Add other relevant PI server properties here if needed
+    };
     console.log("Simulating Pi connection with data:", {
       ssid: piSsid,
       password: piPassword, 
-      piName: piServerName,
+      machineData: piMachineData,
       siteId,
       zoneId,
       siteName: parentSite?.name,
@@ -133,6 +168,7 @@ export default function AddMachineToZonePage() {
       
       setTimeout(() => {
         toast({ title: "Serveur Pi Lié (Simulation)", description: `Le serveur Pi "${piServerName}" a été lié à la zone "${parentZone?.name}". Redirection...` });
+        // TODO: Add this Pi machine to DUMMY_CLIENT_SITES_DATA
         router.push(`/client/assets/manage/${siteId}`);
       }, 2000); 
     }, 3000); 
@@ -178,7 +214,7 @@ export default function AddMachineToZonePage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="generic">
-                    <HardDrive className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Machine Générique
+                    <HardDrive className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Machine / Équipement
                   </SelectItem>
                   <SelectItem value="pi_server">
                     <Router className="inline-block mr-2 h-4 w-4 text-muted-foreground" /> Serveur Pi Capnio
@@ -189,7 +225,7 @@ export default function AddMachineToZonePage() {
 
             {selectedMachineTypeToAdd === "generic" && (
               <form onSubmit={handleGenericMachineSubmit} className="space-y-6 pt-4 border-t">
-                <CardTitle className="text-lg">Détails de la Machine Générique</CardTitle>
+                <CardTitle className="text-lg">Détails de la Machine / Équipement</CardTitle>
                 <div className="space-y-2">
                   <Label htmlFor="machineName">Nom de la Machine *</Label>
                   <Input 

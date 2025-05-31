@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText } from "@/lib/client-data"; // Updated import
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight } from "lucide-react"; 
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -37,39 +37,63 @@ interface AdminControl {
   checklist?: ChecklistItem[]; 
 }
 
+// Combined and extended dummy admin controls
 const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-001",
-    nomDuControle: "Contrôle Température Frigo",
-    typesDeMachinesConcernees: ["Frigo", "Congélateur"],
+    nomDuControle: "Contrôle Température Frigo/Congélateur",
+    typesDeMachinesConcernees: ["Frigo", "Congélateur", "Vitrine Réfrigérée", "Chambre Froide"],
     typesDeCapteursNecessaires: ["Température"],
     variablesUtilisees: ["temp"],
     formuleDeVerification: "sensor['temp'].value >= machine.params['seuil_min'] && sensor['temp'].value <= machine.params['seuil_max']",
-    description: "Vérifie que la température du frigo reste dans les seuils définis.",
+    description: "Vérifie que la température reste dans les seuils définis.",
     expectedParams: [
       { id: 'seuil_min', label: 'Seuil Température Minimum (°C)', type: 'number', defaultValue: 0 },
       { id: 'seuil_max', label: 'Seuil Température Maximum (°C)', type: 'number', defaultValue: 5 },
     ],
     checklist: [
-        { id: 'chk-frigo-1', label: "Vérifier que la porte du frigo est bien fermée et étanche." },
+        { id: 'chk-frigo-1', label: "Vérifier que la porte est bien fermée et étanche." },
         { id: 'chk-frigo-2', label: "Nettoyer le condenseur de toute poussière ou obstruction." },
-        { id: 'chk-frigo-3', label: "S'assurer que la ventilation autour du frigo n'est pas bloquée." },
+        { id: 'chk-frigo-3', label: "S'assurer que la ventilation autour n'est pas bloquée." },
     ]
   },
   {
+    id: "control-temp-four",
+    nomDuControle: "Contrôle Température Four Professionnel",
+    typesDeMachinesConcernees: ["Four Professionnel"],
+    typesDeCapteursNecessaires: ["Température Four"],
+    variablesUtilisees: ["temp_four"],
+    formuleDeVerification: "sensor['temp_four'].value <= machine.params['temp_max_four'] && sensor['temp_four'].value >= machine.params['temp_min_cuisson']",
+    description: "Surveille la température du four pour une cuisson optimale et la sécurité.",
+    expectedParams: [
+      { id: 'temp_min_cuisson', label: 'Température Minimale Cuisson (°C)', type: 'number', defaultValue: 160 },
+      { id: 'temp_max_four', label: 'Température Maximale Four (°C)', type: 'number', defaultValue: 250 },
+    ],
+    checklist: [ {id: 'chk-four-1', label: "Vérifier l'étanchéité de la porte du four."}, {id: 'chk-four-2', label: "Nettoyer régulièrement l'intérieur du four."}]
+  },
+  {
+    id: "control-temp-camion",
+    nomDuControle: "Contrôle Température Camion Réfrigéré",
+    typesDeMachinesConcernees: ["Camion Réfrigéré"],
+    typesDeCapteursNecessaires: ["Température Caisson"],
+    variablesUtilisees: ["temp_caisson"],
+    formuleDeVerification: "sensor['temp_caisson'].value <= machine.params['temp_max']",
+    description: "Surveille la température du caisson réfrigéré du camion.",
+    expectedParams: [ { id: 'temp_max', label: 'Température Maximale Caisson (°C)', type: 'number', defaultValue: 4 } ],
+    checklist: [{id: 'chk-camion-1', label: "Vérifier la fermeture des portes du caisson avant départ."}, {id: 'chk-camion-2', label: "Contrôler le fonctionnement du groupe froid régulièrement."}]
+  },
+  {
     id: "control-002",
-    nomDuControle: "Contrôle Consommation Électrique Moteur",
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC"],
+    nomDuControle: "Contrôle Consommation Électrique Moteur/Equipement",
+    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC", "Equipement de Production"],
     typesDeCapteursNecessaires: ["Tension", "Courant"],
     variablesUtilisees: ["tension", "courant", "conso"], 
     formuleDeCalcul: "conso = sensor['tension'].value * sensor['courant'].value",
     formuleDeVerification: "conso <= machine.params['seuil_max_conso']",
-    description: "Calcule et vérifie la consommation électrique des moteurs.",
-    expectedParams: [
-      { id: 'seuil_max_conso', label: 'Seuil Consommation Max (W)', type: 'number', defaultValue: 2000 },
-    ],
+    description: "Calcule et vérifie la consommation électrique.",
+    expectedParams: [ { id: 'seuil_max_conso', label: 'Seuil Consommation Max (W)', type: 'number', defaultValue: 2000 } ],
     checklist: [
-        { id: 'chk-moteur-1', label: "Inspecter visuellement le moteur pour des signes de surchauffe ou de dommage." },
+        { id: 'chk-moteur-1', label: "Inspecter visuellement pour des signes de surchauffe ou de dommage." },
         { id: 'chk-moteur-2', label: "Vérifier que les connexions électriques sont bien serrées et non corrodées." },
     ]
   },
@@ -77,13 +101,11 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     id: "control-003",
     nomDuControle: "Alerte Pression Basse Huile Compresseur",
     typesDeMachinesConcernees: ["Compresseur"],
-    typesDeCapteursNecessaires: ["Pression"],
+    typesDeCapteursNecessaires: ["Pression Huile"],
     variablesUtilisees: ["pression_huile"],
     formuleDeVerification: "sensor['pression_huile'].value >= machine.params['seuil_min_pression']",
     description: "Alerte si la pression d'huile du compresseur est trop basse.",
-    expectedParams: [
-      { id: 'seuil_min_pression', label: 'Seuil Pression Huile Minimum (bar)', type: 'number', defaultValue: 0.5 },
-    ],
+    expectedParams: [ { id: 'seuil_min_pression', label: 'Seuil Pression Huile Minimum (bar)', type: 'number', defaultValue: 0.5 } ],
     checklist: [
         { id: 'chk-comp-1', label: "Vérifier le niveau d'huile du compresseur." },
         { id: 'chk-comp-2', label: "Rechercher des fuites d'huile potentielles." },
@@ -91,77 +113,123 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   },
    {
     id: "control-srv-temp",
-    nomDuControle: "Surveillance Température Serveur",
-    typesDeMachinesConcernees: ["Serveur", "PC"],
-    typesDeCapteursNecessaires: ["Température Serveur"],
+    nomDuControle: "Surveillance Température Serveur/PC",
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
+    typesDeCapteursNecessaires: ["Température CPU/Système"], // Changed from "Température Serveur"
     variablesUtilisees: ["temp_srv"], 
     formuleDeVerification: "sensor['temp_srv'].value <= machine.params['seuil_max_temp_srv']",
-    description: "Surveille la température interne du serveur pour éviter la surchauffe.",
-    expectedParams: [
-      { id: 'seuil_max_temp_srv', label: 'Seuil Température Max Serveur (°C)', type: 'number', defaultValue: 75 },
-    ],
+    description: "Surveille la température interne pour éviter la surchauffe.",
+    expectedParams: [ { id: 'seuil_max_temp_srv', label: 'Seuil Température Max (°C)', type: 'number', defaultValue: 75 } ],
     checklist: [
-        { id: 'chk-srv-1', label: "S'assurer que les ventilateurs du serveur fonctionnent correctement." },
-        { id: 'chk-srv-2', label: "Vérifier que les entrées et sorties d'air du serveur ne sont pas obstruées." },
-        { id: 'chk-srv-3', label: "Contrôler la température ambiante de la salle des serveurs." },
+        { id: 'chk-srv-1', label: "S'assurer que les ventilateurs fonctionnent correctement." },
+        { id: 'chk-srv-2', label: "Vérifier que les entrées et sorties d'air ne sont pas obstruées." },
     ]
   },
   {
     id: "control-srv-cpu",
-    nomDuControle: "Surveillance Utilisation CPU Serveur",
-    typesDeMachinesConcernees: ["Serveur", "PC"],
+    nomDuControle: "Surveillance Utilisation CPU",
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
     typesDeCapteursNecessaires: ["Utilisation CPU"],
     variablesUtilisees: ["cpu_usage_percent"],
     formuleDeVerification: "sensor['cpu_usage_percent'].value <= machine.params['seuil_max_cpu']",
     description: "Alerte si l'utilisation du CPU dépasse un seuil critique.",
     expectedParams: [{ id: 'seuil_max_cpu', label: 'Seuil Utilisation Max CPU (%)', type: 'number', defaultValue: 90 }],
-    checklist: [
-        { id: 'chk-cpu-1', label: "Identifier les processus consommant le plus de CPU." },
-        { id: 'chk-cpu-2', label: "Vérifier les mises à jour système et logicielles." }
-    ]
+    checklist: [ { id: 'chk-cpu-1', label: "Identifier les processus consommant le plus de CPU." } ]
   },
   {
     id: "control-srv-mem",
-    nomDuControle: "Surveillance Utilisation Mémoire Serveur",
-    typesDeMachinesConcernees: ["Serveur", "PC"],
+    nomDuControle: "Surveillance Utilisation Mémoire",
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
     typesDeCapteursNecessaires: ["Utilisation Mémoire"],
     variablesUtilisees: ["mem_usage_percent"],
     formuleDeVerification: "sensor['mem_usage_percent'].value <= machine.params['seuil_max_mem']",
-    description: "Alerte si l'utilisation de la mémoire vive (RAM) dépasse un seuil critique.",
+    description: "Alerte si l'utilisation de la RAM dépasse un seuil critique.",
     expectedParams: [{ id: 'seuil_max_mem', label: 'Seuil Utilisation Max Mémoire (%)', type: 'number', defaultValue: 85 }],
-    checklist: [
-        { id: 'chk-mem-1', label: "Identifier les processus consommant le plus de mémoire." },
-        { id: 'chk-mem-2', label: "Vérifier les fuites de mémoire potentielles." }
-    ]
+    checklist: [ { id: 'chk-mem-1', label: "Identifier les processus consommant le plus de mémoire." } ]
   },
   {
     id: "control-srv-disk",
-    nomDuControle: "Surveillance Espace Disque Serveur",
-    typesDeMachinesConcernees: ["Serveur", "PC"],
+    nomDuControle: "Surveillance Espace Disque",
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
     typesDeCapteursNecessaires: ["Espace Disque Libre"],
     variablesUtilisees: ["disk_free_gb"],
     formuleDeVerification: "sensor['disk_free_gb'].value >= machine.params['seuil_min_disk_gb']",
     description: "Alerte si l'espace disque libre tombe sous un seuil critique.",
     expectedParams: [{ id: 'seuil_min_disk_gb', label: 'Seuil Espace Disque Libre Minimum (GB)', type: 'number', defaultValue: 20 }],
-    checklist: [
-        { id: 'chk-disk-1', label: "Supprimer les fichiers temporaires et inutiles." },
-        { id: 'chk-disk-2', label: "Archiver les anciennes données." },
-        { id: 'chk-disk-3', label: "Planifier une augmentation de la capacité disque si nécessaire." }
-    ]
+    checklist: [ { id: 'chk-disk-1', label: "Supprimer les fichiers temporaires et inutiles." } ]
   },
   {
     id: "control-srv-latency",
-    nomDuControle: "Surveillance Latence Réseau Serveur",
-    typesDeMachinesConcernees: ["Serveur"],
+    nomDuControle: "Surveillance Latence Réseau",
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
     typesDeCapteursNecessaires: ["Latence Ping"],
     variablesUtilisees: ["ping_latency_ms"],
     formuleDeVerification: "sensor['ping_latency_ms'].value <= machine.params['seuil_max_latency_ms']",
-    description: "Alerte si la latence réseau (ping vers une cible de référence) dépasse un seuil.",
+    description: "Alerte si la latence réseau (ping) dépasse un seuil.",
     expectedParams: [{ id: 'seuil_max_latency_ms', label: 'Seuil Latence Max (ms)', type: 'number', defaultValue: 100 }],
-    checklist: [
-        { id: 'chk-lat-1', label: "Vérifier la connectivité réseau physique." },
-        { id: 'chk-lat-2', label: "Contrôler la charge du réseau." }
-    ]
+    checklist: [ { id: 'chk-lat-1', label: "Vérifier la connectivité réseau physique et la charge du réseau." } ]
+  },
+  {
+    id: "control-motion-security",
+    nomDuControle: "Détection de Mouvement (Sécurité Horodatée)",
+    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], // Applicable à une zone via un hub ou directement
+    typesDeCapteursNecessaires: ["Mouvement"],
+    variablesUtilisees: ["motion_detected"], // Simplified: current_time logic is hard for static demo
+    formuleDeVerification: "sensor['motion_detected'].value === true && (machine.params['surveillance_active'] === true)", // Placeholder for time logic
+    description: "Alerte si un mouvement est détecté pendant les heures de surveillance.",
+    expectedParams: [
+      { id: 'heure_debut_surveillance', label: 'Début Surveillance (HH:MM)', type: 'string', defaultValue: '22:00' },
+      { id: 'heure_fin_surveillance', label: 'Fin Surveillance (HH:MM)', type: 'string', defaultValue: '06:00' },
+      { id: 'surveillance_active', label: 'Surveillance Active (Actuellement)', type: 'boolean', defaultValue: true }, // Simulates if current time is within range
+    ],
+    checklist: securityChecklistMotion
+  },
+  {
+    id: "control-smoke-alarm",
+    nomDuControle: "Alarme Incendie (Détection Fumée)",
+    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], // Applicable à une zone
+    typesDeCapteursNecessaires: ["Fumée"],
+    variablesUtilisees: ["smoke_detected"],
+    formuleDeVerification: "sensor['smoke_detected'].value === true",
+    description: "Alerte immédiate si de la fumée est détectée.",
+    expectedParams: [], // Peut être sans paramètre si binaire
+    checklist: securityChecklistSmoke
+  },
+  {
+    id: "control-soil-moisture",
+    nomDuControle: "Contrôle Humidité du Sol (Irrigation)",
+    typesDeMachinesConcernees: ["Système d'Irrigation"],
+    typesDeCapteursNecessaires: ["Humidité du Sol"],
+    variablesUtilisees: ["soil_moisture_percent"],
+    formuleDeVerification: "sensor['soil_moisture_percent'].value < machine.params['seuil_min_humidite_sol']",
+    description: "Alerte si l'humidité du sol est trop basse.",
+    expectedParams: [{ id: 'seuil_min_humidite_sol', label: 'Seuil Humidité Sol Min (%)', type: 'number', defaultValue: 30 }],
+    checklist: farmChecklistSoilMoisture
+  },
+  {
+    id: "control-animal-enclosure-temp",
+    nomDuControle: "Contrôle Température Enclos/Serre",
+    typesDeMachinesConcernees: ["Ventilation Enclos", "Chauffage Enclos", "Ventilation Serre", "Chauffage Serre"],
+    typesDeCapteursNecessaires: ["Température Ambiante"], // Sensor provides 'temp' or 'temp_enclos'
+    variablesUtilisees: ["temp_enclos"],
+    formuleDeVerification: "sensor['temp_enclos'].value < machine.params['temp_min_enclos'] || sensor['temp_enclos'].value > machine.params['temp_max_enclos']",
+    description: "Maintient la température de l'enclos/serre dans une plage optimale.",
+    expectedParams: [
+      { id: 'temp_min_enclos', label: 'Temp. Min (°C)', type: 'number', defaultValue: 10 },
+      { id: 'temp_max_enclos', label: 'Temp. Max (°C)', type: 'number', defaultValue: 25 }
+    ],
+    checklist: farmChecklistAnimalEnclosure
+  },
+  {
+    id: "control-water-level",
+    nomDuControle: "Contrôle Niveau Eau (Abreuvoir/Réservoir)",
+    typesDeMachinesConcernees: ["Abreuvoir Automatisé", "Réservoir"],
+    typesDeCapteursNecessaires: ["Niveau Eau"],
+    variablesUtilisees: ["water_level_percent"],
+    formuleDeVerification: "sensor['water_level_percent'].value < machine.params['seuil_min_niveau_eau']",
+    description: "Alerte si le niveau d'eau est trop bas.",
+    expectedParams: [{ id: 'seuil_min_niveau_eau', label: 'Seuil Niveau Eau Min (%)', type: 'number', defaultValue: 20 }],
+    checklist: [{id: 'chk-water-1', label: "Vérifier l'absence de fuites."}, {id: 'chk-water-2', label: "Nettoyer le capteur de niveau si accessible."}]
   }
 ];
 
@@ -201,22 +269,22 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
             const zoneSensors = targetZone?.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
-             // Ensure `provides` is an array for all sensors
+            
             augmentedMachine.availableSensors = [
                 ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: Array.isArray(s.provides) ? s.provides : []})),
                 ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: Array.isArray(s.provides) ? s.provides : []}))
             ];
-             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC') {
+             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC' && augmentedMachine.type !== 'Hub Sécurité') { // Hub Sécurité might not have its own provides
                  augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
              }
         }
          if (!augmentedMachine.configuredControls) {
-            augmentedMachine.configuredControls = {}; // Initialize if undefined
+            augmentedMachine.configuredControls = {}; 
         }
         
         if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
             const currentValues = augmentedMachine.activeControlInAlert.currentValues;
-            let baseValue = 70; // Default base
+            let baseValue = 70; 
             if (currentValues && Object.keys(currentValues).length > 0) {
                 const firstKey = Object.keys(currentValues)[0];
                 const val = currentValues[firstKey]?.value;
@@ -243,6 +311,17 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
     }
     return undefined;
 }
+
+function getMachineIconDisplay(type: string): LucideIcon {
+    if (type.toLowerCase().includes("frigo") || type.toLowerCase().includes("congélateur") || type.toLowerCase().includes("vitrine")) return Thermometer;
+    if (type.toLowerCase().includes("four")) return Flame;
+    if (type.toLowerCase().includes("électrique") || type.toLowerCase().includes("elec")) return Zap;
+    if (type.toLowerCase().includes("compresseur") || type.toLowerCase().includes("pompe") || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
+    if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("hub sécurité")) return Server;
+    if (type.toLowerCase().includes("camion")) return Truck;
+    if (type.toLowerCase().includes("abreuvoir")) return Droplets;
+    return HardDrive;
+};
 
 export default function ManageMachinePage() {
   const router = useRouter();
@@ -304,6 +383,8 @@ export default function ManageMachinePage() {
     if (type === 'number') {
       processedValue = parseFloat(value);
       if (isNaN(processedValue)) processedValue = '';
+    } else if (type === 'boolean') {
+      processedValue = value === 'true' || value === true;
     }
     setControlConfigs(prev => ({
       ...prev,
@@ -336,12 +417,16 @@ export default function ManageMachinePage() {
       title: "Configuration Sauvegardée",
       description: `Les configurations pour ${machine?.name} ont été sauvegardées (simulation).`,
     });
+    // Here you would typically update the DUMMY_CLIENT_SITES_DATA or send to a backend
+    // For this demo, we are not persisting changes beyond the session.
   };
 
   const applicableAdminControls = useMemo(() => {
     if (!machine) return [];
     return DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.filter(control =>
-      control.typesDeMachinesConcernees.length === 0 || control.typesDeMachinesConcernees.includes(machine.type)
+      control.typesDeMachinesConcernees.length === 0 || 
+      control.typesDeMachinesConcernees.includes(machine.type) ||
+      control.typesDeMachinesConcernees.includes("Générique")
     );
   }, [machine]);
 
@@ -368,13 +453,6 @@ export default function ManageMachinePage() {
     );
   }
 
-  const getMachineIconDisplay = (type: string) => {
-    if (type === "Frigo" || type === "Congélateur") return Thermometer;
-    if (type === "Armoire Électrique") return Zap;
-    if (type === "Compresseur" || type === "Pompe Hydraulique" || type === "HVAC") return Wind;
-    if (type.toLowerCase().includes("serveur") || type === "PC") return Server;
-    return HardDrive;
-  };
   const MachineIconToDisplay = getMachineIconDisplay(machine.type);
   
   const chartData = machine.activeControlInAlert?.historicalData || [];
@@ -445,13 +523,28 @@ export default function ManageMachinePage() {
                                 {control.expectedParams.map(param => (
                                   <div key={param.id} className="space-y-1">
                                     <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
-                                    <Input
-                                      id={`${control.id}-${param.id}`}
-                                      type={param.type === 'number' ? 'number' : 'text'}
-                                      value={config.params[param.id] ?? ''}
-                                      onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
-                                      placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
-                                    />
+                                    {param.type === 'boolean' ? (
+                                      <Select
+                                        value={String(config.params[param.id] ?? param.defaultValue ?? false)}
+                                        onValueChange={(value) => handleParamChange(control.id, param.id, value, param.type)}
+                                      >
+                                        <SelectTrigger id={`${control.id}-${param.id}`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="true">Oui / Actif</SelectItem>
+                                          <SelectItem value="false">Non / Inactif</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <Input
+                                        id={`${control.id}-${param.id}`}
+                                        type={param.type === 'number' ? 'number' : 'text'}
+                                        value={config.params[param.id] ?? param.defaultValue ?? ''}
+                                        onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
+                                        placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
+                                      />
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -626,3 +719,4 @@ export default function ManageMachinePage() {
     </AppLayout>
   );
 }
+

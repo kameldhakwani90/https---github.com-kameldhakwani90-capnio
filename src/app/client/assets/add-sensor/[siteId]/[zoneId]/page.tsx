@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, type Machine } from "@/lib/client-data"; // Updated import
-import { ChevronLeft, PlusCircle, Router as PiIcon, Thermometer, Zap, Wind, Cog } from "lucide-react";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, type Machine } from "@/lib/client-data"; 
+import { ChevronLeft, PlusCircle, Router as PiIcon, Thermometer, Zap, Wind, Cog, Move, Flame, Droplets } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,18 +20,37 @@ const DUMMY_ADMIN_DEFINED_SENSOR_TYPES = [
   { id: "st-002", name: "Capteur de Pression P-500" },
   { id: "st-003", name: "Détecteur CO2 Z-Air" },
   { id: "st-004", name: "Capteur de Courant Monophasé CM-100" },
-  { id: "st-005", name: "Capteur de Vibration VibraSense M" },
+  { id: "st-005", "name": "Capteur de Vibration VibraSense M" },
+  { id: "st-006", name: "Détecteur de Mouvement SecuMotion X1" },
+  { id: "st-007", name: "Détecteur de Fumée FireAlert Z3" },
+  { id: "st-008", name: "Sonde Humidité Sol AgroSense H1" },
+  { id: "st-009", name: "Sonde Température Multi-Usage T100" },
+  { id: "st-010", name: "Capteur de Niveau d'Eau AquaLevel L2" },
+  { id: "st-011", name: "Tracker GPS/Temp GTT-500" }
 ];
 
 const DUMMY_AVAILABLE_PI_SERVERS = [
   { id: "pi-001", name: "Pi Serveur - Local Technique" },
   { id: "pi-002", name: "Pi Serveur - Atelier A" },
   { id: "pi-003", name: "Pi Serveur - Entrepôt Principal" },
+  { id: "pi-paris-cuisine-secu", name: "Hub Sécurité Cuisine (Paris)"},
+  { id: "machine-rungis-secu", name: "Hub Sécurité Rungis"},
+  { id: "machine-ferme-secu-hangar", name: "Hub Sécurité Hangar Ferme"},
+  { id: "machine-pi-office-main", name: "Serveur Pi - Bureau Principal (Exemple)"}
 ];
 
 function findSiteAndZoneMachines(sites: Site[], siteId: string, zoneId: string): { site?: Site, zone?: Zone, machines: Machine[] } {
   const site = sites.find(s => s.id === siteId);
-  if (!site) return { machines: [] };
+  if (!site) { // Check top-level sites first
+    for (const topSite of sites) { // If not found, check subSites recursively
+        if(topSite.subSites) {
+            const foundInSub = findSiteAndZoneMachines(topSite.subSites, siteId, zoneId);
+            if (foundInSub.site) return foundInSub;
+        }
+    }
+    return { machines: [] };
+  }
+
 
   let targetZone: Zone | undefined;
   function findZoneRecursive(zones: Zone[], id: string): Zone | undefined {
@@ -112,15 +131,18 @@ export default function AddSensorToZonePage() {
     }
 
     const sensorData = {
+      id: `sensor-${Date.now().toString()}`,
       name: sensorName,
       piServerId: selectedPiServer === "__NONE__" ? "" : selectedPiServer,
-      adminSensorTypeId: selectedAdminSensorType,
+      typeModel: DUMMY_ADMIN_DEFINED_SENSOR_TYPES.find(t => t.id === selectedAdminSensorType)?.name || "Type Inconnu",
       scope: sensorScope,
       affectedMachineIds: sensorScope === "machine" ? selectedMachines : [],
       siteId,
       zoneId,
       siteName: parentSite?.name,
       zoneName: parentZone?.name,
+      status: "green" as "green", // Default status
+      provides: [] // Default provides
     };
 
     console.log("Déclaration du nouveau capteur (simulation):", sensorData);
@@ -128,6 +150,7 @@ export default function AddSensorToZonePage() {
       title: "Capteur Déclaré (Simulation)", 
       description: `Le capteur "${sensorName}" a été ajouté à la zone "${parentZone?.name}".` 
     });
+    // TODO: Add this sensor to DUMMY_CLIENT_SITES_DATA for real-time update in demo
     router.push(`/client/assets/manage/${siteId}`);
   };
   
