@@ -9,13 +9,13 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower } from "lucide-react"; 
+import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower, HardDrive, Thermometer, Zap, Wind } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     type Site, 
     type Zone, 
     type Machine, 
-    type Sensor, // Import Sensor type
+    type Sensor,
     getZoneOverallStatus, 
     getSiteOverallStatus, 
     getStatusIcon,      
@@ -50,9 +50,19 @@ const findAssetByPath = (
   return currentAsset ? { asset: currentAsset, path: breadcrumbPath } : undefined;
 };
 
+const getMachineIcon = (type: string) => {
+    if (type === "Frigo" || type === "Congélateur") return Thermometer;
+    if (type === "Armoire Électrique" || type.toLowerCase().includes("elec")) return Zap;
+    if (type === "Compresseur" || type === "Pompe Hydraulique" || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
+    if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc")) return Server;
+    if (type.toLowerCase().includes("robot") || type.toLowerCase().includes("presse") || type.toLowerCase().includes("grue")) return Settings2;
+    return HardDrive; // Default icon
+};
+
+
 const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> = ({ site, currentAssetPath }) => {
   const siteStatus = getSiteOverallStatus(site); 
-  const SiteIcon = site.isConceptualSubSite ? Layers : HomeIcon; // Using Layers for sub-site
+  const SiteOrSubSiteIcon = site.isConceptualSubSite ? Layers : HomeIcon;
   const href = `/client/assets/manage/${[...currentAssetPath, site.id].join('/')}`;
 
   return (
@@ -61,7 +71,7 @@ const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> =
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-lg mb-1 flex items-center gap-2 group-hover:text-primary transition-colors">
-              <SiteIcon className="h-5 w-5 text-primary" />
+              <SiteOrSubSiteIcon className="h-5 w-5 text-primary" />
               {site.name}
             </CardTitle>
             <CardDescription>{site.location}</CardDescription>
@@ -88,7 +98,7 @@ const SubSiteCardDisplay: React.FC<{ site: Site; currentAssetPath: string[] }> =
 };
 
 const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ machine, siteId, zoneId, router }) => {
-    const CurrentMachineIcon = machine.icon || Server;
+    const CurrentMachineIcon = machine.icon || getMachineIcon(machine.type);
     const handleMachineAlertNavigation = (machineId: string) => {
         router.push(`/client/machine-alerts/${machineId}`);
     };
@@ -130,9 +140,7 @@ const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: s
 };
 
 const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ sensor, siteId, zoneId, router }) => {
-    // Placeholder for actions, actual sensor management page to be created
     const handleManageSensor = (sensorId: string) => {
-        // router.push(`/client/assets/manage-sensor/${siteId}/${zoneId}/${sensorId}`); // Example future path
         alert(`Gestion du capteur ${sensor.name} (ID: ${sensorId}) - Non implémenté`);
     };
     const handleDeleteSensor = (sensorId: string) => {
@@ -185,15 +193,15 @@ interface ZoneItemForManagementProps {
 const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, siteId, parentZoneId, router, level = 0 }) => {
     const zoneStatus = getZoneOverallStatus(zone); 
     const paddingLeft = level > 0 ? `${level * 1.5}rem` : '0'; 
-
-    const currentParentZoneId = parentZoneId || zone.id; 
     
     const ambientSensors = zone.sensors?.filter(s => s.scope === 'zone') || [];
-    // Machine-specific sensors could be listed here too, or under respective machines for clarity.
-    // For now, we'll focus on ambient sensors in this component.
+    const hasMachines = zone.machines && zone.machines.length > 0;
+    const hasAmbientSensors = ambientSensors.length > 0;
+    const hasSubZones = zone.subZones && zone.subZones.length > 0;
+    const isEmptyZone = !hasMachines && !hasAmbientSensors && !hasSubZones;
 
     return (
-        <AccordionItem value={zone.id} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
+        <AccordionItem value={`${parentZoneId || siteId}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
             <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
@@ -221,46 +229,58 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, sit
                     <Button variant="destructive" size="sm" onClick={() => router.push(`/client/assets/delete-zone/${siteId}/${zone.id}`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
                 </div>
                 
-                {zone.machines && zone.machines.length > 0 && (
-                    <div className="space-y-1.5 mt-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground mb-1.5">Machines :</h4>
-                        {zone.machines.map(machine => (
-                           <MachineItemDisplay key={machine.id} machine={machine} siteId={siteId} zoneId={zone.id} router={router} />
-                        ))}
-                    </div>
-                )}
-
-                {ambientSensors.length > 0 && (
-                     <div className="space-y-1.5 mt-4 pt-3 border-t">
-                        <h4 className="text-sm font-semibold text-muted-foreground mb-1.5">Capteurs Ambiants (Zone) :</h4>
-                        {ambientSensors.map(sensor => (
-                           <SensorItemDisplay key={sensor.id} sensor={sensor} siteId={siteId} zoneId={zone.id} router={router} />
-                        ))}
-                    </div>
-                )}
-
-                {zone.subZones && zone.subZones.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-border/50">
-                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">Sous-Zones :</h4>
-                    <Accordion type="multiple" className="w-full space-y-1.5">
-                      {zone.subZones.map(subZone => (
-                        <ZoneItemForManagement 
-                          key={subZone.id} 
-                          zone={subZone} 
-                          siteId={siteId} 
-                          parentZoneId={zone.id} 
-                          router={router} 
-                          level={level + 1} 
-                        />
-                      ))}
-                    </Accordion>
-                  </div>
-                )}
-                
-                {(!zone.machines || zone.machines.length === 0) && 
-                 (!zone.subZones || zone.subZones.length === 0) &&
-                 (ambientSensors.length === 0) && (
+                {isEmptyZone ? (
                     <p className="text-sm text-muted-foreground p-2 text-center">Aucune machine, sous-zone ou capteur d'ambiance défini.</p>
+                ) : (
+                    <Accordion type="multiple" className="w-full space-y-1.5 mt-3">
+                        {hasMachines && (
+                            <AccordionItem value={`machines-${zone.id}`} className="border-none rounded-md bg-background/50">
+                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
+                                    Machines ({zone.machines.length})
+                                </AccordionTrigger>
+                                <AccordionContent className="p-2 space-y-1.5">
+                                    {zone.machines.map(machine => (
+                                       <MachineItemDisplay key={machine.id} machine={machine} siteId={siteId} zoneId={zone.id} router={router} />
+                                    ))}
+                                </AccordionContent>
+                            </AccordionItem>
+                        )}
+
+                        {hasAmbientSensors && (
+                             <AccordionItem value={`ambient-sensors-${zone.id}`} className="border-none rounded-md bg-background/50">
+                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
+                                    Capteurs Ambiants (Zone) ({ambientSensors.length})
+                                </AccordionTrigger>
+                                <AccordionContent className="p-2 space-y-1.5">
+                                    {ambientSensors.map(sensor => (
+                                       <SensorItemDisplay key={sensor.id} sensor={sensor} siteId={siteId} zoneId={zone.id} router={router} />
+                                    ))}
+                                </AccordionContent>
+                            </AccordionItem>
+                        )}
+
+                        {hasSubZones && (
+                          <AccordionItem value={`sub-zones-${zone.id}`} className="border-none rounded-md bg-background/50">
+                            <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
+                                Sous-Zones ({zone.subZones!.length})
+                            </AccordionTrigger>
+                            <AccordionContent className="p-0"> {/* No padding for sub-zone accordion content, as ZoneItemForManagement handles its own structure */}
+                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1">
+                                  {zone.subZones!.map(subZone => (
+                                    <ZoneItemForManagement 
+                                      key={subZone.id} 
+                                      zone={subZone} 
+                                      siteId={siteId} 
+                                      parentZoneId={zone.id} 
+                                      router={router} 
+                                      level={level + 1} // Sub-zones are one level deeper visually
+                                    />
+                                  ))}
+                                </Accordion>
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                    </Accordion>
                 )}
             </AccordionContent>
         </AccordionItem>
@@ -374,6 +394,7 @@ export default function ManageAssetPage() {
                       zone={zone} 
                       siteId={currentAsset.id} 
                       router={router} 
+                      level={0}
                     />
                   ))}
                 </Accordion>
@@ -388,7 +409,7 @@ export default function ManageAssetPage() {
             {currentAsset.subSites && currentAsset.subSites.length > 0 && (
               <section>
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h2 className="text-2xl font-semibold flex items-center gap-2"><HomeIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
+                    <h2 className="text-2xl font-semibold flex items-center gap-2"><SiteOrSubSiteIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
                 </div>
                 <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                   {currentAsset.subSites.map(subSite => (
@@ -414,5 +435,3 @@ export default function ManageAssetPage() {
     </AppLayout>
   );
 }
-
-    
