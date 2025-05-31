@@ -18,7 +18,7 @@ import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { LogOut, Settings, FileText, Cog, FlaskConical, Users, ShieldAlert, Bell, Home, Network, LayoutGrid, Cpu } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
+import { usePathname, useRouter } from 'next/navigation'; 
 
 interface AppSidebarProps {
   onSelectItem: (item: NavItem) => void;
@@ -37,7 +37,7 @@ const getAdminIcon = (href?: string) => {
 
 export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter(); 
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,12 +58,12 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
       if (currentRoleIsClient) {
         mainNIs = [
           {
-            id: 'client-dashboard-link',
-            label: 'Dashboard',
+            id: 'client-assets-link', // Changed from dashboard to assets
+            label: 'Asset Management', // Changed label
             type: 'group',
-            icon: LayoutGrid,
-            href: '/client/dashboard',
-            onClick: () => window.location.href = '/client/dashboard',
+            icon: Network, // Using Network icon for assets
+            href: '/assets',
+            onClick: () => window.location.href = '/assets',
           },
           {
             id: 'client-monitoring-link',
@@ -81,14 +81,6 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
             href: '/notifications',
             onClick: () => window.location.href = '/notifications',
           },
-          {
-            id: 'client-assets-link',
-            label: 'Asset Management',
-            type: 'group',
-            icon: Network,
-            href: '/assets',
-            onClick: () => window.location.href = '/assets',
-          },
         ];
         showATS = false;
       } else { // Admin View (or default if role is null or 'admin')
@@ -105,7 +97,7 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
         if (siteConfig.adminNav) {
             adminTIs = siteConfig.adminNav.map(item => ({
             ...item,
-            id: item.href || `admin-tool-${item.title.replace(/\s+/g, '-').toLowerCase()}`, // Ensure ID is unique
+            id: item.href || `admin-tool-${item.title.replace(/\s+/g, '-').toLowerCase()}`, 
             label: item.title,
             icon: getAdminIcon(item.href),
             type: 'group' as NavItem['type'],

@@ -32,7 +32,7 @@ export default function LoginPage() {
     } else if (email.endsWith('@client.com') && password === 'clientpass') {
       console.log('Client login successful (simulated)');
       localStorage.setItem('userRole', 'client');
-      router.push('/client/dashboard');
+      router.push('/assets'); // Changed redirection to /assets for clients
     } else {
       setError('Invalid email or password. (Try admin@capnio.pro / password or user@client.com / clientpass)');
     }
@@ -91,3 +91,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
