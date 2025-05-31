@@ -1,11 +1,10 @@
 
-"use client"; // Or remove if not strictly needed by data, but some functions might use client-side features if they evolve.
+"use client"; 
 
 import type { LucideIcon } from 'lucide-react';
-import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive } from "lucide-react"; // Import icons used by getMachineIcon
-import { cn } from "@/lib/utils"; // For getStatusIcon className usage
+import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive, Package, ShoppingCart, Utensils, Factory, Truck, Apple, Beef, Snowflake, CalendarDays } from "lucide-react"; 
+import { cn } from "@/lib/utils"; 
 
-// Re-define or import Status type
 export type Status = 'green' | 'orange' | 'red' | 'white';
 
 export interface ControlParameter {
@@ -19,19 +18,17 @@ export interface ControlParameter {
 export interface ConfiguredControl {
   isActive: boolean;
   params: Record<string, string | number | boolean>;
-  sensorMappings: Record<string, string>; // variableId -> sensorInstanceId
+  sensorMappings: Record<string, string>; 
 }
 
 export interface HistoricalDataPoint {
-  name: string; // e.g., "T-4", "T-3", "Maintenant" or actual timestamps
+  name: string; 
   value: number;
-  // Add other series if needed, e.g., threshold_max: number
 }
 
 export interface ChecklistItem {
   id: string;
   label: string;
-  // checked?: boolean; // State would be managed in component
 }
 
 export interface ActiveControlInAlert {
@@ -41,37 +38,37 @@ export interface ActiveControlInAlert {
   formulaUsed?: string;
   currentValues?: Record<string, { value: string | number; unit?: string }>;
   thresholds?: Record<string, string | number>;
-  status?: Status; // Status of the control/alert itself
-  controlDescription?: string; // Description of the control that is alerting
+  status?: Status; 
+  controlDescription?: string; 
   historicalData?: HistoricalDataPoint[];
-  relevantSensorVariable?: string; // The main variable shown in the history chart
-  checklist?: ChecklistItem[]; // Specific checklist for this alert state
+  relevantSensorVariable?: string; 
+  checklist?: ChecklistItem[]; 
 }
 
 export interface Machine {
   id: string;
   name: string;
-  type: string;
+  type: string; // e.g., "Frigo", "Four", "Compresseur", "Camion Réfrigéré", "Serveur Pi"
   status: Status;
-  sensorsCount?: number; // Number of sensors directly attached or monitoring this machine
+  sensorsCount?: number; 
   icon?: LucideIcon;
   model?: string;
   notes?: string;
   activeControlInAlert?: ActiveControlInAlert;
-  availableSensors?: { id: string; name: string; provides?: string[] }[]; // Sensor variable names it can provide e.g. ['temp', 'pressure']
-  configuredControls?: Record<string, ConfiguredControl>; // controlId -> configuration
+  availableSensors?: { id: string; name: string; provides?: string[] }[]; 
+  configuredControls?: Record<string, ConfiguredControl>; 
 }
 
 export interface Sensor {
   id: string;
   name: string;
-  typeModel: string; // Reference to an admin-defined sensor type
+  typeModel: string; 
   status?: Status;
   scope: 'zone' | 'machine';
-  affectedMachineIds?: string[]; // Only if scope is 'machine'
-  provides?: string[]; // e.g. ['temp', 'humidity_percent']
-  data?: Record<string, any>; // Last readings or specific sensor data
-  piServerId?: string; // Optional ID of the Pi Server it's connected through
+  affectedMachineIds?: string[]; 
+  provides?: string[]; 
+  data?: Record<string, any>; 
+  piServerId?: string; 
 }
 
 export interface Zone {
@@ -79,8 +76,8 @@ export interface Zone {
   name: string;
   machines: Machine[];
   subZones?: Zone[];
-  sensors?: Sensor[]; // Ambient sensors or all sensors within this zone
-  status?: Status; // Calculated status for the zone
+  sensors?: Sensor[]; 
+  status?: Status; 
   icon?: LucideIcon;
 }
 
@@ -89,204 +86,306 @@ export interface Site {
   name: string;
   location: string;
   zones: Zone[];
-  subSites?: Site[]; // For nested sites like buildings within a campus
-  isConceptualSubSite?: boolean; // True if it's a sub-site that's more like a "group" than a physical different location
-  status?: Status; // Calculated status for the site
-  icon?: LucideIcon;
+  subSites?: Site[]; 
+  isConceptualSubSite?: boolean; 
+  status?: Status; 
+  icon?: LucideIcon; 
 }
 
+const restaurantChecklistTempFrigo: ChecklistItem[] = [
+    { id: 'chk-frigo-porte', label: "Vérifier la fermeture correcte de la porte du réfrigérateur." },
+    { id: 'chk-frigo-joint', label: "Inspecter l'étanchéité des joints de porte." },
+    { id: 'chk-frigo-thermostat', label: "Confirmer que le thermostat est réglé à la bonne température." },
+    { id: 'chk-frigo-nettoyage', label: "S'assurer que le condenseur est propre et non obstrué." },
+];
+
 export const DUMMY_CLIENT_SITES_DATA: Site[] = [
+  // FRANCE OPERATIONS
   {
-    id: "site-campus-central",
-    name: "Campus Central Opérations",
-    location: "123 Tech Avenue, Innovation City",
-    zones: [
-      {
-        id: "zone-cc-admin",
-        name: "Bâtiment Administratif Central",
-        machines: [
-          {
-            id: "machine-cc-admin-hvac",
-            name: "Climatisation Centrale HVAC",
-            type: "HVAC",
-            status: "green",
-            activeControlInAlert: undefined,
-            availableSensors: [
-                { id: "sensor-hvac-temp-in", name: "Température Entrée HVAC", provides: ["temp"] },
-                { id: "sensor-hvac-temp-out", name: "Température Sortie HVAC", provides: ["temp"] },
-                { id: "sensor-hvac-current", name: "Courant HVAC", provides: ["courant", "tension"] },
-            ],
-            configuredControls: {
-                "control-002": { // Consommation Électrique
-                    isActive: true,
-                    params: { "seuil_max_conso": 3500 },
-                    sensorMappings: { "tension": "sensor-hvac-current", "courant": "sensor-hvac-current" }
-                }
-            }
-          },
-          {
-            id: "machine-cc-admin-srv",
-            name: "Serveur Principal Admin",
-            type: "Serveur", // Matched with "Serveur" in control types
-            status: "green", // Initially green
-            availableSensors: [
-                { id: "srv-internal-temp", name: "Sonde Température Interne Serveur", provides: ["temp_srv", "temp"] },
-                { id: "srv-cpu-util", name: "Moniteur CPU", provides: ["cpu_usage_percent"] },
-                { id: "srv-mem-util", name: "Moniteur RAM", provides: ["mem_usage_percent"] },
-                { id: "srv-disk-c-free", name: "Espace Disque C:", provides: ["disk_free_gb"] },
-                { id: "srv-net-ping", name: "Latence Ping GW", provides: ["ping_latency_ms"] },
-            ],
-            configuredControls: {
-                "control-srv-temp": { isActive: true, params: { "seuil_max_temp_srv": 65 }, sensorMappings: { "temp_srv": "srv-internal-temp" } },
-                "control-srv-cpu": { isActive: true, params: { "seuil_max_cpu": 80 }, sensorMappings: { "cpu_usage_percent": "srv-cpu-util" } },
-                "control-srv-mem": { isActive: true, params: { "seuil_max_mem": 75 }, sensorMappings: { "mem_usage_percent": "srv-mem-util" } },
-                "control-srv-disk": { isActive: true, params: { "seuil_min_disk_gb": 50 }, sensorMappings: { "disk_free_gb": "srv-disk-c-free" } },
-                "control-srv-latency": { isActive: true, params: { "seuil_max_latency_ms": 50 }, sensorMappings: { "ping_latency_ms": "srv-net-ping" } },
-            }
-          },
-        ],
-        sensors: [
-            { id: "sensor-ambient-admin-hall", name: "Température Ambiante Hall Admin", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"] },
-            { id: "sensor-hvac-current", name: "Capteur Courant HVAC", typeModel: "Capteur de Courant Monophasé CM-100", scope: "machine", affectedMachineIds: ["machine-cc-admin-hvac"], status: "green", provides: ["courant", "tension"] }
-        ],
-        subZones: [
-          { id: "zone-cc-admin-101", name: "Bureau 101", machines: [] },
-          { id: "zone-cc-admin-102", name: "Bureau 102", machines: [] },
-        ],
-      },
-      {
-        id: "zone-cc-lab",
-        name: "Laboratoire de Recherche R&D",
-        machines: [
-          {
-            id: "machine-cc-lab-analyzer",
-            name: "Analyseur Spectral AS-5000",
-            type: "Équipement de Labo",
-            status: "orange",
-            activeControlInAlert: {
-              controlId: "control-lab-stability", // Fictional control
-              controlName: "Contrôle Stabilité Analyseur",
-              alertDetails: "Dérive de fréquence détectée. Calibration nécessaire.",
-              status: "orange",
-              currentValues: { "drift_ppm": { value: 5.2, unit: "ppm" } },
-              thresholds: { "max_drift_ppm": 5.0 },
-              controlDescription: "Maintient la dérive de fréquence de l'analyseur dans les tolérances.",
-              historicalData: [
-                { name: 'T-4h', value: 4.8 }, { name: 'T-3h', value: 4.9 },
-                { name: 'T-2h', value: 5.0 }, { name: 'T-1h', value: 5.1 },
-                { name: 'Actuel', value: 5.2 },
-              ],
-              relevantSensorVariable: 'drift_ppm',
-              checklist: [{id: 'lab-chk-1', label: "Vérifier l'alimentation électrique."}, {id: 'lab-chk-2', label: "Lancer une routine de calibration."}]
-            }
-          },
-        ],
-      },
-    ],
+    id: "site-restaurants-france",
+    name: "Restaurants Melting Pot (France)",
+    location: "France",
+    icon: Utensils,
+    zones: [], // Main site is a container
     subSites: [
       {
-        id: "site-ba-prod",
-        name: "Bâtiment A - Production",
-        location: "Section Nord, Campus Central",
+        id: "site-mp-paris",
+        name: "Melting Pot Paris",
+        location: "15 Rue de la Paix, Paris",
         isConceptualSubSite: true,
+        icon: Utensils,
         zones: [
           {
-            id: "zone-ba-assembly",
-            name: "Ligne d'Assemblage Alpha",
-            machines: [
-              { id: "machine-ba-asm-robot1", name: "Robot Kuka KR210", type: "Robot Industriel", status: "green" },
-            ],
-          },
-          {
-            id: "zone-ba-stock",
-            name: "Zone de Stockage Composants",
-            machines: [
-              {
-                id: "machine-ba-stock-frigo",
-                name: "Réfrigérateur Industriel F-01",
-                type: "Frigo",
-                status: "red",
-                activeControlInAlert: {
-                  controlId: "control-001",
-                  controlName: "Contrôle Température Frigo",
-                  alertDetails: "Température interne à 8°C. Seuil max: 5°C.",
-                  status: "red",
-                  currentValues: { "temp": { value: 8, unit: "°C" } },
-                  thresholds: { "seuil_min": 0, "seuil_max": 5 },
-                  controlDescription: "Vérifie que la température du frigo reste dans les seuils définis.",
-                  historicalData: [
-                    { name: 'T-60m', value: 4 }, { name: 'T-45m', value: 5 },
-                    { name: 'T-30m', value: 6 }, { name: 'T-15m', value: 7 },
-                    { name: 'Actuel', value: 8 },
-                  ],
-                  relevantSensorVariable: 'temp',
-                  checklist: [
-                    { id: 'chk-frigo-1', label: "Vérifier que la porte du frigo est bien fermée et étanche." },
-                    { id: 'chk-frigo-2', label: "Nettoyer le condenseur de toute poussière ou obstruction." },
-                  ]
-                },
-                availableSensors: [{ id: "frigo-s01-temp", name: "Sonde Temp. Interne Frigo F-01", provides: ["temp"] }],
+            id: "zone-paris-cuisine", name: "Cuisine Paris", machines: [
+              { 
+                id: "machine-paris-four", name: "Four Pro 'Vulcan'", type: "Four Professionnel", status: "green",
+                availableSensors: [{ id: "sensor-paris-four-temp", name: "Sonde Temp. Four Vulcan", provides: ["temp_four"] }],
                 configuredControls: {
-                  "control-001": { // Contrôle Température Frigo
-                    isActive: true,
-                    params: { "seuil_min": 0, "seuil_max": 5 },
-                    sensorMappings: { "temp": "frigo-s01-temp" }
+                  "control-temp-four": { // Assumed new control
+                    isActive: true, params: { "temp_max_four": 250, "temp_min_cuisson": 180 }, sensorMappings: {"temp_four": "sensor-paris-four-temp"}
                   }
                 }
               },
+              { 
+                id: "machine-paris-frigo1", name: "Réfrigérateur 'ChefCool' R1", type: "Frigo", status: "green",
+                availableSensors: [{ id: "sensor-paris-frigo1-temp", name: "Sonde Temp. Frigo R1", provides: ["temp"] }],
+                configuredControls: {
+                  "control-001": { isActive: true, params: { "seuil_min": 1, "seuil_max": 4 }, sensorMappings: {"temp": "sensor-paris-frigo1-temp"} }
+                }
+              },
+              { 
+                id: "machine-paris-frigo2", name: "Congélateur 'IceKing' C1", type: "Congélateur", status: "red",
+                activeControlInAlert: {
+                  controlId: "control-001", controlName: "Contrôle Température Congélateur",
+                  alertDetails: "Température interne à -10°C. Seuil min: -18°C.", status: "red",
+                  currentValues: { "temp": { value: -10, unit: "°C" } }, thresholds: { "seuil_min": -22, "seuil_max": -18 }, // Adjusted for congélateur
+                  controlDescription: "Vérifie que la température du congélateur reste dans les seuils définis.",
+                  historicalData: [{ name: 'T-2h', value: -17 }, { name: 'T-1h', value: -15 }, { name: 'Actuel', value: -10 }],
+                  relevantSensorVariable: 'temp', checklist: restaurantChecklistTempFrigo
+                },
+                availableSensors: [{ id: "sensor-paris-congel1-temp", name: "Sonde Temp. Congel C1", provides: ["temp"] }],
+                configuredControls: {
+                  "control-001": { isActive: true, params: { "seuil_min": -22, "seuil_max": -18 }, sensorMappings: {"temp": "sensor-paris-congel1-temp"} }
+                }
+              }
             ],
+            sensors: [{ id: "sensor-paris-cuisine-amb", name: "Ambiance Cuisine Paris", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"] }]
           },
-        ],
+          { id: "zone-paris-salle", name: "Salle Restaurant Paris", machines: [], sensors: [{ id: "sensor-paris-salle-co2", name: "Qualité Air Salle Paris", typeModel: "Détecteur CO2 Z-Air", scope: "zone", status: "green", provides: ["co2"]}] },
+          { id: "zone-paris-cave", name: "Cave à Vins Paris", machines: [], sensors: [{ id: "sensor-paris-cave-temphum", name: "Ambiance Cave Paris", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity"] }] }
+        ]
       },
-    ],
+      {
+        id: "site-mp-lyon",
+        name: "Melting Pot Lyon",
+        location: "20 Quai Saint Antoine, Lyon",
+        isConceptualSubSite: true,
+        icon: Utensils,
+        zones: [
+          { id: "zone-lyon-cuisine", name: "Cuisine Lyon", machines: [
+            { id: "machine-lyon-frigo1", name: "Réfrigérateur Positif Lyon", type: "Frigo", status: "green" }
+          ]}
+        ]
+      }
+    ]
   },
   {
-    id: "site-data-center-est",
-    name: "Data Center Est",
-    location: "55 Binary Lane, Server City",
+    id: "site-boulangerie-france",
+    name: "Le Fournil Doré",
+    location: "7 Rue du Blé, Strasbourg, France",
+    icon: ShoppingCart, // Placeholder, ideally a bread icon
+    zones: [
+      { id: "zone-fournil", name: "Fournil", machines: [
+        { id: "machine-fournil-fourpain", name: "Four à Pain 'Bongard'", type: "Four Professionnel", status: "green" },
+        { 
+          id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green",
+          availableSensors: [{ id: "sensor-levain-temp", name: "Sonde Temp. Levain", provides: ["temp"] }],
+          configuredControls: { "control-001": { isActive: true, params: { "seuil_min": 2, "seuil_max": 5 }, sensorMappings: {"temp": "sensor-levain-temp"} } }
+        }
+      ]},
+      { id: "zone-boutique", name: "Boutique", machines: [
+        { id: "machine-boutique-vitrine", name: "Vitrine Réfrigérée Pâtisseries", type: "Frigo", status: "orange" }
+      ]}
+    ]
+  },
+  {
+    id: "site-livraison-france",
+    name: "RapideLivraison SAS",
+    location: "Pole Logistique Rungis, France",
+    icon: Truck,
+    zones: [
+      { id: "zone-liv-entrepot", name: "Entrepôt Central Rungis", machines: [] },
+      { id: "zone-liv-vehicules", name: "Flotte de Véhicules", machines: [
+        { 
+          id: "machine-camion-fr01", name: "Camion FR-01 (AB-123-CD)", type: "Camion Réfrigéré", status: "red",
+          activeControlInAlert: {
+            controlId: "control-temp-camion", controlName: "Contrôle Température Camion",
+            alertDetails: "Température caisson à 8°C. Seuil max: 4°C pour produits frais.", status: "red",
+            currentValues: { "temp_caisson": { value: 8, unit: "°C" } }, thresholds: { "temp_max": 4 },
+            controlDescription: "Surveille la température du caisson réfrigéré.",
+            historicalData: [{ name: '10:00', value: 3 }, { name: '10:15', value: 5 }, { name: '10:30', value: 8 }],
+            relevantSensorVariable: 'temp_caisson', checklist: [{id: 'chk-camion-1', label: "Vérifier la fermeture des portes du caisson."}, {id: 'chk-camion-2', label: "Contrôler le fonctionnement du groupe froid."}]
+          },
+          availableSensors: [{id: "sensor-camion-fr01-gps-temp", name: "Tracker GPS/Temp Camion FR01", provides: ["gps_lat", "gps_lon", "temp_caisson", "temp"]}],
+          configuredControls: {"control-temp-camion": {isActive: true, params: {"temp_max": 4}, sensorMappings: {"temp_caisson": "sensor-camion-fr01-gps-temp"}}}
+        },
+        { id: "machine-camion-fr02", name: "Camion FR-02 (XY-789-ZZ)", type: "Camion Réfrigéré", status: "green" }
+      ]}
+    ]
+  },
+  // TUNISIA OPERATIONS
+  {
+    id: "site-usine-tunisie",
+    name: "ProdTunis Industries",
+    location: "Zone Industrielle Mghira, Tunisie",
+    icon: Factory,
+    zones: [
+      { id: "zone-usine-embouteillage", name: "Ligne d'Embouteillage Eau Minérale", machines: [
+        { id: "machine-embouteilleuse", name: "Embouteilleuse 'Krones'", type: "Equipement de Production", status: "green" }
+      ]},
+      { 
+        id: "zone-usine-maintenance", name: "Atelier Maintenance", machines: [
+        { 
+          id: "machine-compresseur-c1", name: "Compresseur Air Principal 'Atlas'", type: "Compresseur", status: "orange",
+          activeControlInAlert: {
+            controlId: "control-003", controlName: "Alerte Pression Basse Huile Compresseur",
+            alertDetails: "Pression huile à 0.4 bar. Seuil min: 0.5 bar.", status: "orange",
+            currentValues: { "pression_huile": { value: 0.4, unit: "bar" } }, thresholds: { "seuil_min_pression": 0.5 },
+            controlDescription: "Alerte si la pression d'huile du compresseur est trop basse.",
+            historicalData: [{ name: 'T-30m', value: 0.6 }, { name: 'T-15m', value: 0.5 }, { name: 'Actuel', value: 0.4 }],
+            relevantSensorVariable: 'pression_huile'
+          },
+          availableSensors: [{id: "sensor-comp-c1-presshuile", name: "Sonde Pression Huile C1", provides: ["pression_huile", "press"]}],
+          configuredControls: { "control-003": {isActive: true, params: { "seuil_min_pression": 0.5}, sensorMappings: {"pression_huile": "sensor-comp-c1-presshuile"}}}
+        }
+      ]}
+    ]
+  },
+  {
+    id: "site-agrostock-tunisie",
+    name: "AgroStock Tunisie",
+    location: "Port de Radès, Tunisie",
+    icon: Package,
+    zones: [], // Main site is a container
+    subSites: [
+      {
+        id: "site-entrepot-viandes", name: "Entrepôt Viandes", location: "AgroStock - Section Viandes", isConceptualSubSite: true, icon: Beef,
+        zones: [
+          { id: "zone-viande-chf-bovin", name: "Chambre Froide Bovins (-2°C)", machines: [
+            { id: "machine-chf-bovin1", name: "Unité Réfrig. Bovin 1", type: "Frigo", status: "green"}
+          ]},
+          { id: "zone-viande-chf-volaille", name: "Chambre Congélation Volailles (-18°C)", machines: [
+            { id: "machine-chf-volaille1", name: "Unité Congél. Volaille 1", type: "Congélateur", status: "green"}
+          ]}
+        ]
+      },
+      {
+        id: "site-entrepot-dattes", name: "Entrepôt Dattes", location: "AgroStock - Section Dattes", isConceptualSubSite: true, icon: CalendarDays, // Placeholder for dates
+        zones: [
+          { id: "zone-dattes-stock", name: "Stockage Dattes (Ventilé)", machines: [] },
+          { id: "zone-dattes-conditionnement", name: "Salle de Conditionnement Dattes", machines: [
+            { id: "machine-dattes-emballeuse", name: "Emballeuse Dattes D1", type: "Equipement de Production", status: "green" }
+          ]}
+        ]
+      },
+      {
+        id: "site-entrepot-fruitsleg", name: "Entrepôt Fruits & Légumes", location: "AgroStock - Section F&L", isConceptualSubSite: true, icon: Apple,
+        zones: [
+          { id: "zone-fl-reception", name: "Quai de Réception F&L", machines: []},
+          { 
+            id: "zone-fl-chf-tropicaux", name: "Chambre Froide Fruits Tropicaux (+8°C)", machines: [
+              { 
+                id: "machine-chf-tropic1", name: "Réfrigérateur Tropicaux T1", type: "Frigo", status: "red",
+                activeControlInAlert: {
+                  controlId: "control-001", controlName: "Contrôle Température Frigo",
+                  alertDetails: "Température à 12°C. Seuil max: +10°C.", status: "red",
+                  currentValues: { "temp": { value: 12, unit: "°C" } }, thresholds: { "seuil_min": 7, "seuil_max": 10 },
+                  controlDescription: "Surveille la température de la chambre froide pour fruits tropicaux.",
+                  historicalData: [{ name: 'T-4h', value: 9 }, { name: 'T-2h', value: 10 }, { name: 'Actuel', value: 12 }],
+                  relevantSensorVariable: 'temp', checklist: restaurantChecklistTempFrigo // Can reuse or adapt
+                },
+                availableSensors: [{ id: "sensor-tropic1-temp", name: "Sonde Temp. Tropicaux T1", provides: ["temp"] }],
+                configuredControls: { "control-001": { isActive: true, params: { "seuil_min": 7, "seuil_max": 10 }, sensorMappings: {"temp": "sensor-tropic1-temp"} } }
+              }
+          ]}
+        ]
+      }
+    ]
+  },
+  // Serveur Pi (PC type) example, can be part of any site/zone
+   {
+    id: "site-pi-servers-demo",
+    name: "Serveurs Pi Capnio (Exemples)",
+    location: "Divers",
+    icon: Server,
     zones: [
       {
-        id: "zone-dc-salle-a",
-        name: "Salle Serveurs A",
+        id: "zone-pi-office",
+        name: "Bureau Client Exemple",
         machines: [
-          { id: "machine-dc-rack01", name: "Rack 01", type: "Serveur", status: "green" },
-          { id: "machine-dc-rack02", name: "Rack 02", type: "Serveur", status: "green" },
+          {
+            id: "machine-pi-office-main",
+            name: "Serveur Pi - Bureau Principal",
+            type: "PC", // Using "PC" as a generic type for Pi servers
+            status: "green",
+            icon: Server,
+            availableSensors: [ // Pi itself provides these system metrics
+                { id: "pi-office-temp-cpu", name: "Température CPU Pi Bureau", provides: ["temp_srv", "temp"] },
+                { id: "pi-office-cpu-load", name: "Charge CPU Pi Bureau", provides: ["cpu_usage_percent"] },
+                { id: "pi-office-mem-usage", name: "Utilisation RAM Pi Bureau", provides: ["mem_usage_percent"] },
+                { id: "pi-office-disk-space", name: "Espace Disque Pi Bureau", provides: ["disk_free_gb"] },
+            ],
+            configuredControls: {
+                "control-srv-temp": { isActive: true, params: { "seuil_max_temp_srv": 60 }, sensorMappings: { "temp_srv": "pi-office-temp-cpu" } },
+                "control-srv-cpu": { isActive: true, params: { "seuil_max_cpu": 70 }, sensorMappings: { "cpu_usage_percent": "pi-office-cpu-load" } },
+            }
+          }
         ],
-      },
-      {
-        id: "zone-dc-salle-b",
-        name: "Salle Serveurs B",
-        machines: [
-          { id: "machine-dc-rack03", name: "Rack 03", type: "Serveur", status: "orange" },
-        ],
-      },
-    ],
-  },
+        sensors: [ // External sensors connected TO this Pi
+            { id: "ext-sensor-temp-ambiant", name: "Sonde Ambiante Bureau (via Pi)", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"], piServerId: "machine-pi-office-main"},
+            { id: "ext-sensor-co2-bureau", name: "Capteur CO2 Bureau (via Pi)", typeModel: "Détecteur CO2 Z-Air", scope: "zone", status: "green", provides: ["co2"], piServerId: "machine-pi-office-main"}
+        ]
+      }
+    ]
+  }
 ];
 
-// Helper functions (could be moved to utils if they grow numerous)
+
 export const getMachineOverallStatus = (machine: Machine): Status => {
   return machine.status;
 };
 
 export const getZoneOverallStatus = (zone: Zone): Status => {
-  if (zone.machines.some(m => m.status === 'red') || zone.sensors?.some(s => s.status === 'red')) return 'red';
-  if (zone.machines.some(m => m.status === 'orange') || zone.sensors?.some(s => s.status === 'orange')) return 'orange';
-  if (zone.subZones && zone.subZones.some(sz => getZoneOverallStatus(sz) === 'red')) return 'red';
-  if (zone.subZones && zone.subZones.some(sz => getZoneOverallStatus(sz) === 'orange')) return 'orange';
+  let hasRed = false;
+  let hasOrange = false;
+
+  zone.machines.forEach(m => {
+    if (m.status === 'red') hasRed = true;
+    else if (m.status === 'orange') hasOrange = true;
+  });
+  zone.sensors?.forEach(s => {
+    if (s.status === 'red') hasRed = true;
+    else if (s.status === 'orange') hasOrange = true;
+  });
+
+  if (zone.subZones) {
+    zone.subZones.forEach(sz => {
+      const subZoneStatus = getZoneOverallStatus(sz);
+      if (subZoneStatus === 'red') hasRed = true;
+      else if (subZoneStatus === 'orange') hasOrange = true;
+    });
+  }
+  
+  if (hasRed) return 'red';
+  if (hasOrange) return 'orange';
   return 'green';
 };
 
 export const getSiteOverallStatus = (site: Site): Status => {
-  if (site.zones.some(z => getZoneOverallStatus(z) === 'red')) return 'red';
-  if (site.subSites && site.subSites.some(ss => getSiteOverallStatus(ss) === 'red')) return 'red';
-  if (site.zones.some(z => getZoneOverallStatus(z) === 'orange')) return 'orange';
-  if (site.subSites && site.subSites.some(ss => getSiteOverallStatus(ss) === 'orange')) return 'orange';
+  let hasRed = false;
+  let hasOrange = false;
+
+  site.zones.forEach(z => {
+    const zoneStatus = getZoneOverallStatus(z);
+    if (zoneStatus === 'red') hasRed = true;
+    else if (zoneStatus === 'orange') hasOrange = true;
+  });
+
+  if (site.subSites) {
+    site.subSites.forEach(ss => {
+      const subSiteStatus = getSiteOverallStatus(ss);
+      if (subSiteStatus === 'red') hasRed = true;
+      else if (subSiteStatus === 'orange') hasOrange = true;
+    });
+  }
+
+  if (hasRed) return 'red';
+  if (hasOrange) return 'orange';
   return 'green';
 };
 
 export const getStatusIcon = (status: Status, className?: string): React.ReactNode => {
-  const defaultClassName = "h-5 w-5"; // Default size
+  const defaultClassName = "h-5 w-5"; 
   const combinedClassName = className ? `${defaultClassName} ${className}` : defaultClassName;
 
   switch (status) {
@@ -296,7 +395,7 @@ export const getStatusIcon = (status: Status, className?: string): React.ReactNo
       return <Info className={cn(combinedClassName, "text-orange-500")} />;
     case 'green':
       return <CheckCircle2 className={cn(combinedClassName, "text-green-500")} />;
-    default: // white or undefined
+    default: 
       return <Info className={cn(combinedClassName, "text-gray-400")} />;
   }
 };
@@ -311,9 +410,40 @@ export const getStatusText = (status: Status): string => {
 };
 
 export const getMachineIcon = (type: string): LucideIcon => {
-    if (type === "Frigo" || type === "Congélateur") return Thermometer;
-    if (type === "Armoire Électrique" || type.toLowerCase().includes("elec")) return Zap;
-    if (type === "Compresseur" || type === "Pompe Hydraulique" || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
-    if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc")) return Server;
-    return HardDrive; // Default icon
+    if (type.toLowerCase().includes("frigo") || type.toLowerCase().includes("congélateur")) return Thermometer;
+    if (type.toLowerCase().includes("four")) return Utensils; // More specific for restaurant/bakery context
+    if (type.toLowerCase().includes("électrique") || type.toLowerCase().includes("elec")) return Zap;
+    if (type.toLowerCase().includes("compresseur") || type.toLowerCase().includes("pompe") || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
+    if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("pi")) return Server;
+    if (type.toLowerCase().includes("camion")) return Truck;
+    return HardDrive; 
+};
+
+// Function to recursively find a site or zone for breadcrumbs or direct access
+export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITES_DATA): Site | Zone | undefined => {
+  for (const site of sites) {
+    if (site.id === assetId) return site;
+    if (site.subSites) {
+      const foundInSubSite = findAssetById(assetId, site.subSites);
+      if (foundInSubSite) return foundInSubSite;
+    }
+    for (const zone of site.zones) {
+      if (zone.id === assetId) return zone;
+      if (zone.subZones) {
+        const findInSubZone = (currentZone: Zone): Zone | undefined => {
+          if (currentZone.id === assetId) return currentZone;
+          if (currentZone.subZones) {
+            for (const sz of currentZone.subZones) {
+              const found = findInSubZone(sz);
+              if (found) return found;
+            }
+          }
+          return undefined;
+        }
+        const foundInSubZoneRecursive = findInSubZone(zone);
+        if(foundInSubZoneRecursive) return foundInSubZoneRecursive;
+      }
+    }
+  }
+  return undefined;
 };
