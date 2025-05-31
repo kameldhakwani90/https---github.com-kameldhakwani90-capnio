@@ -58,10 +58,10 @@ export function AppSidebar({ onSelectItem, selectedItemId }: AppSidebarProps) {
       if (currentRoleIsClient) {
         mainNIs = [
           {
-            id: 'client-assets-link', // Changed from dashboard to assets
-            label: 'Asset Management', // Changed label
+            id: 'client-assets-link',
+            label: 'Gestion des Actifs', // Changed label
             type: 'group',
-            icon: Network, // Using Network icon for assets
+            icon: Network, 
             href: '/assets',
             onClick: () => window.location.href = '/assets',
           },

@@ -7,8 +7,8 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Network, PlusCircle, Home, Building } from "lucide-react";
-import type { Site, Status } from "@/lib/client-data"; // Updated import
-import { DUMMY_CLIENT_SITES_DATA, getSiteOverallStatus } from "@/lib/client-data"; // Updated import
+import type { Site, Status } from "@/lib/client-data"; 
+import { DUMMY_CLIENT_SITES_DATA, getSiteOverallStatus } from "@/lib/client-data"; 
 
 const getStatusColorClass = (status: string) => {
   switch (status) {
@@ -29,7 +29,7 @@ export default function AssetManagementPage() {
         <header className="flex items-center justify-between pb-4 mb-6 border-b border-border">
           <div className="flex items-center gap-3">
             <Network className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Asset Management</h1>
+            <h1 className="text-3xl font-bold">Gestion des Actifs</h1>
           </div>
           <Button asChild>
             <Link href="/sites/register"> 

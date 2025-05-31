@@ -17,7 +17,7 @@ export const siteConfig = {
       href: "/monitoring",
     },
      {
-      title: "Asset Management", 
+      title: "Gestion des Actifs", 
       href: "/assets",
     },
     {
