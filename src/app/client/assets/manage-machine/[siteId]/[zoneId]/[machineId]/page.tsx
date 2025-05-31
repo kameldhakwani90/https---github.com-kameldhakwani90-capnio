@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data"; 
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets } from "lucide-react"; 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data.tsx"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3 } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -115,7 +116,7 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     id: "control-srv-temp",
     nomDuControle: "Surveillance Température Serveur/PC",
     typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
-    typesDeCapteursNecessaires: ["Température CPU/Système"], // Changed from "Température Serveur"
+    typesDeCapteursNecessaires: ["Température CPU/Système"], 
     variablesUtilisees: ["temp_srv"], 
     formuleDeVerification: "sensor['temp_srv'].value <= machine.params['seuil_max_temp_srv']",
     description: "Surveille la température interne pour éviter la surchauffe.",
@@ -172,27 +173,27 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-motion-security",
     nomDuControle: "Détection de Mouvement (Sécurité Horodatée)",
-    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], // Applicable à une zone via un hub ou directement
+    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], 
     typesDeCapteursNecessaires: ["Mouvement"],
-    variablesUtilisees: ["motion_detected"], // Simplified: current_time logic is hard for static demo
-    formuleDeVerification: "sensor['motion_detected'].value === true && (machine.params['surveillance_active'] === true)", // Placeholder for time logic
+    variablesUtilisees: ["motion_detected"], 
+    formuleDeVerification: "sensor['motion_detected'].value === true && (machine.params['surveillance_active'] === true)", 
     description: "Alerte si un mouvement est détecté pendant les heures de surveillance.",
     expectedParams: [
       { id: 'heure_debut_surveillance', label: 'Début Surveillance (HH:MM)', type: 'string', defaultValue: '22:00' },
       { id: 'heure_fin_surveillance', label: 'Fin Surveillance (HH:MM)', type: 'string', defaultValue: '06:00' },
-      { id: 'surveillance_active', label: 'Surveillance Active (Actuellement)', type: 'boolean', defaultValue: true }, // Simulates if current time is within range
+      { id: 'surveillance_active', label: 'Surveillance Active (Actuellement)', type: 'boolean', defaultValue: true }, 
     ],
     checklist: securityChecklistMotion
   },
   {
     id: "control-smoke-alarm",
     nomDuControle: "Alarme Incendie (Détection Fumée)",
-    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], // Applicable à une zone
+    typesDeMachinesConcernees: ["Hub Sécurité", "Générique"], 
     typesDeCapteursNecessaires: ["Fumée"],
     variablesUtilisees: ["smoke_detected"],
     formuleDeVerification: "sensor['smoke_detected'].value === true",
     description: "Alerte immédiate si de la fumée est détectée.",
-    expectedParams: [], // Peut être sans paramètre si binaire
+    expectedParams: [], 
     checklist: securityChecklistSmoke
   },
   {
@@ -210,7 +211,7 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     id: "control-animal-enclosure-temp",
     nomDuControle: "Contrôle Température Enclos/Serre",
     typesDeMachinesConcernees: ["Ventilation Enclos", "Chauffage Enclos", "Ventilation Serre", "Chauffage Serre"],
-    typesDeCapteursNecessaires: ["Température Ambiante"], // Sensor provides 'temp' or 'temp_enclos'
+    typesDeCapteursNecessaires: ["Température Ambiante"], 
     variablesUtilisees: ["temp_enclos"],
     formuleDeVerification: "sensor['temp_enclos'].value < machine.params['temp_min_enclos'] || sensor['temp_enclos'].value > machine.params['temp_max_enclos']",
     description: "Maintient la température de l'enclos/serre dans une plage optimale.",
@@ -233,7 +234,13 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   }
 ];
 
-function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
+interface MachinePageData {
+    site?: Site;
+    zone?: FullZoneType;
+    machine?: FullMachineType;
+}
+
+function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdPath: string): MachinePageData {
     let targetSite: Site | undefined;
     const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
         for (const s of sitesArr) {
@@ -246,7 +253,7 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         return undefined;
     };
     targetSite = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
-    if (!targetSite) return undefined;
+    if (!targetSite) return {};
 
     let targetZone: FullZoneType | undefined;
     function findZoneRecursive(zones: FullZoneType[], zId: string): FullZoneType | undefined {
@@ -260,12 +267,12 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
         return undefined;
     }
     targetZone = findZoneRecursive(targetSite.zones, zoneIdPath);
-    if (!targetZone) return undefined;
+    if (!targetZone) return { site: targetSite };
 
     const machine = targetZone.machines.find(m => m.id === machineIdPath);
-   if (machine) {
+    if (machine) {
         const augmentedMachine: FullMachineType = { ...machine };
-        if (!augmentedMachine.availableSensors) {
+        if (!augmentedMachine.availableSensors) { // Ensure availableSensors is populated if not already
             const zoneSensors = targetZone?.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
@@ -274,7 +281,7 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
                 ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: Array.isArray(s.provides) ? s.provides : []})),
                 ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: Array.isArray(s.provides) ? s.provides : []}))
             ];
-             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC' && augmentedMachine.type !== 'Hub Sécurité') { // Hub Sécurité might not have its own provides
+             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC' && augmentedMachine.type !== 'Hub Sécurité') { 
                  augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
              }
         }
@@ -305,11 +312,9 @@ function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machi
             ];
             augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(currentValues || {})[0] || "Valeur Simulée";
         }
-
-
-        return augmentedMachine;
+        return { site: targetSite, zone: targetZone, machine: augmentedMachine };
     }
-    return undefined;
+    return { site: targetSite, zone: targetZone };
 }
 
 function getMachineIconDisplay(type: string): LucideIcon {
@@ -332,7 +337,7 @@ export default function ManageMachinePage() {
   const zoneId = params.zoneId as string;
   const machineId = params.machineId as string;
 
-  const [machine, setMachine] = useState<FullMachineType | null>(null);
+  const [pageData, setPageData] = useState<MachinePageData>({});
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [controlConfigs, setControlConfigs] = useState<Record<string, ConfiguredControl>>({});
@@ -343,12 +348,12 @@ export default function ManageMachinePage() {
       setIsLoading(false);
       return;
     }
-    const foundMachine = findMachineFromGlobalData(siteId, zoneId, machineId);
-    if (foundMachine) {
-      setMachine(foundMachine);
+    const foundData = findMachineHierarchy(siteId, zoneId, machineId);
+    if (foundData.machine) {
+      setPageData(foundData);
       const initialConfigs: Record<string, ConfiguredControl> = {};
       DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.forEach(control => {
-        const existingConfig = foundMachine.configuredControls?.[control.id];
+        const existingConfig = foundData.machine!.configuredControls?.[control.id];
         initialConfigs[control.id] = {
           isActive: existingConfig?.isActive || false,
           params: { ...(existingConfig?.params || {}) },
@@ -415,32 +420,41 @@ export default function ManageMachinePage() {
     console.log("Saving machine control configurations:", { machineId, controlConfigs });
     toast({
       title: "Configuration Sauvegardée",
-      description: `Les configurations pour ${machine?.name} ont été sauvegardées (simulation).`,
+      description: `Les configurations pour ${pageData.machine?.name} ont été sauvegardées (simulation).`,
     });
-    // Here you would typically update the DUMMY_CLIENT_SITES_DATA or send to a backend
-    // For this demo, we are not persisting changes beyond the session.
   };
 
   const applicableAdminControls = useMemo(() => {
-    if (!machine) return [];
+    if (!pageData.machine) return [];
     return DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE.filter(control =>
       control.typesDeMachinesConcernees.length === 0 || 
-      control.typesDeMachinesConcernees.includes(machine.type) ||
+      control.typesDeMachinesConcernees.includes(pageData.machine!.type) ||
       control.typesDeMachinesConcernees.includes("Générique")
     );
-  }, [machine]);
+  }, [pageData.machine]);
 
   const activeMachineControls = useMemo(() => {
-    if (!machine) return [];
+    if (!pageData.machine) return [];
     return applicableAdminControls.filter(adminCtrl => controlConfigs[adminCtrl.id]?.isActive);
-  }, [machine, applicableAdminControls, controlConfigs]);
+  }, [pageData.machine, applicableAdminControls, controlConfigs]);
+
+  const machineSensors = useMemo(() => {
+    if (!pageData.zone || !pageData.machine) return [];
+    const allZoneSensors = pageData.zone.sensors || [];
+    return allZoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(pageData.machine!.id));
+  }, [pageData.zone, pageData.machine]);
+
+  const ambientSensors = useMemo(() => {
+    if (!pageData.zone) return [];
+    return (pageData.zone.sensors || []).filter(s => s.scope === 'zone');
+  }, [pageData.zone]);
 
 
   if (isLoading) {
     return <AppLayout><div className="p-6 text-center">Chargement des détails de la machine...</div></AppLayout>;
   }
 
-  if (notFound || !machine) {
+  if (notFound || !pageData.machine) {
     return (
       <AppLayout>
         <div className="p-6 text-center">
@@ -453,6 +467,7 @@ export default function ManageMachinePage() {
     );
   }
 
+  const { machine, site, zone } = pageData;
   const MachineIconToDisplay = getMachineIconDisplay(machine.type);
   
   const chartData = machine.activeControlInAlert?.historicalData || [];
@@ -468,18 +483,28 @@ export default function ManageMachinePage() {
       <div className="container mx-auto py-8">
         <div className="mb-6">
           <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}`)}>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion du site
+            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion de {site?.name || 'site'}
           </Button>
         </div>
 
         <Card className="shadow-xl">
           <CardHeader className="border-b">
-            <div className="flex items-center gap-3">
-              <MachineIconToDisplay className="h-8 w-8 text-primary" />
-              <div>
-                <CardTitle className="text-3xl">Gérer: {machine.name}</CardTitle>
-                <CardDescription>Type: {machine.type} | Site: {siteId} | Zone: {zoneId}</CardDescription>
-              </div>
+            <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                <MachineIconToDisplay className="h-8 w-8 text-primary" />
+                <div>
+                    <CardTitle className="text-3xl">Gérer: {machine.name}</CardTitle>
+                    <CardDescription>Type: {machine.type} | Site: {site?.name} | Zone: {zone?.name}</CardDescription>
+                </div>
+                </div>
+                <Button 
+                    variant="outline" 
+                    asChild
+                >
+                    <Link href={`/client/assets/edit-machine-details/${siteId}/${zoneId}/${machineId}`}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Modifier les Détails
+                    </Link>
+                </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
@@ -494,118 +519,126 @@ export default function ManageMachinePage() {
               </TabsList>
 
               <TabsContent value="config" className="mt-4">
-                <div className="space-y-6">
-                  {applicableAdminControls.map((control) => {
-                    const config = controlConfigs[control.id] || { isActive: false, params: {}, sensorMappings: {} };
-                    return (
-                      <Card key={control.id} className="bg-muted/30 shadow-md">
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-xl">{control.nomDuControle}</CardTitle>
-                            <div className="flex items-center space-x-2">
-                              <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
-                                {config.isActive ? "Activé" : "Désactivé"}
-                              </Label>
-                              <Switch
-                                id={`switch-${control.id}`}
-                                checked={config.isActive}
-                                onCheckedChange={(checked) => handleControlActivationChange(control.id, checked)}
-                              />
-                            </div>
-                          </div>
-                          <CardDescription>{control.description}</CardDescription>
-                        </CardHeader>
-                        {config.isActive && (
-                          <CardContent className="space-y-4 pt-2">
-                            {control.expectedParams && control.expectedParams.length > 0 && (
-                              <div className="space-y-3 p-3 border rounded-md bg-background">
-                                <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
-                                {control.expectedParams.map(param => (
-                                  <div key={param.id} className="space-y-1">
-                                    <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
-                                    {param.type === 'boolean' ? (
-                                      <Select
-                                        value={String(config.params[param.id] ?? param.defaultValue ?? false)}
-                                        onValueChange={(value) => handleParamChange(control.id, param.id, value, param.type)}
-                                      >
-                                        <SelectTrigger id={`${control.id}-${param.id}`}>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="true">Oui / Actif</SelectItem>
-                                          <SelectItem value="false">Non / Inactif</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <Input
-                                        id={`${control.id}-${param.id}`}
-                                        type={param.type === 'number' ? 'number' : 'text'}
-                                        value={config.params[param.id] ?? param.defaultValue ?? ''}
-                                        onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
-                                        placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
-                                      />
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {control.variablesUtilisees && control.variablesUtilisees.length > 0 && (
-                              <div className="space-y-3 p-3 border rounded-md bg-background">
-                                <h4 className="text-md font-semibold text-muted-foreground">Mappage des Capteurs Requis :</h4>
-                                {control.variablesUtilisees.map(variableId => {
-                                  const variableLabel = control.typesDeCapteursNecessaires.find(
-                                    tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0]) || tcLabel.toLowerCase().includes(variableId)
-                                  ) || variableId;
-                                  
-                                  const compatibleSensors = machine?.availableSensors?.filter(sensor => {
-                                    return sensor.provides?.some(p => p.toLowerCase() === variableId.toLowerCase());
-                                  }) || [];
-
-                                  return (
-                                    <div key={variableId} className="space-y-1">
-                                      <Label htmlFor={`${control.id}-map-${variableId}`}>
-                                        Nécessite: {variableLabel} (<code>{variableId}</code>)
-                                      </Label>
-                                      <Select
-                                        value={config.sensorMappings[variableId] || "__NONE__"}
-                                        onValueChange={(sensorInstanceId) =>
-                                          handleSensorMappingChange(control.id, variableId, sensorInstanceId)
-                                        }
-                                      >
-                                        <SelectTrigger id={`${control.id}-map-${variableId}`}>
-                                          <SelectValue placeholder="Sélectionner un capteur..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="__NONE__">-- Non Mappé --</SelectItem>
-                                          {compatibleSensors.length > 0 ? (
-                                            compatibleSensors.map(sensor => (
-                                              <SelectItem key={sensor.id} value={sensor.id}>
-                                                {sensor.name} (Fournit: {sensor.provides?.join(', ') || 'N/A'})
-                                              </SelectItem>
-                                            ))
-                                          ) : (
-                                            <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
-                                          )}
-                                           {machine?.availableSensors && machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).length > 0 && (
-                                              machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).map(sensor => (
-                                                <SelectItem key={sensor.id} value={sensor.id} disabled>
-                                                  {sensor.name} (Non compatible: {sensor.provides?.join(', ') || 'N/A'})
-                                                </SelectItem>
-                                              ))
-                                          )}
-                                        </SelectContent>
-                                      </Select>
+                {applicableAdminControls.length > 0 ? (
+                    <Accordion type="multiple" className="w-full space-y-3">
+                    {applicableAdminControls.map((control) => {
+                        const config = controlConfigs[control.id] || { isActive: false, params: {}, sensorMappings: {} };
+                        return (
+                        <AccordionItem key={control.id} value={control.id} className="border rounded-md bg-muted/30 shadow-sm">
+                            <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex-grow">
+                                        <CardTitle className="text-lg text-left">{control.nomDuControle}</CardTitle>
+                                        <CardDescription className="text-xs text-left mt-0.5">{control.description}</CardDescription>
                                     </div>
-                                  );
-                                })}
-                              </div>
+                                    <div className="flex items-center space-x-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
+                                    <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
+                                        {config.isActive ? "Activé" : "Désactivé"}
+                                    </Label>
+                                    <Switch
+                                        id={`switch-${control.id}`}
+                                        checked={config.isActive}
+                                        onCheckedChange={(checked) => handleControlActivationChange(control.id, checked)}
+                                    />
+                                    </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-0 pb-4 px-4">
+                            {config.isActive && (
+                                <div className="space-y-4 pt-3 border-t mt-3">
+                                {control.expectedParams && control.expectedParams.length > 0 && (
+                                <div className="space-y-3 p-3 border rounded-md bg-background">
+                                    <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
+                                    {control.expectedParams.map(param => (
+                                    <div key={param.id} className="space-y-1">
+                                        <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
+                                        {param.type === 'boolean' ? (
+                                        <Select
+                                            value={String(config.params[param.id] ?? param.defaultValue ?? false)}
+                                            onValueChange={(value) => handleParamChange(control.id, param.id, value, param.type)}
+                                        >
+                                            <SelectTrigger id={`${control.id}-${param.id}`}>
+                                            <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                            <SelectItem value="true">Oui / Actif</SelectItem>
+                                            <SelectItem value="false">Non / Inactif</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        ) : (
+                                        <Input
+                                            id={`${control.id}-${param.id}`}
+                                            type={param.type === 'number' ? 'number' : 'text'}
+                                            value={config.params[param.id] ?? param.defaultValue ?? ''}
+                                            onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
+                                            placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
+                                        />
+                                        )}
+                                    </div>
+                                    ))}
+                                </div>
+                                )}
+                                {control.variablesUtilisees && control.variablesUtilisees.length > 0 && (
+                                <div className="space-y-3 p-3 border rounded-md bg-background">
+                                    <h4 className="text-md font-semibold text-muted-foreground">Mappage des Capteurs Requis :</h4>
+                                    {control.variablesUtilisees.map(variableId => {
+                                    const variableLabel = control.typesDeCapteursNecessaires.find(
+                                        tcLabel => tcLabel.toLowerCase().includes(variableId.split('_')[0]) || tcLabel.toLowerCase().includes(variableId)
+                                    ) || variableId;
+                                    
+                                    const compatibleSensors = machine?.availableSensors?.filter(sensor => {
+                                        return sensor.provides?.some(p => p.toLowerCase() === variableId.toLowerCase());
+                                    }) || [];
+
+                                    return (
+                                        <div key={variableId} className="space-y-1">
+                                        <Label htmlFor={`${control.id}-map-${variableId}`}>
+                                            Nécessite: {variableLabel} (<code>{variableId}</code>)
+                                        </Label>
+                                        <Select
+                                            value={config.sensorMappings[variableId] || "__NONE__"}
+                                            onValueChange={(sensorInstanceId) =>
+                                            handleSensorMappingChange(control.id, variableId, sensorInstanceId)
+                                            }
+                                        >
+                                            <SelectTrigger id={`${control.id}-map-${variableId}`}>
+                                            <SelectValue placeholder="Sélectionner un capteur..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                            <SelectItem value="__NONE__">-- Non Mappé --</SelectItem>
+                                            {compatibleSensors.length > 0 ? (
+                                                compatibleSensors.map(sensor => (
+                                                <SelectItem key={sensor.id} value={sensor.id}>
+                                                    {sensor.name} (Fournit: {sensor.provides?.join(', ') || 'N/A'})
+                                                </SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="__DISABLED_NO_SENSOR__" disabled>Aucun capteur compatible</SelectItem>
+                                            )}
+                                            {machine?.availableSensors && machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).length > 0 && (
+                                                machine.availableSensors.filter(s => !compatibleSensors.map(cs => cs.id).includes(s.id)).map(sensor => (
+                                                    <SelectItem key={sensor.id} value={sensor.id} disabled>
+                                                    {sensor.name} (Non compatible: {sensor.provides?.join(', ') || 'N/A'})
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                            </SelectContent>
+                                        </Select>
+                                        </div>
+                                    );
+                                    })}
+                                </div>
+                                )}
+                                </div>
                             )}
-                          </CardContent>
-                        )}
-                      </Card>
-                    );
-                  })}
-                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        );
+                    })}
+                    </Accordion>
+                ) : (
+                    <p className="text-muted-foreground text-center py-4">Aucun contrôle administratif n'est applicable à ce type de machine.</p>
+                )}
                 <div className="flex justify-end pt-8 mt-6 border-t">
                   <Button size="lg" onClick={handleSaveConfiguration} disabled={isLoading}>
                     <Save className="mr-2 h-5 w-5" />
@@ -671,6 +704,50 @@ export default function ManageMachinePage() {
                   </CardContent>
                 </Card>
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><RadioTower className="h-5 w-5 text-primary"/>Capteurs</CardTitle>
+                        <CardDescription>Liste des capteurs directement liés à cette machine et des capteurs ambiants de la zone.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {machineSensors.length > 0 && (
+                            <div>
+                                <h4 className="font-medium text-md mb-1.5">Capteurs de la Machine :</h4>
+                                <div className="space-y-2">
+                                {machineSensors.map(sensor => (
+                                    <div key={sensor.id} className="flex items-center justify-between p-2 border rounded-md bg-background/50">
+                                        <div>
+                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
+                                        </div>
+                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        )}
+                        {ambientSensors.length > 0 && (
+                             <div>
+                                <h4 className="font-medium text-md mb-1.5 mt-3">Capteurs Ambiants de la Zone ({zone?.name}) :</h4>
+                                <div className="space-y-2">
+                                {ambientSensors.map(sensor => (
+                                    <div key={sensor.id} className="flex items-center justify-between p-2 border rounded-md bg-background/50">
+                                        <div>
+                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
+                                        </div>
+                                        {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        )}
+                        {machineSensors.length === 0 && ambientSensors.length === 0 && (
+                            <p className="text-muted-foreground text-sm">Aucun capteur associé à cette machine ou à sa zone.</p>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {chartData.length > 0 && machine.activeControlInAlert ? (
                   <Card>
                     <CardHeader>
@@ -719,4 +796,3 @@ export default function ManageMachinePage() {
     </AppLayout>
   );
 }
-
