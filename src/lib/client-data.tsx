@@ -45,10 +45,34 @@ export interface ActiveControlInAlert {
   checklist?: ChecklistItem[]; 
 }
 
+// New Event Log Structures
+export type EventSeverity = 'CRITICAL' | 'WARNING' | 'INFO' | 'SUCCESS';
+export type EventType = 
+  | 'ALERT_TRIGGERED' 
+  | 'ALERT_RESOLVED' 
+  | 'CONTROL_ACTIVATED' 
+  | 'CONTROL_DEACTIVATED' 
+  | 'CONTROL_PARAMETER_CHANGED' 
+  | 'SENSOR_OFFLINE' 
+  | 'SENSOR_ONLINE' 
+  | 'MAINTENANCE_LOGGED' 
+  | 'SYSTEM_NOTE';
+
+export interface EventLogEntry {
+  id: string;
+  timestamp: string; // ISO date-time string
+  type: EventType;
+  severity: EventSeverity;
+  message: string;
+  details?: Record<string, any>; // e.g., { controlName: "Temp Control", oldValue: 5, newValue: 4 }
+  controlId?: string;
+  sensorId?: string;
+}
+
 export interface Machine {
   id: string;
   name: string;
-  type: string; // e.g., "Frigo", "Four", "Compresseur", "Camion Réfrigéré", "Serveur Pi"
+  type: string; 
   status: Status;
   sensorsCount?: number; 
   icon?: LucideIcon;
@@ -56,7 +80,8 @@ export interface Machine {
   notes?: string;
   activeControlInAlert?: ActiveControlInAlert;
   availableSensors?: { id: string; name: string; provides?: string[] }[]; 
-  configuredControls?: Record<string, ConfiguredControl>; 
+  configuredControls?: Record<string, ConfiguredControl>;
+  eventLog?: EventLogEntry[]; 
 }
 
 export interface Sensor {
@@ -157,7 +182,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                 availableSensors: [{ id: "sensor-paris-four-temp", name: "Sonde Temp. Four Vulcan", provides: ["temp_four"] }],
                 configuredControls: {
                   "control-temp-four": { isActive: true, params: { "temp_max_four": 250, "temp_min_cuisson": 180 }, sensorMappings: {"temp_four": "sensor-paris-four-temp"} }
-                }
+                },
+                eventLog: [
+                  { id: "evt-four-1", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), type: "CONTROL_ACTIVATED", severity: "INFO", message: "Contrôle température four activé.", controlId: "control-temp-four" },
+                  { id: "evt-four-2", timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), type: "MAINTENANCE_LOGGED", severity: "INFO", message: "Nettoyage mensuel effectué." },
+                ]
               },
               { 
                 id: "machine-paris-frigo1", name: "Réfrigérateur 'ChefCool' R1", type: "Frigo", status: "green",
@@ -175,7 +204,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                   relevantSensorVariable: 'temp', checklist: restaurantChecklistTempFrigo
                 },
                 availableSensors: [{ id: "sensor-paris-congel1-temp", name: "Sonde Temp. Congel C1", provides: ["temp"] }],
-                configuredControls: { "control-001": { isActive: true, params: { "seuil_min": -22, "seuil_max": -18 }, sensorMappings: {"temp": "sensor-paris-congel1-temp"} } }
+                configuredControls: { "control-001": { isActive: true, params: { "seuil_min": -22, "seuil_max": -18 }, sensorMappings: {"temp": "sensor-paris-congel1-temp"} } },
+                eventLog: [
+                    { id: "evt-congel-1", timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), type: "ALERT_TRIGGERED", severity: "CRITICAL", message: "Température congélateur -10°C (Seuil max: -18°C).", controlId: "control-001", details: { currentValue: -10, threshold: -18 } },
+                    { id: "evt-congel-2", timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), type: "MAINTENANCE_LOGGED", severity: "INFO", message: "Cycle de dégivrage manuel effectué." },
+                ]
               },
               { id: "machine-paris-cuisine-secu", name: "Hub Sécurité Cuisine", type: "Hub Sécurité", status: "green", 
                 availableSensors: [],
@@ -308,7 +341,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             relevantSensorVariable: 'temp_caisson', checklist: [{id: 'chk-camion-1', label: "Vérifier la fermeture des portes du caisson."}, {id: 'chk-camion-2', label: "Contrôler le fonctionnement du groupe froid."}]
           },
           availableSensors: [{id: "sensor-camion-fr01-gps-temp", name: "Tracker GPS/Temp Camion FR01", provides: ["gps_lat", "gps_lon", "temp_caisson", "temp"]}],
-          configuredControls: {"control-temp-camion": {isActive: true, params: {"temp_max": 4}, sensorMappings: {"temp_caisson": "sensor-camion-fr01-gps-temp"}}}
+          configuredControls: {"control-temp-camion": {isActive: true, params: {"temp_max": 4}, sensorMappings: {"temp_caisson": "sensor-camion-fr01-gps-temp"}}},
+          eventLog: [
+            {id: "evt-camion1", timestamp: new Date(Date.now() - 1*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "CRITICAL", message: "Température camion FR-01 à 8°C (max 4°C)", controlId: "control-temp-camion"},
+            {id: "evt-camion2", timestamp: new Date(Date.now() - 24*60*60*1000).toISOString(), type: "SYSTEM_NOTE", severity: "INFO", message: "Départ pour livraison - Paris centre."},
+          ]
         },
         { id: "machine-camion-fr02", name: "Camion FR-02 (XY-789-ZZ)", type: "Camion Réfrigéré", status: "green", availableSensors: [{id: "sensor-camion-fr02-gps-temp", name: "Tracker GPS/Temp Camion FR02", provides: ["gps_lat", "gps_lon", "temp_caisson", "temp"]}] }
       ]}
@@ -345,7 +382,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
             relevantSensorVariable: 'pression_huile'
           },
           availableSensors: [{id: "sensor-comp-c1-presshuile", name: "Sonde Pression Huile C1", provides: ["pression_huile", "press"]}],
-          configuredControls: { "control-003": {isActive: true, params: { "seuil_min_pression": 0.5}, sensorMappings: {"pression_huile": "sensor-comp-c1-presshuile"}}}
+          configuredControls: { "control-003": {isActive: true, params: { "seuil_min_pression": 0.5}, sensorMappings: {"pression_huile": "sensor-comp-c1-presshuile"}}},
+          eventLog: [
+              {id: "evt-comp1", timestamp: new Date(Date.now() - 2*60*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "WARNING", message: "Pression huile compresseur C1 basse: 0.4 bar.", controlId: "control-003"},
+              {id: "evt-comp2", timestamp: new Date(Date.now() - 7*24*60*60*1000).toISOString(), type: "MAINTENANCE_LOGGED", severity: "INFO", message: "Vérification et appoint huile compresseur C1."},
+          ]
         },
         { id: "machine-maint-secu", name: "Hub Sécurité Maintenance", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
@@ -420,7 +461,10 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                   relevantSensorVariable: 'humidity_zone', checklist: agroChecklistHumidityCold
                 },
                 availableSensors: [{ id: "s-dattes-clim-5-tempout", name: "Temp. Sortie Clim 5", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-5-power", name: "Conso. Clim 5", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-5-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-5-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-5-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-5-power"} } },
+                eventLog: [
+                  {id: "evt-clim5-1", timestamp: new Date(Date.now() - 1*60*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "WARNING", message: "Humidité dattes Clim 5 à 70% (max 65%). Ext: 40°C", controlId: "control-ac-agro"},
+                ]
             },
             { 
                 id: "machine-dattes-clim-06", name: "Climatiseur Dattes Unité 6", type: "Climatiseur", status: "red",
@@ -434,7 +478,11 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                   relevantSensorVariable: 'temp_out', checklist: agroChecklistHumidityCold
                 },
                 availableSensors: [{ id: "s-dattes-clim-6-tempout", name: "Temp. Sortie Clim 6", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-6-power", name: "Conso. Clim 6", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-6-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-6-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-6-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-6-power"} } },
+                 eventLog: [
+                  {id: "evt-clim6-1", timestamp: new Date(Date.now() - 30*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "CRITICAL", message: "Temp. sortie Clim 6 à 18°C (cible 12°C). Ext: 40°C", controlId: "control-ac-agro"},
+                  {id: "evt-clim6-2", timestamp: new Date(Date.now() - 5*24*60*60*1000).toISOString(), type: "MAINTENANCE_LOGGED", severity: "INFO", message: "Nettoyage filtre Clim 6."},
+                ]
             },
           ], sensors: [
             { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity", "humidity_zone"] } // status orange due to AC issues

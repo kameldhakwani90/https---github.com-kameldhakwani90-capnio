@@ -13,11 +13,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data.tsx"; 
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge, Download, CalendarDays, Snowflake } from "lucide-react"; 
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, type EventLogEntry, type EventSeverity, type EventType, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data.tsx"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge, Download, CalendarDays, Snowflake, WifiOff, Wifi, Wrench, StickyNote, ToggleLeft, ToggleRight, ListFilter } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import {
   ChartContainer,
   ChartTooltip,
@@ -251,41 +252,74 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
 ];
 
 interface MachinePageData {
-    site?: Site; // This should be the root site for display/navigation
-    zone?: FullZoneType; // The actual zone containing the machine
+    site?: Site; 
+    zone?: FullZoneType; 
     machine?: FullMachineType;
 }
 
 function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdPath: string): MachinePageData {
-    const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === siteIdPath);
-
-    let foundParentSiteOfZone: Site | undefined; // The site/sub-site that directly contains the zone
+    let rootSiteForContext: Site | undefined;
     let foundZone: FullZoneType | undefined;
     let foundMachine: FullMachineType | undefined;
 
-    const searchForZoneAndMachine = (sitesToSearch: Site[]): boolean => {
-        for (const currentSite of sitesToSearch) {
-            const zone = currentSite.zones.find(z => z.id === zoneIdPath);
-            if (zone) {
-                foundParentSiteOfZone = currentSite;
-                foundZone = zone;
-                foundMachine = zone.machines.find(m => m.id === machineIdPath);
-                return foundMachine !== undefined;
+    function findInSitesArray(sitesArr: Site[], sId: string): Site | undefined {
+        for (const s of sitesArr) {
+            if (s.id === sId) return s;
+            if (s.subSites) {
+                const foundInSub = findInSitesArray(s.subSites, sId);
+                if (foundInSub) return foundInSub;
             }
-            if (currentSite.subSites) {
-                if (searchForZoneAndMachine(currentSite.subSites)) {
+        }
+        return undefined;
+    };
+    
+    rootSiteForContext = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
+
+    function searchZoneAndMachineRecursive(currentSites: Site[]): boolean {
+        for (const site of currentSites) {
+            // Check zones in current site
+            let zoneToSearchInSubzones: FullZoneType | undefined = site.zones.find(z => z.id === zoneIdPath);
+            
+            if (zoneToSearchInSubzones) {
+                foundZone = zoneToSearchInSubzones;
+                const machine = zoneToSearchInSubzones.machines.find(m => m.id === machineIdPath);
+                if (machine) {
+                    foundMachine = machine;
                     return true;
                 }
+            } else { // If not in direct zones, check its subZones
+                function findZoneInSubZones(zones: FullZoneType[]): boolean {
+                    for (const z of zones) {
+                        if (z.id === zoneIdPath) {
+                            foundZone = z;
+                            const machine = z.machines.find(m => m.id === machineIdPath);
+                            if (machine) {
+                                foundMachine = machine;
+                                return true;
+                            }
+                            return false; // Zone found, but machine not in it, stop searching this branch of subzones
+                        }
+                        if (z.subZones && findZoneInSubZones(z.subZones)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                if(findZoneInSubZones(site.zones)) return true;
+            }
+
+            // If not found yet, recurse into subSites
+            if (site.subSites && searchZoneAndMachineRecursive(site.subSites)) {
+                return true;
             }
         }
         return false;
-    };
+    }
 
-    searchForZoneAndMachine(DUMMY_CLIENT_SITES_DATA);
-
-    if (foundMachine && foundZone && rootSite) { // rootSite is used for breadcrumb/back button context
+    searchZoneAndMachineRecursive(DUMMY_CLIENT_SITES_DATA);
+    
+    if (foundMachine && foundZone && rootSiteForContext) { 
         const augmentedMachine: FullMachineType = { ...foundMachine };
-        // Augment machine data (sensors, controls, alert history)
         if (!augmentedMachine.availableSensors) { 
             const zoneSensors = foundZone.sensors || [];
             const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(augmentedMachine.id));
@@ -324,10 +358,10 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
             ];
             augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(currentValues || {})[0] || "Valeur Simulée";
         }
-        return { site: rootSite, zone: foundZone, machine: augmentedMachine };
+        return { site: rootSiteForContext, zone: foundZone, machine: augmentedMachine };
     }
     
-    return { site: rootSite, zone: foundZone, machine: undefined }; // Return what was found, page will handle if machine is undefined
+    return { site: rootSiteForContext, zone: foundZone, machine: undefined }; 
 }
 
 function getMachineIconDisplay(type: string): LucideIcon {
@@ -336,11 +370,48 @@ function getMachineIconDisplay(type: string): LucideIcon {
     if (type.toLowerCase().includes("électrique") || type.toLowerCase().includes("elec")) return Zap;
     if (type.toLowerCase().includes("compresseur") || type.toLowerCase().includes("pompe") || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
     if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("hub sécurité")) return Server;
-    if (type.toLowerCase().includes("camion")) return Truck;
+    // if (type.toLowerCase().includes("camion")) return Truck; // Truck needs to be imported if used
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
     if (type.toLowerCase().includes("climatiseur") || type.toLowerCase().includes("unité de climatisation")) return Snowflake;
     return HardDrive;
 };
+
+const getEventIcon = (type: EventType, severity: EventSeverity): React.ReactElement => {
+  const iconProps = { className: "h-4 w-4 mr-2" };
+  switch (type) {
+    case 'ALERT_TRIGGERED':
+      return <AlertTriangle {...iconProps} color={severity === 'CRITICAL' ? 'hsl(var(--destructive))' : 'hsl(var(--accent))'} />;
+    case 'ALERT_RESOLVED':
+      return <CheckCircle2 {...iconProps} color="hsl(var(--success))" />; // Assuming success color exists
+    case 'CONTROL_ACTIVATED':
+      return <ToggleRight {...iconProps} color="hsl(var(--info))" />; // Assuming info color exists
+    case 'CONTROL_DEACTIVATED':
+      return <ToggleLeft {...iconProps} color="hsl(var(--muted-foreground))" />;
+    case 'CONTROL_PARAMETER_CHANGED':
+      return <Settings2 {...iconProps} color="hsl(var(--info))" />;
+    case 'SENSOR_OFFLINE':
+      return <WifiOff {...iconProps} color={severity === 'CRITICAL' ? 'hsl(var(--destructive))' : 'hsl(var(--accent))'} />;
+    case 'SENSOR_ONLINE':
+      return <Wifi {...iconProps} color="hsl(var(--success))" />;
+    case 'MAINTENANCE_LOGGED':
+      return <Wrench {...iconProps} color="hsl(var(--info))" />;
+    case 'SYSTEM_NOTE':
+      return <StickyNote {...iconProps} color="hsl(var(--muted-foreground))" />;
+    default:
+      return <Info {...iconProps} color="hsl(var(--muted-foreground))" />;
+  }
+};
+
+const getEventSeverityClass = (severity: EventSeverity): string => {
+  switch (severity) {
+    case 'CRITICAL': return 'text-destructive';
+    case 'WARNING': return 'text-orange-500'; // Using direct orange for warning for now
+    case 'INFO': return 'text-blue-500';    // Using direct blue for info for now
+    case 'SUCCESS': return 'text-green-500'; // Using direct green for success for now
+    default: return 'text-muted-foreground';
+  }
+};
+
 
 export default function ManageMachinePage() {
   const router = useRouter();
@@ -356,8 +427,9 @@ export default function ManageMachinePage() {
   const [notFound, setNotFound] = useState(false);
   const [controlConfigs, setControlConfigs] = useState<Record<string, ConfiguredControl>>({});
   
-  const [eventLogStartDate, setEventLogStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [eventLogEndDate, setEventLogEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const [eventLogStartDate, setEventLogStartDate] = useState<string>(today);
+  const [eventLogEndDate, setEventLogEndDate] = useState<string>(today);
 
   useEffect(() => {
     if (!siteId || !zoneId || !machineId) {
@@ -385,7 +457,6 @@ export default function ManageMachinePage() {
       setControlConfigs(initialConfigs);
       setNotFound(false);
     } else {
-      // Even if machine is not found, set site/zone if they were, for context
       setPageData({ site: foundData.site, zone: foundData.zone, machine: undefined });
       setNotFound(true);
     }
@@ -472,6 +543,22 @@ export default function ManageMachinePage() {
     return (pageData.zone.sensors || []).filter(s => s.scope === 'zone');
   }, [pageData.zone]);
 
+  const filteredEventLog = useMemo(() => {
+    if (!pageData.machine?.eventLog) return [];
+    if (!eventLogStartDate || !eventLogEndDate) return pageData.machine.eventLog;
+
+    const start = parseISO(eventLogStartDate);
+    // Add 1 day to end date to make it inclusive of the whole day
+    const end = new Date(parseISO(eventLogEndDate));
+    end.setDate(end.getDate() + 1);
+
+
+    return pageData.machine.eventLog.filter(event => {
+      const eventDate = parseISO(event.timestamp);
+      return isWithinInterval(eventDate, { start, end });
+    }).sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
+  }, [pageData.machine?.eventLog, eventLogStartDate, eventLogEndDate]);
+
 
   if (isLoading) {
     return <AppLayout><div className="p-6 text-center">Chargement des détails de la machine...</div></AppLayout>;
@@ -482,7 +569,9 @@ export default function ManageMachinePage() {
       <AppLayout>
         <div className="p-6 text-center">
           <h1 className="text-2xl font-bold text-destructive">Machine non trouvée</h1>
-          <p className="text-muted-foreground mb-4">Site: {pageData.site?.name || siteId}, Zone: {pageData.zone?.name || zoneId}</p>
+          <p className="text-muted-foreground mb-1">Machine ID: {machineId}</p>
+          <p className="text-muted-foreground mb-1">Zone ID: {zoneId}</p>
+          <p className="text-muted-foreground mb-4">Site ID: {siteId}</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="mr-2 h-4 w-4" /> Retour
           </Button>
@@ -705,7 +794,7 @@ export default function ManageMachinePage() {
                         <Accordion type="multiple" className="w-full space-y-3" defaultValue={activeMachineControls.map(c => `monitoring-${c.id}`)}>
                             {activeMachineControls.map(control => {
                                 const isCurrentControlInAlert = machine.activeControlInAlert?.controlId === control.id;
-                                const controlStatus = isCurrentControlInAlert ? machine.activeControlInAlert!.status || 'red' : 'green';
+                                const controlStatus: Status = isCurrentControlInAlert ? machine.activeControlInAlert!.status || 'red' : 'green';
                                 const controlStatusText = isCurrentControlInAlert ? getMachineStatusText(controlStatus) : "OK";
                                 const controlStatusIcon = isCurrentControlInAlert 
                                     ? getMachineStatusIcon(controlStatus, "h-5 w-5") 
@@ -739,11 +828,11 @@ export default function ManageMachinePage() {
                                                                     <li key={key}><strong>{key}:</strong> {valObj.value}{valObj.unit ? ` ${valObj.unit}` : ''}</li>
                                                                 ))}
                                                             </ul>
-                                                        ) : currentControlConfig?.params && Object.keys(currentControlConfig.params).length > 0 ? (
+                                                        ) : currentControlConfig?.params && Object.keys(currentControlConfig.params).length > 0 && control.expectedParams ? (
                                                             <>
                                                                 <p className="font-medium mb-1">Paramètres configurés :</p>
                                                                 <ul className="list-disc list-inside">
-                                                                    {control.expectedParams?.map(paramDef => {
+                                                                    {control.expectedParams.map(paramDef => {
                                                                         const val = currentControlConfig.params[paramDef.id];
                                                                         if (val !== undefined) {
                                                                             return <li key={paramDef.id}><strong>{paramDef.label}:</strong> {String(val)}</li>;
@@ -831,8 +920,47 @@ export default function ManageMachinePage() {
                                 Exporter (Excel)
                             </Button>
                         </div>
-                        <div className="min-h-[100px] p-4 border rounded-md bg-muted/20 text-center">
-                             <p className="text-muted-foreground text-sm">Affichage du journal des événements non implémenté (simulation).</p>
+                        <div className="min-h-[100px] p-4 border rounded-md bg-muted/20">
+                            {filteredEventLog.length > 0 ? (
+                                <ul className="space-y-3">
+                                    {filteredEventLog.map(event => (
+                                        <li key={event.id} className="flex items-start gap-3 p-2 border-b last:border-b-0 hover:bg-background/50 rounded-sm">
+                                            <div className="mt-0.5">
+                                               {getEventIcon(event.type, event.severity)}
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className={cn("text-sm font-medium", getEventSeverityClass(event.severity))}>{event.message}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {format(parseISO(event.timestamp), "dd/MM/yyyy HH:mm:ss")} - Type: {event.type}
+                                                </p>
+                                                {event.details && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Détails: {Object.entries(event.details).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                             <Badge variant={
+                                                event.severity === 'CRITICAL' ? 'destructive' :
+                                                event.severity === 'WARNING' ? 'default' : // Using default for orange
+                                                event.severity === 'SUCCESS' ? 'default' : // Using default for green
+                                                'outline' 
+                                              }
+                                              className={cn("text-xs shrink-0", 
+                                                event.severity === 'WARNING' && 'bg-orange-500 text-white hover:bg-orange-600',
+                                                event.severity === 'SUCCESS' && 'bg-green-500 text-white hover:bg-green-600',
+                                                event.severity === 'INFO' && 'bg-blue-500 text-white hover:bg-blue-600'
+                                              )}
+                                            >
+                                                {event.severity}
+                                            </Badge>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-muted-foreground text-sm text-center py-4">
+                                    {machine.eventLog && machine.eventLog.length > 0 ? "Aucun événement trouvé pour la période sélectionnée." : "Aucun événement enregistré pour cette machine."}
+                                </p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -891,6 +1019,3 @@ export default function ManageMachinePage() {
   );
 }
     
-
-    
-
