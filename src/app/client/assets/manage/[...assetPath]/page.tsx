@@ -22,7 +22,7 @@ import {
     getStatusIcon,      
     getStatusText,
     getMachineIcon       
-} from "@/lib/client-data"; 
+} from "@/lib/client-data.tsx"; 
 import { cn } from "@/lib/utils";
 
 interface BreadcrumbSegment {
