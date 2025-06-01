@@ -1,4 +1,5 @@
 
+
 "use client"; 
 
 import type { LucideIcon } from 'lucide-react';
@@ -131,10 +132,10 @@ export interface Site {
 }
 
 export const DUMMY_ZONE_TYPES: ZoneType[] = [
-  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", icon: Package, bestPracticesTitle: "Bonnes Pratiques Générales", bestPracticesContent: "Assurer la propreté et la sécurité de base.\nVérifier régulièrement l'état des équipements." },
-  { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", icon: Utensils, bestPracticesTitle: "Hygiène & Sécurité en Cuisine Pro", bestPracticesContent: "Respecter les normes HACCP.\nNettoyage régulier des surfaces et équipements.\nContrôle strict des températures des zones froides et chaudes." },
-  { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", icon: Snowflake, bestPracticesTitle: "Gestion Optimale Chambre Froide Positive", bestPracticesContent: "Maintenir température entre 0-4°C.\nÉviter surcharge.\nContrôler dates de péremption.\nNettoyage hebdomadaire." },
-  { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", icon: Snowflake, bestPracticesTitle: "Maintenance Congélateur Industriel", bestPracticesContent: "Maintenir température à -18°C ou moins.\nDégivrage régulier.\nÉviter ruptures chaîne du froid." },
+  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", icon: Package, bestPracticesTitle: "Bonnes Pratiques Générales", bestPracticesContent: "- Assurer la propreté et la sécurité de base.\n- Vérifier régulièrement l'état des équipements." },
+  { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", icon: Utensils, bestPracticesTitle: "Hygiène & Sécurité en Cuisine Pro", bestPracticesContent: "- Respecter les normes HACCP.\n- Nettoyage régulier des surfaces et équipements.\n- Contrôle strict des températures des zones froides et chaudes." },
+  { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", icon: Snowflake, bestPracticesTitle: "Gestion Optimale Chambre Froide Positive", bestPracticesContent: "- Maintenir température entre 0-4°C.\n- Éviter surcharge.\n- Contrôler dates de péremption.\n- Nettoyage hebdomadaire." },
+  { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", icon: Snowflake, bestPracticesTitle: "Maintenance Congélateur Industriel", bestPracticesContent: "- Maintenir température à -18°C ou moins.\n- Dégivrage régulier.\n- Éviter ruptures chaîne du froid." },
   {
     id: "zt-stock-dattes",
     name: "Stockage Agro - Dattes & Produits Secs Sensibles",
@@ -142,7 +143,7 @@ export const DUMMY_ZONE_TYPES: ZoneType[] = [
     icon: CalendarDays,
     bestPracticesTitle: "Bonnes Pratiques: Stockage Agro - Dattes & Produits Secs Sensibles",
     bestPracticesContent: 
-`Objectifs Clés (Exemple Dattes) :
+`Objectifs Clés :
 - Humidité Relative (HR) : Maintenir entre 65-75% (via capteur HR ambiant). Une HR trop basse (<60%) cause perte de poids. Une HR trop haute (>80%) favorise moisissures.
 - Température : Maintenir entre 0-4°C pour conservation longue durée (via capteur de température ambiant). Éviter variations importantes.
 
@@ -156,12 +157,12 @@ Points d'Attention :
 - Isolation & Étanchéité : Essentielles pour limiter impact des conditions extérieures (ex: forte chaleur à 40°C dehors) et stabiliser ambiance interne.
 - Surveillance Continue : Utiliser capteurs de température et d'humidité ambiants pour suivi en temps réel et alertes rapides si valeurs hors plages cibles.`
   },
-  { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", icon: Warehouse, bestPracticesTitle: "Organisation Entrepôt Sec", bestPracticesContent: "Maintenir propre et organisé.\nProtéger de l'humidité excessive et des nuisibles." },
-  { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", icon: Factory, bestPracticesTitle: "Sécurité & Efficacité Atelier", bestPracticesContent: "Sécurité des machines.\nOrdre et propreté (5S).\nVentilation adéquate." },
-  { id: "zt-salle-serveur", name: "Salle Serveur / Local Technique", description: "Zone hébergeant des équipements informatiques critiques.", icon: Server, bestPracticesTitle: "Maintenance Salle Serveur", bestPracticesContent: "Contrôle température et humidité strict.\nProtection incendie.\nAccès sécurisé." },
-  { id: "zt-champ-culture", name: "Champ de Culture / Parcelle Agricole", description: "Zone extérieure de culture.", icon: Sprout, bestPracticesTitle: "Gestion des Cultures en Plein Champ", bestPracticesContent: "Analyse du sol.\nIrrigation adaptée.\nSurveillance des nuisibles et maladies." },
-  { id: "zt-serre-agricole", name: "Serre Agricole", description: "Culture sous abri avec contrôle climatique.", icon: Apple, bestPracticesTitle: "Optimisation des Conditions en Serre", bestPracticesContent: "Gestion température, humidité, luminosité, ventilation.\nProtection contre maladies spécifiques aux serres." },
-  { id: "zt-elevage-animaux", name: "Zone d'Élevage (Générique)", description: "Zone pour l'hébergement d'animaux.", icon: PawPrint, bestPracticesTitle: "Bien-être Animal en Élevage", bestPracticesContent: "Espace suffisant.\nEau propre.\nNourriture adaptée.\nVentilation.\nGestion des déjections." }
+  { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", icon: Warehouse, bestPracticesTitle: "Organisation Entrepôt Sec", bestPracticesContent: "- Maintenir propre et organisé.\n- Protéger de l'humidité excessive et des nuisibles." },
+  { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", icon: Factory, bestPracticesTitle: "Sécurité & Efficacité Atelier", bestPracticesContent: "- Sécurité des machines.\n- Ordre et propreté (5S).\n- Ventilation adéquate." },
+  { id: "zt-salle-serveur", name: "Salle Serveur / Local Technique", description: "Zone hébergeant des équipements informatiques critiques.", icon: Server, bestPracticesTitle: "Maintenance Salle Serveur", bestPracticesContent: "- Contrôle température et humidité strict.\n- Protection incendie.\n- Accès sécurisé." },
+  { id: "zt-champ-culture", name: "Champ de Culture / Parcelle Agricole", description: "Zone extérieure de culture.", icon: Sprout, bestPracticesTitle: "Gestion des Cultures en Plein Champ", bestPracticesContent: "- Analyse du sol.\n- Irrigation adaptée.\n- Surveillance des nuisibles et maladies." },
+  { id: "zt-serre-agricole", name: "Serre Agricole", description: "Culture sous abri avec contrôle climatique.", icon: Apple, bestPracticesTitle: "Optimisation des Conditions en Serre", bestPracticesContent: "- Gestion température, humidité, luminosité, ventilation.\n- Protection contre maladies spécifiques aux serres." },
+  { id: "zt-elevage-animaux", name: "Zone d'Élevage (Générique)", description: "Zone pour l'hébergement d'animaux.", icon: PawPrint, bestPracticesTitle: "Bien-être Animal en Élevage", bestPracticesContent: "- Espace suffisant.\n- Eau propre.\n- Nourriture adaptée.\n- Ventilation.\n- Gestion des déjections." }
 ];
 
 const restaurantChecklistTempFrigo: ChecklistItem[] = [
@@ -853,7 +854,7 @@ export function findZoneDataForManagePage(
   }];
 
   let currentAssetInHierarchy: Site | Zone | undefined = rootSite;
-  let currentParentPathForManageLinks = rootSite.id; 
+  let accumulatedPathForManageLinks = rootSite.id; 
 
   for (let i = 0; i < zonePathSegments.length; i++) {
     const segmentId = zonePathSegments[i];
@@ -871,12 +872,14 @@ export function findZoneDataForManagePage(
       if (subSite) {
         nextFoundAsset = subSite;
         nextAssetType = 'site';
-        currentParentPathForManageLinks += `/${segmentId}`; 
+        accumulatedPathForManageLinks += `/${segmentId}`; 
       } else {
         const zone = currentSiteAsset.zones.find(z => z.id === segmentId);
         if (zone) {
           nextFoundAsset = zone;
           nextAssetType = 'zone';
+        } else {
+           console.error(`[findZoneDataForManagePage] Zone segment not found: ${segmentId} directly under site ${currentSiteAsset.id}.`);
         }
       }
     } else { 
@@ -885,6 +888,8 @@ export function findZoneDataForManagePage(
       if (subZone) {
         nextFoundAsset = subZone;
         nextAssetType = 'zone';
+      } else {
+         console.error(`[findZoneDataForManagePage] Sub-zone segment not found: ${segmentId} under zone ${currentZoneAsset.id}.`);
       }
     }
 
@@ -892,10 +897,8 @@ export function findZoneDataForManagePage(
       const currentPathToSegmentForZonePage = zonePathSegments.slice(0, i + 1).join('/');
       let segmentLinkPath: string;
       if (nextAssetType === 'site') {
-        // If the segment itself is a site (a sub-site), its manage page uses the accumulated path
-        segmentLinkPath = `/client/assets/manage/${currentParentPathForManageLinks}`;
+        segmentLinkPath = `/client/assets/manage/${accumulatedPathForManageLinks}`;
       } else { 
-        // If the segment is a zone, it links to the manage-zone page with rootSiteId and its own full path
         segmentLinkPath = `/client/assets/manage-zone/${rootSite.id}/${currentPathToSegmentForZonePage}`;
       }
       
@@ -907,7 +910,7 @@ export function findZoneDataForManagePage(
       });
       currentAssetInHierarchy = nextFoundAsset;
     } else {
-      console.error(`[findZoneDataForManagePage] Segment not found: ${segmentId} under parent ${currentAssetInHierarchy.id}. Parent type: ${isSite(currentAssetInHierarchy) ? 'Site' : 'Zone'}.`);
+      console.error(`[findZoneDataForManagePage] Segment not found: ${segmentId} under parent ${currentAssetInHierarchy?.id}. Parent type: ${currentAssetInHierarchy ? (isSite(currentAssetInHierarchy) ? 'Site' : 'Zone') : 'undefined'}.`);
       return undefined; 
     }
   }
@@ -915,7 +918,7 @@ export function findZoneDataForManagePage(
   if (currentAssetInHierarchy && !isSite(currentAssetInHierarchy)) { 
     return { zone: currentAssetInHierarchy as Zone, breadcrumbPath, parentSite: rootSite };
   } else {
-    console.error(`[findZoneDataForManagePage] Path did not resolve to a Zone. Final asset: ${currentAssetInHierarchy?.id}, type: ${isSite(currentAssetInHierarchy) ? 'Site' : 'Zone'}`);
+    console.error(`[findZoneDataForManagePage] Path did not resolve to a Zone. Final asset: ${currentAssetInHierarchy?.id}, type: ${currentAssetInHierarchy ? (isSite(currentAssetInHierarchy) ? 'Site' : 'Zone') : 'undefined'}`);
   }
   
   return undefined;
@@ -943,3 +946,4 @@ export const countSubZonesInZone = (zone: Zone): number => {
 };
 
     
+

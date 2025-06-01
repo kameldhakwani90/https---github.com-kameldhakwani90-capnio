@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -165,7 +166,61 @@ export default function ManageZonePage() {
     // Potentially navigate up: router.push(breadcrumbPath[breadcrumbPath.length - 2]?.path || '/assets');
   }
 
-  const bestPracticesChecklist = zoneTypeDetails?.bestPracticesContent?.split('\n').filter(line => line.trim() !== '') || [];
+  const renderBestPracticesContent = () => {
+    if (!zoneTypeDetails?.bestPracticesContent) {
+      return <p className="text-muted-foreground">Aucune bonne pratique spécifique définie pour ce type de zone.</p>;
+    }
+    const lines = zoneTypeDetails.bestPracticesContent.split('\n').filter(line => line.trim() !== '');
+    const contentElements: JSX.Element[] = [];
+    let currentSectionItems: string[] = [];
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.endsWith(':')) { // Assume lines ending with ':' are titles
+        // Render previous section's items if any
+        if (currentSectionItems.length > 0) {
+          contentElements.push(
+            <ul key={`section-items-${index-1}`} className="list-none pl-0 space-y-2 mt-1 mb-3">
+              {currentSectionItems.map((item, itemIndex) => (
+                <li key={`item-${index-1}-${itemIndex}`} className="flex items-start space-x-3 p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                  <Checkbox id={`bp-chk-${index-1}-${itemIndex}`} className="mt-1" />
+                  <Label htmlFor={`bp-chk-${index-1}-${itemIndex}`} className="font-normal text-sm cursor-pointer">
+                    {item.startsWith('- ') || item.startsWith('* ') ? item.substring(2) : item}
+                  </Label>
+                </li>
+              ))}
+            </ul>
+          );
+          currentSectionItems = []; // Reset for next section
+        }
+        // Render title
+        contentElements.push(
+          <h4 key={`title-${index}`} className="text-md font-semibold mt-4 mb-2 text-foreground">
+            {trimmedLine.slice(0, -1)} 
+          </h4>
+        );
+      } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.length > 0) {
+        currentSectionItems.push(trimmedLine);
+      }
+    });
+
+    // Render any remaining items from the last section
+    if (currentSectionItems.length > 0) {
+      contentElements.push(
+        <ul key="section-items-last" className="list-none pl-0 space-y-2 mt-1">
+          {currentSectionItems.map((item, itemIndex) => (
+            <li key={`item-last-${itemIndex}`} className="flex items-start space-x-3 p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
+              <Checkbox id={`bp-chk-last-${itemIndex}`} className="mt-1" />
+              <Label htmlFor={`bp-chk-last-${itemIndex}`} className="font-normal text-sm cursor-pointer">
+                {item.startsWith('- ') || item.startsWith('* ') ? item.substring(2) : item}
+              </Label>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return contentElements;
+  };
 
 
   return (
@@ -357,21 +412,7 @@ export default function ManageZonePage() {
                          {zoneTypeDetails && <CardDescription>Recommandations pour le type de zone : {zoneTypeDetails.name}</CardDescription>}
                     </CardHeader>
                     <CardContent>
-                        {bestPracticesChecklist.length > 0 ? (
-                            <div className="space-y-3">
-                                {bestPracticesChecklist.map((item, index) => (
-                                    <div key={`bp-item-${index}`} className="flex items-start space-x-3 p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
-                                        <Checkbox id={`bp-chk-${index}`} className="mt-1" />
-                                        <div className="grid gap-1.5 leading-snug">
-                                        <Label htmlFor={`bp-chk-${index}`} className="font-medium text-sm cursor-pointer">
-                                          {item.startsWith('- ') || item.startsWith('* ') ? item.substring(2) : item}
-                                        </Label>
-                                        {/* Potential for sub-text or actions in the future */}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ): <p className="text-muted-foreground">Aucune bonne pratique spécifique définie pour ce type de zone ou le contenu n'est pas formaté en liste.</p>}
+                        {renderBestPracticesContent()}
                     </CardContent>
                 </Card>
               </TabsContent>
@@ -401,4 +442,5 @@ export default function ManageZonePage() {
     </AppLayout>
   );
 }
+
 
