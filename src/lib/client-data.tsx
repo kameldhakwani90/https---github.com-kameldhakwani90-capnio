@@ -135,10 +135,23 @@ export const DUMMY_ZONE_TYPES: ZoneType[] = [
   {
     id: "zt-stock-dattes",
     name: "Stockage Agro - Dattes & Produits Secs Sensibles",
-    description: "Zone de stockage pour dattes ou autres produits secs sensibles à l'humidité.",
+    description: "Zone de stockage pour dattes ou autres produits secs sensibles à l'humidité. Idéal pour maintenir qualité et poids.",
     icon: CalendarDays,
-    bestPracticesTitle: "Bonnes Pratiques: Stockage Agro - Dattes & Produits Secs Sensibles",
-    bestPracticesContent: "Problème courant : La climatisation (groupe froid) refroidit l’air mais l’assèche fortement (condensation). Les produits comme les dattes perdent alors leur eau par évaporation, entraînant une perte de poids (jusqu’à 10 % par an). Jeter de l’eau pour compenser est une mauvaise solution (moisissures, condensation excessive).\n\nSOLUTION PRO :\n1. Contrôler précisément l’humidité relative (HR) avec un humidificateur professionnel (vapeur/ultrasonique) régulé par un capteur d’humidité, visant 65-75% HR pour les dattes.\n2. Utiliser un climatiseur avec régulation d’humidité intégrée ou un duo groupe froid + humidificateur.\n3. Isoler parfaitement la chambre froide et limiter les entrées d’air extérieur."
+    bestPracticesTitle: "Bonnes Pratiques: Stockage Dattes (HR & Température)",
+    bestPracticesContent: 
+`**Objectifs Clés (Exemple Dattes) :**
+- **Humidité Relative (HR) :** Maintenir entre 65-75% (via capteur HR). Une HR trop basse (<60%) cause une perte de poids par dessiccation. Une HR trop haute (>80%) favorise les moisissures.
+- **Température :** Maintenir entre 0-4°C pour conservation longue durée (via capteur de température). Des variations importantes sont à éviter.
+
+**Actions Correctives Recommandées :**
+- **HR trop basse / dessiccation :** Activer un système d'humidification contrôlé (ex: humidificateur ultrasonique – machine d'action) pour atteindre la consigne de 65-75%.
+- **HR trop élevée / risque condensation/moisissure :** S'assurer du bon fonctionnement du groupe froid et de son cycle de déshumidification. Vérifier l'isolation et l'étanchéité de la chambre (portes, joints). Optimiser la circulation de l'air.
+- **Température incorrecte :** Vérifier les réglages et le bon fonctionnement du groupe froid. S'assurer que la chambre n'est pas surchargée et que la circulation de l'air est correcte.
+
+**Points d'Attention :**
+- **Éviter :** L'ajout manuel d'eau pour humidifier (crée des déséquilibres, condensation, moisissures).
+- **Isolation & Étanchéité :** Essentielles pour limiter l'impact des conditions extérieures (ex: forte chaleur à 40°C dehors) et stabiliser l'ambiance interne.
+- **Surveillance Continue :** Utiliser les capteurs de température et d'humidité pour un suivi en temps réel et des alertes rapides si les valeurs sortent des plages cibles.`,
   },
   { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", bestPracticesTitle: "Organisation Entrepôt Sec", bestPracticesContent: "Maintenir propre et organisé. Protéger de l'humidité excessive et des nuisibles.", icon: Warehouse},
   { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", bestPracticesTitle: "Sécurité & Efficacité Atelier", bestPracticesContent: "Sécurité des machines. Ordre et propreté (5S). Ventilation adéquate.", icon: Factory},
@@ -791,4 +804,5 @@ export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITE
   }
   return undefined;
 };
+
 
