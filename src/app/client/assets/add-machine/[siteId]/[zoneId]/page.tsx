@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; 
-import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive, Tractor, Spray, Droplets } from "lucide-react";
+import { ChevronLeft, PlusCircle, Router, Wifi, CheckCircle, Settings, Loader2, HardDrive, Tractor, SprayCan, Droplets, Snowflake } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +35,9 @@ const AVAILABLE_MACHINE_TYPES = [
   { id: "mt-019", name: "Vitrine Réfrigérée" },
   { id: "mt-020", name: "Chambre Froide" }, // Large scale fridge
   { id: "mt-021", name: "PC" }, // For Pi Servers if categorized as PC
-  { id: "mt-022", name: "Générique" }, // Fallback
+  { id: "mt-022", name: "Climatiseur" },
+  { id: "mt-023", name: "Unité de Climatisation" },
+  { id: "mt-024", name: "Générique" }, // Fallback
 ];
 
 

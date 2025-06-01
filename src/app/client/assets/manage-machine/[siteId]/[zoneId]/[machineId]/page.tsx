@@ -13,8 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data.tsx"; 
-import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge, Download, CalendarDays } from "lucide-react"; 
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data.tsx"; 
+import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge, Download, CalendarDays, Snowflake } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -86,7 +86,7 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
   {
     id: "control-002",
     nomDuControle: "Contrôle Consommation Électrique Moteur/Equipement",
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC", "Equipement de Production"],
+    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC", "Equipement de Production", "Climatiseur", "Unité de Climatisation"],
     typesDeCapteursNecessaires: ["Tension", "Courant"],
     variablesUtilisees: ["tension", "courant", "conso"], 
     formuleDeCalcul: "conso = sensor['tension'].value * sensor['courant'].value",
@@ -115,7 +115,7 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
    {
     id: "control-srv-temp",
     nomDuControle: "Surveillance Température Serveur/PC",
-    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"],
+    typesDeMachinesConcernees: ["Serveur", "PC", "Hub Sécurité"], 
     typesDeCapteursNecessaires: ["Température CPU/Système"], 
     variablesUtilisees: ["temp_srv"], 
     formuleDeVerification: "sensor['temp_srv'].value <= machine.params['seuil_max_temp_srv']",
@@ -231,6 +231,22 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
     description: "Alerte si le niveau d'eau est trop bas.",
     expectedParams: [{ id: 'seuil_min_niveau_eau', label: 'Seuil Niveau Eau Min (%)', type: 'number', defaultValue: 20 }],
     checklist: [{id: 'chk-water-1', label: "Vérifier l'absence de fuites."}, {id: 'chk-water-2', label: "Nettoyer le capteur de niveau si accessible."}]
+  },
+  {
+    id: "control-ac-agro",
+    nomDuControle: "Contrôle Climatiseur Agroalimentaire",
+    typesDeMachinesConcernees: ["Climatiseur", "Unité de Climatisation"],
+    typesDeCapteursNecessaires: ["Température Sortie Air", "Humidité Ambiante Zone", "Consommation Électrique"],
+    variablesUtilisees: ["temp_out", "humidity_zone", "power_ac"],
+    formuleDeVerification: "(sensor['temp_out'].value <= machine.params['temp_cible_sortie'] + 2) && (sensor['humidity_zone'].value >= machine.params['humidity_min_zone'] && sensor['humidity_zone'].value <= machine.params['humidity_max_zone']) && (sensor['power_ac'].value <= machine.params['power_max_ac'])",
+    description: "Vérifie le bon fonctionnement du climatiseur pour préserver la qualité des produits agroalimentaires.",
+    expectedParams: [
+      { id: 'temp_cible_sortie', label: 'Température Cible Sortie Air (°C)', type: 'number', defaultValue: 12 },
+      { id: 'humidity_min_zone', label: 'Humidité Ambiante Min. Zone (%)', type: 'number', defaultValue: 55 },
+      { id: 'humidity_max_zone', label: 'Humidité Ambiante Max. Zone (%)', type: 'number', defaultValue: 65 },
+      { id: 'power_max_ac', label: 'Consommation Électrique Max. (W)', type: 'number', defaultValue: 1500 },
+    ],
+    checklist: agroChecklistHumidityCold,
   }
 ];
 
@@ -325,6 +341,7 @@ function getMachineIconDisplay(type: string): LucideIcon {
     if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("hub sécurité")) return Server;
     if (type.toLowerCase().includes("camion")) return Truck;
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
+    if (type.toLowerCase().includes("climatiseur") || type.toLowerCase().includes("unité de climatisation")) return Snowflake;
     return HardDrive;
 };
 
@@ -527,7 +544,7 @@ export default function ManageMachinePage() {
                         const config = controlConfigs[control.id] || { isActive: false, params: {}, sensorMappings: {} };
                         return (
                         <AccordionItem key={control.id} value={control.id} className="border rounded-md bg-muted/30 shadow-sm">
-                            <AccordionPrimitive.Header className="flex items-center justify-between w-full py-3 px-4 hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
+                             <AccordionPrimitive.Header className="flex items-center justify-between w-full py-3 px-4 hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
                                 <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline", "[&[data-state=open]>svg]:rotate-180")}>
                                     <div className="flex-grow">
                                         <CardTitle className="text-lg">{control.nomDuControle}</CardTitle>
@@ -655,7 +672,7 @@ export default function ManageMachinePage() {
                     <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         {getMachineStatusIcon(machine.status, "h-6 w-6")}
-                        État Actuel: {getMachineStatusText(machine.status)}
+                        État Actuel de la Machine: {getMachineStatusText(machine.status)}
                     </CardTitle>
                     <CardDescription>Vue d'ensemble du statut et des alertes actives de la machine.</CardDescription>
                     </CardHeader>
@@ -679,12 +696,12 @@ export default function ManageMachinePage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Données des Contrôles Actifs</CardTitle>
-                        <CardDescription>Aperçu des métriques et statuts pour chaque contrôle activé sur cette machine.</CardDescription>
+                        <CardTitle>Suivi Détaillé des Contrôles Actifs</CardTitle>
+                        <CardDescription>Visualisez les métriques et l'état de chaque contrôle activé pour cette machine.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {activeMachineControls.length > 0 ? (
-                        <Accordion type="multiple" className="w-full space-y-3">
+                        <Accordion type="multiple" className="w-full space-y-3" defaultValue={activeMachineControls.map(c => `monitoring-${c.id}`)}>
                             {activeMachineControls.map(control => {
                                 const isCurrentControlInAlert = machine.activeControlInAlert?.controlId === control.id;
                                 const controlStatus = isCurrentControlInAlert ? machine.activeControlInAlert!.status || 'red' : 'green';
@@ -735,9 +752,9 @@ export default function ManageMachinePage() {
                                                                 </ul>
                                                             </>
                                                         ) : (
-                                                            <p className="text-muted-foreground">Aucun paramètre spécifique affiché ou données en temps réel non simulées.</p>
+                                                            <p className="text-muted-foreground">Aucun paramètre spécifique affiché.</p>
                                                         )}
-                                                         {!isCurrentControlInAlert && <p className="mt-2 text-muted-foreground italic">Données en temps réel non simulées pour cet affichage (contrôle non en alerte).</p>}
+                                                         {!isCurrentControlInAlert && <p className="mt-2 text-muted-foreground italic">Données en temps réel non simulées (contrôle non en alerte).</p>}
                                                     </CardContent>
                                                 </Card>
 
@@ -757,7 +774,7 @@ export default function ManageMachinePage() {
                                                                 </LineChart>
                                                             </ChartContainer>
                                                         ) : (
-                                                            <p className="text-xs text-muted-foreground text-center py-4">Aucune alerte active spécifique à ce contrôle pour afficher un graphique d'historique.</p>
+                                                            <p className="text-xs text-muted-foreground text-center py-4">Aucune alerte active pour ce contrôle pour afficher un graphique d'historique.</p>
                                                         )}
                                                     </CardContent>
                                                 </Card>
@@ -815,7 +832,6 @@ export default function ManageMachinePage() {
                         </div>
                         <div className="min-h-[100px] p-4 border rounded-md bg-muted/20 text-center">
                              <p className="text-muted-foreground text-sm">Affichage du journal des événements non implémenté (simulation).</p>
-                             {/* Placeholder for event list */}
                         </div>
                     </CardContent>
                 </Card>

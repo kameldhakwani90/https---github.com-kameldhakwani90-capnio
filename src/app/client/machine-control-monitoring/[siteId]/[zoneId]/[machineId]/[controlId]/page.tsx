@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure } from "@/lib/client-data"; 
-import { ChevronLeft, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, Move, Flame, Droplets } from "lucide-react";
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data"; 
+import { ChevronLeft, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, Move, Flame, Droplets, Snowflake } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -80,7 +80,7 @@ const DUMMY_ADMIN_CONTROLS_DEFINITIONS: AdminControlDefinition[] = [
   {
     id: "control-002",
     nomDuControle: "Contrôle Consommation Électrique Moteur/Equipement",
-    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC", "Equipement de Production"],
+    typesDeMachinesConcernees: ["Moteur Principal", "Pompe Hydraulique", "Compresseur", "HVAC", "Equipement de Production", "Climatiseur", "Unité de Climatisation"],
     typesDeCapteursNecessaires: ["Tension", "Courant"],
     variablesUtilisees: ["tension", "courant", "conso"], 
     formuleDeCalcul: "conso = sensor['tension'].value * sensor['courant'].value",
@@ -225,6 +225,22 @@ const DUMMY_ADMIN_CONTROLS_DEFINITIONS: AdminControlDefinition[] = [
     description: "Alerte si le niveau d'eau est trop bas.",
     expectedParams: [{ id: 'seuil_min_niveau_eau', label: 'Seuil Niveau Eau Min (%)', type: 'number', defaultValue: 20 }],
     checklist: [{id: 'chk-water-1', label: "Vérifier l'absence de fuites."}, {id: 'chk-water-2', label: "Nettoyer le capteur de niveau si accessible."}]
+  },
+  {
+    id: "control-ac-agro",
+    nomDuControle: "Contrôle Climatiseur Agroalimentaire",
+    typesDeMachinesConcernees: ["Climatiseur", "Unité de Climatisation"],
+    typesDeCapteursNecessaires: ["Température Sortie Air", "Humidité Ambiante Zone", "Consommation Électrique"],
+    variablesUtilisees: ["temp_out", "humidity_zone", "power_ac"],
+    formuleDeVerification: "(sensor['temp_out'].value <= machine.params['temp_cible_sortie'] + 2) && (sensor['humidity_zone'].value >= machine.params['humidity_min_zone'] && sensor['humidity_zone'].value <= machine.params['humidity_max_zone']) && (sensor['power_ac'].value <= machine.params['power_max_ac'])",
+    description: "Vérifie le bon fonctionnement du climatiseur pour préserver la qualité des produits agroalimentaires.",
+    expectedParams: [
+      { id: 'temp_cible_sortie', label: 'Température Cible Sortie Air (°C)', type: 'number', defaultValue: 12 },
+      { id: 'humidity_min_zone', label: 'Humidité Ambiante Min. Zone (%)', type: 'number', defaultValue: 55 },
+      { id: 'humidity_max_zone', label: 'Humidité Ambiante Max. Zone (%)', type: 'number', defaultValue: 65 },
+      { id: 'power_max_ac', label: 'Consommation Électrique Max. (W)', type: 'number', defaultValue: 1500 },
+    ],
+    checklist: agroChecklistHumidityCold,
   }
 ];
 
@@ -271,6 +287,7 @@ function getMachineIconDisplay(type: string): LucideIcon {
     if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("hub sécurité")) return Server;
     if (type.toLowerCase().includes("camion")) return Truck;
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
+    if (type.toLowerCase().includes("climatiseur") || type.toLowerCase().includes("unité de climatisation")) return Snowflake;
     return HardDrive;
 };
 
@@ -500,4 +517,5 @@ export default function MachineControlMonitoringPage() {
     </AppLayout>
   );
 }
+
 

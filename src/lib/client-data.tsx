@@ -123,6 +123,15 @@ export const farmChecklistAnimalEnclosure: ChecklistItem[] = [
     { id: 'chk-animal-shade', label: "Vérifier la présence de zones d'ombre en cas de forte chaleur." },
 ];
 
+export const agroChecklistHumidityCold: ChecklistItem[] = [
+    { id: 'agro-chk-hc-1', label: "Vérifier l'étalonnage des sondes de température et d'humidité régulièrement." },
+    { id: 'agro-chk-hc-2', label: "Assurer une circulation d'air adéquate pour éviter les points chauds/froids et les zones de condensation." },
+    { id: 'agro-chk-hc-3', label: "Surveiller les cycles de dégivrage des évaporateurs pour éviter l'accumulation de glace et les fluctuations d'humidité." },
+    { id: 'agro-chk-hc-4', label: "Ajuster les consignes de température et d'humidité en fonction du type de produit stocké et de sa sensibilité (ex: dattes vs fruits tropicaux)." },
+    { id: 'agro-chk-hc-5', label: "Inspecter l'isolation de la chambre froide et l'étanchéité des portes pour minimiser les échanges thermiques avec l'extérieur." },
+    { id: 'agro-chk-hc-6', label: "Former le personnel aux bonnes pratiques de chargement/déchargement pour limiter les variations de température." },
+];
+
 
 export const DUMMY_CLIENT_SITES_DATA: Site[] = [
   // FRANCE OPERATIONS
@@ -378,8 +387,57 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       {
         id: "site-entrepot-dattes", name: "Entrepôt Dattes", location: "AgroStock - Section Dattes", isConceptualSubSite: true, icon: CalendarDays,
         zones: [
-          { id: "zone-dattes-stock", name: "Stockage Dattes (Ventilé)", machines: [], sensors: [
-            { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "green", provides: ["temp", "humidity"] }
+          { id: "zone-dattes-stock", name: "Stockage Dattes (Ventilé)", machines: [
+            { 
+                id: "machine-dattes-clim-01", name: "Climatiseur Dattes Unité 1", type: "Climatiseur", status: "green",
+                availableSensors: [{ id: "s-dattes-clim-1-tempout", name: "Temp. Sortie Clim 1", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-1-power", name: "Conso. Clim 1", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-1-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-1-power"} } }
+            },
+            { 
+                id: "machine-dattes-clim-02", name: "Climatiseur Dattes Unité 2", type: "Climatiseur", status: "green",
+                availableSensors: [{ id: "s-dattes-clim-2-tempout", name: "Temp. Sortie Clim 2", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-2-power", name: "Conso. Clim 2", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-2-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-2-power"} } }
+            },
+            { 
+                id: "machine-dattes-clim-03", name: "Climatiseur Dattes Unité 3", type: "Climatiseur", status: "green",
+                availableSensors: [{ id: "s-dattes-clim-3-tempout", name: "Temp. Sortie Clim 3", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-3-power", name: "Conso. Clim 3", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-3-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-3-power"} } }
+            },
+            { 
+                id: "machine-dattes-clim-04", name: "Climatiseur Dattes Unité 4", type: "Climatiseur", status: "green",
+                availableSensors: [{ id: "s-dattes-clim-4-tempout", name: "Temp. Sortie Clim 4", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-4-power", name: "Conso. Clim 4", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-4-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-4-power"} } }
+            },
+            { 
+                id: "machine-dattes-clim-05", name: "Climatiseur Dattes Unité 5", type: "Climatiseur", status: "orange",
+                activeControlInAlert: {
+                  controlId: "control-ac-agro", controlName: "Contrôle Climatiseur Agroalimentaire",
+                  alertDetails: "Humidité ambiante dattes à 70%. Seuil max: 65%. Risque de condensation et perte de qualité. (Ext: 40°C)", status: "orange",
+                  currentValues: { "temp_out": { value: 12.5, unit: "°C" }, "humidity_zone": { value: 70, unit: "%" }, "power_ac": { value: 1300, unit: "W" } },
+                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 },
+                  controlDescription: "Vérifie le bon fonctionnement du climatiseur, la température de sortie, l'humidité ambiante et la consommation.",
+                  historicalData: [{ name: 'T-4h', value: 60 }, { name: 'T-2h', value: 68 }, { name: 'Actuel', value: 70 }],
+                  relevantSensorVariable: 'humidity_zone', checklist: agroChecklistHumidityCold
+                },
+                availableSensors: [{ id: "s-dattes-clim-5-tempout", name: "Temp. Sortie Clim 5", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-5-power", name: "Conso. Clim 5", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-5-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-5-power"} } }
+            },
+            { 
+                id: "machine-dattes-clim-06", name: "Climatiseur Dattes Unité 6", type: "Climatiseur", status: "red",
+                 activeControlInAlert: {
+                  controlId: "control-ac-agro", controlName: "Contrôle Climatiseur Agroalimentaire",
+                  alertDetails: "Température de sortie clim. à 18°C. Cible: 12°C. Climatiseur inefficace, risque produit. (Ext: 40°C)", status: "red",
+                  currentValues: { "temp_out": { value: 18, unit: "°C" }, "humidity_zone": { value: 60, unit: "%" }, "power_ac": { value: 1650, unit: "W" } }, // Power slightly high too
+                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 },
+                  controlDescription: "Vérifie le bon fonctionnement du climatiseur, la température de sortie, l'humidité ambiante et la consommation.",
+                  historicalData: [{ name: 'T-4h', value: 13 }, { name: 'T-2h', value: 16 }, { name: 'Actuel', value: 18 }],
+                  relevantSensorVariable: 'temp_out', checklist: agroChecklistHumidityCold
+                },
+                availableSensors: [{ id: "s-dattes-clim-6-tempout", name: "Temp. Sortie Clim 6", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-6-power", name: "Conso. Clim 6", provides: ["power_ac", "power"] }],
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-6-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-6-power"} } }
+            },
+          ], sensors: [
+            { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity", "humidity_zone"] } // status orange due to AC issues
           ]},
           { id: "zone-dattes-conditionnement", name: "Salle de Conditionnement Dattes", machines: [
             { id: "machine-dattes-emballeuse", name: "Emballeuse Dattes D1", type: "Equipement de Production", status: "green", availableSensors: [{id:"s-dattes-emballeuse-compteur", name: "Compteur Emballeuse", provides: ["count"]}] }
@@ -620,8 +678,9 @@ export const getMachineIcon = (type: string): LucideIcon => {
     if (type.toLowerCase().includes("tracteur")) return Tractor;
     if (type.toLowerCase().includes("irrigation")) return SprayCan;
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
-    if (type.toLowerCase().includes("bergerie")) return PawPrint;
-    if (type.toLowerCase().includes("serre")) return Apple; 
+    if (type.toLowerCase().includes("bergerie") || type.toLowerCase().includes("enclos")) return PawPrint;
+    if (type.toLowerCase().includes("serre")) return Apple;
+    if (type.toLowerCase().includes("climatiseur") || type.toLowerCase().includes("unité de climatisation")) return Snowflake;
     return HardDrive; 
 };
 
