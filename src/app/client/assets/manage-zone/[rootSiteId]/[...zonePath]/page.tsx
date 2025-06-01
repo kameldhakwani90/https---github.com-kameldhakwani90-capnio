@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -10,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronRight, Layers, Edit3, PlusCircle, Trash2, PackageOpen, Info, HardDrive, RadioTower, ListChecks, Settings2, ExternalLink, BarChart3, Activity } from "lucide-react"; 
+import { ChevronRight, Layers, Edit3, PlusCircle, Trash2, PackageOpen, Info, HardDrive, RadioTower, ListChecks, Settings2, ExternalLink, BarChart3, Activity, AlertTriangle } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     DUMMY_ZONE_TYPES,
@@ -174,7 +175,7 @@ export default function ManageZonePage() {
                 <span className="font-semibold text-foreground">{segment.name}</span>
               ) : (
                 // For site segments, link to manage/[siteId]. For zone segments, link to manage-zone/[rootSiteId]/[...path]
-                <Link href={segment.type === 'site' ? `/client/assets/manage/${segment.id}` : `/client/assets/manage-zone/${rootSiteId}/${breadcrumbPath.slice(1, index + 1).map(p=>p.id).join('/')}`} className="hover:text-primary font-medium">
+                <Link href={segment.path} className="hover:text-primary font-medium">
                   {segment.name}
                 </Link>
               )}
@@ -209,7 +210,7 @@ export default function ManageZonePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 md:grid-cols-7 mb-4">
+              <TabsList className="flex flex-wrap justify-start w-full gap-1 p-1 mb-4 rounded-md bg-muted">
                 <TabsTrigger value="overview"><Info className="mr-1 h-4 w-4 md:mr-2"/>Vue d'Ensemble</TabsTrigger>
                 <TabsTrigger value="machines"><HardDrive className="mr-1 h-4 w-4 md:mr-2"/>Machines</TabsTrigger>
                 <TabsTrigger value="subzones"><Layers className="mr-1 h-4 w-4 md:mr-2"/>Sous-Zones</TabsTrigger>
@@ -386,3 +387,4 @@ export default function ManageZonePage() {
     </AppLayout>
   );
 }
+
