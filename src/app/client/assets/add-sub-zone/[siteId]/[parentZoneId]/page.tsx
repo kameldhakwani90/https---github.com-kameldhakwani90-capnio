@@ -12,6 +12,8 @@ import { ChevronLeft, PlusCircle, Layers } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
+const NO_TYPE_VALUE = "__NONE__";
+
 function findSiteOrZone(sites: Site[], siteId: string, zoneId?: string): { site?: Site, zone?: Zone } {
     const site = sites.find(s => s.id === siteId);
     if (!site) { // Check top-level sites first
@@ -48,7 +50,7 @@ export default function AddSubZonePage() {
   const parentZoneId = params.parentZoneId as string;
 
   const [subZoneName, setSubZoneName] = useState("");
-  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>("");
+  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>(NO_TYPE_VALUE);
   const [parentSite, setParentSite] = useState<Site | null>(null);
   const [parentZone, setParentZone] = useState<Zone | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +78,11 @@ export default function AddSubZonePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log(`Adding sub-zone to site "${parentSite?.name}", parent zone "${parentZone?.name}":`, { name: subZoneName, zoneTypeId: selectedZoneTypeId });
+    const subZoneData = {
+      name: subZoneName,
+      zoneTypeId: selectedZoneTypeId === NO_TYPE_VALUE ? undefined : selectedZoneTypeId,
+    };
+    console.log(`Adding sub-zone to site "${parentSite?.name}", parent zone "${parentZone?.name}":`, subZoneData);
     alert(`Sous-zone "${subZoneName}" (Type: ${DUMMY_ZONE_TYPES.find(zt => zt.id === selectedZoneTypeId)?.name || 'Non spécifié'}) ajoutée à la zone "${parentZone?.name}" (simulation).`);
     // TODO: In a real app, update DUMMY_CLIENT_SITES_DATA or call an API
     // to add the new sub-zone with its typeId
@@ -136,7 +142,7 @@ export default function AddSubZonePage() {
                     <SelectValue placeholder="Sélectionnez un type de zone..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Aucun type spécifique --</SelectItem>
+                    <SelectItem value={NO_TYPE_VALUE}>-- Aucun type spécifique --</SelectItem>
                     {DUMMY_ZONE_TYPES.map(type => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
@@ -158,4 +164,3 @@ export default function AddSubZonePage() {
     </AppLayout>
   );
 }
-

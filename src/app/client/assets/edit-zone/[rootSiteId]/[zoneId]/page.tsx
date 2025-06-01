@@ -13,6 +13,8 @@ import { ChevronLeft, Save, Layers } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
+const NO_TYPE_VALUE = "__NONE__";
+
 export default function EditZoneDetailsPage() {
   const router = useRouter();
   const params = useParams();
@@ -22,7 +24,7 @@ export default function EditZoneDetailsPage() {
   const zoneId = params.zoneId as string;
 
   const [zoneName, setZoneName] = useState("");
-  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>("");
+  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>(NO_TYPE_VALUE);
   
   const [currentZone, setCurrentZone] = useState<Zone | null>(null);
   const [currentRootSite, setCurrentRootSite] = useState<Site | null>(null);
@@ -46,7 +48,7 @@ export default function EditZoneDetailsPage() {
       setCurrentZone(zone);
       setCurrentRootSite(site);
       setZoneName(zone.name);
-      setSelectedZoneTypeId(zone.zoneTypeId || "");
+      setSelectedZoneTypeId(zone.zoneTypeId || NO_TYPE_VALUE);
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -65,7 +67,7 @@ export default function EditZoneDetailsPage() {
       ...currentZone,
       id: zoneId,
       name: zoneName,
-      zoneTypeId: selectedZoneTypeId === "" ? undefined : selectedZoneTypeId,
+      zoneTypeId: selectedZoneTypeId === NO_TYPE_VALUE ? undefined : selectedZoneTypeId,
     };
 
     console.log("Updated zone details (simulated):", updatedZoneData);
@@ -136,7 +138,7 @@ export default function EditZoneDetailsPage() {
                     <SelectValue placeholder="Sélectionnez un type de zone..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Aucun type spécifique --</SelectItem>
+                    <SelectItem value={NO_TYPE_VALUE}>-- Aucun type spécifique --</SelectItem>
                     {DUMMY_ZONE_TYPES.map(type => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}

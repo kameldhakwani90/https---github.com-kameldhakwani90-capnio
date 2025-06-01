@@ -12,13 +12,15 @@ import { ChevronLeft, PlusCircle, Layers } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
+const NO_TYPE_VALUE = "__NONE__";
+
 export default function AddZoneToSitePage() {
   const router = useRouter();
   const params = useParams();
   const siteId = params.siteId as string;
 
   const [zoneName, setZoneName] = useState("");
-  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>("");
+  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>(NO_TYPE_VALUE);
   const [site, setSite] = useState<Site | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -54,7 +56,11 @@ export default function AddZoneToSitePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("Adding zone to site:", siteId, { name: zoneName, zoneTypeId: selectedZoneTypeId });
+    const zoneData = {
+      name: zoneName,
+      zoneTypeId: selectedZoneTypeId === NO_TYPE_VALUE ? undefined : selectedZoneTypeId,
+    };
+    console.log("Adding zone to site:", siteId, zoneData);
     alert(`Zone "${zoneName}" (Type: ${DUMMY_ZONE_TYPES.find(zt => zt.id === selectedZoneTypeId)?.name || 'Non spécifié'}) added to site "${site?.name}" (simulated).`);
     // TODO: In a real app, update DUMMY_CLIENT_SITES_DATA or call an API
     // to add the new zone with its typeId
@@ -111,7 +117,7 @@ export default function AddZoneToSitePage() {
                     <SelectValue placeholder="Sélectionnez un type de zone..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Aucun type spécifique --</SelectItem>
+                    <SelectItem value={NO_TYPE_VALUE}>-- Aucun type spécifique --</SelectItem>
                     {DUMMY_ZONE_TYPES.map(type => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
@@ -133,4 +139,3 @@ export default function AddZoneToSitePage() {
     </AppLayout>
   );
 }
-
