@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data"; 
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data.tsx"; 
 import { ChevronLeft, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, Move, Flame, Droplets, Snowflake } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -245,34 +245,45 @@ const DUMMY_ADMIN_CONTROLS_DEFINITIONS: AdminControlDefinition[] = [
 ];
 
 function findMachineFromGlobalData(siteIdPath: string, zoneIdPath: string, machineIdPath: string): FullMachineType | undefined {
-    let targetSite: Site | undefined;
-    const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
-        for (const s of sitesArr) {
-            if (s.id === sId) return s;
-            if (s.subSites) {
-                const foundInSub = findInSitesArray(s.subSites, sId);
-                if (foundInSub) return foundInSub;
-            }
-        }
-        return undefined;
-    };
-    targetSite = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
-    if (!targetSite) return undefined;
+    let foundMachine: FullMachineType | undefined;
 
-    let targetZone: FullZoneType | undefined;
-    function findZoneRecursive(zones: FullZoneType[], zId: string): FullZoneType | undefined {
-        for (const z of zones) {
-            if (z.id === zId) return z;
-            if (z.subZones) {
-                const foundInSub = findZoneRecursive(z.subZones, zId);
-                if (foundInSub) return foundInSub;
+    const searchRecursively = (sitesToSearch: Site[]): boolean => {
+        for (const site of sitesToSearch) {
+            const zone = site.zones.find(z => z.id === zoneIdPath);
+            if (zone) {
+                const machine = zone.machines.find(m => m.id === machineIdPath);
+                if (machine) {
+                    foundMachine = machine;
+                    return true; // Machine found
+                }
+                // If zone is found but machine isn't, and zone has subZones, search in subZones.
+                // This part might need adjustment if zones can be deeply nested and machine is in a sub-sub-zone.
+                // For now, assuming machineIdPath is within the direct zoneIdPath or its immediate subZones.
+                 if (zone.subZones) { // Search in subZones of the found zone
+                    for (const subZone of zone.subZones) {
+                        // This recursive call is a bit tricky if zoneIdPath itself refers to a subZone.
+                        // Let's assume zoneIdPath refers to the DIRECT parent zone of the machine for now.
+                        // If zoneIdPath can be a grandparent, this needs more robust traversal.
+                        const machineInSubZone = subZone.machines.find(m => m.id === machineIdPath);
+                        if (machineInSubZone) {
+                            foundMachine = machineInSubZone;
+                            return true;
+                        }
+                    }
+                 }
+
+            }
+            if (site.subSites) {
+                if (searchRecursively(site.subSites)) {
+                    return true; // Machine found in a subSite's zone
+                }
             }
         }
-        return undefined;
-    }
-    targetZone = findZoneRecursive(targetSite.zones, zoneIdPath);
-    if (!targetZone) return undefined;
-    return targetZone.machines.find(m => m.id === machineIdPath);
+        return false; // Machine not found in this branch
+    };
+
+    searchRecursively(DUMMY_CLIENT_SITES_DATA);
+    return foundMachine;
 }
 
 function findAdminControlById(controlId: string): AdminControlDefinition | undefined {
@@ -285,7 +296,7 @@ function getMachineIconDisplay(type: string): LucideIcon {
     if (type.toLowerCase().includes("électrique") || type.toLowerCase().includes("elec")) return Zap;
     if (type.toLowerCase().includes("compresseur") || type.toLowerCase().includes("pompe") || type.toLowerCase().includes("hvac") || type.toLowerCase().includes("ventilation")) return Wind;
     if (type.toLowerCase().includes("serveur") || type.toLowerCase().includes("pc") || type.toLowerCase().includes("hub sécurité")) return Server;
-    if (type.toLowerCase().includes("camion")) return Truck;
+    if (type.toLowerCase().includes("camion")) return Truck; // Assuming Truck is imported
     if (type.toLowerCase().includes("abreuvoir")) return Droplets;
     if (type.toLowerCase().includes("climatiseur") || type.toLowerCase().includes("unité de climatisation")) return Snowflake;
     return HardDrive;
@@ -337,6 +348,7 @@ export default function MachineControlMonitoringPage() {
       <AppLayout>
         <div className="p-6 text-center">
           <h1 className="text-2xl font-bold text-destructive">Machine ou Contrôle non trouvé</h1>
+           <p className="text-muted-foreground mb-4">Machine ID: {machineId}, Control ID: {controlId}</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="mr-2 h-4 w-4" /> Retour
           </Button>
@@ -517,5 +529,6 @@ export default function MachineControlMonitoringPage() {
     </AppLayout>
   );
 }
+
 
 

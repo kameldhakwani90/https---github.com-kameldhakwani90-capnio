@@ -251,60 +251,57 @@ const DUMMY_ADMIN_CONTROLS_FOR_MACHINE_PAGE: AdminControl[] = [
 ];
 
 interface MachinePageData {
-    site?: Site;
-    zone?: FullZoneType;
+    site?: Site; // This should be the root site for display/navigation
+    zone?: FullZoneType; // The actual zone containing the machine
     machine?: FullMachineType;
 }
 
 function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdPath: string): MachinePageData {
-    let targetSite: Site | undefined;
-    const findInSitesArray = (sitesArr: Site[], sId: string): Site | undefined => {
-        for (const s of sitesArr) {
-            if (s.id === sId) return s;
-            if (s.subSites) {
-                const foundInSub = findInSitesArray(s.subSites, sId);
-                if (foundInSub) return foundInSub;
+    const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === siteIdPath);
+
+    let foundParentSiteOfZone: Site | undefined; // The site/sub-site that directly contains the zone
+    let foundZone: FullZoneType | undefined;
+    let foundMachine: FullMachineType | undefined;
+
+    const searchForZoneAndMachine = (sitesToSearch: Site[]): boolean => {
+        for (const currentSite of sitesToSearch) {
+            const zone = currentSite.zones.find(z => z.id === zoneIdPath);
+            if (zone) {
+                foundParentSiteOfZone = currentSite;
+                foundZone = zone;
+                foundMachine = zone.machines.find(m => m.id === machineIdPath);
+                return foundMachine !== undefined;
+            }
+            if (currentSite.subSites) {
+                if (searchForZoneAndMachine(currentSite.subSites)) {
+                    return true;
+                }
             }
         }
-        return undefined;
+        return false;
     };
-    targetSite = findInSitesArray(DUMMY_CLIENT_SITES_DATA, siteIdPath);
-    if (!targetSite) return {};
 
-    let targetZone: FullZoneType | undefined;
-    function findZoneRecursive(zones: FullZoneType[], zId: string): FullZoneType | undefined {
-        for (const z of zones) {
-            if (z.id === zId) return z;
-            if (z.subZones) {
-                const foundInSub = findZoneRecursive(z.subZones, zId);
-                if (foundInSub) return foundInSub;
-            }
-        }
-        return undefined;
-    }
-    targetZone = findZoneRecursive(targetSite.zones, zoneIdPath);
-    if (!targetZone) return { site: targetSite };
+    searchForZoneAndMachine(DUMMY_CLIENT_SITES_DATA);
 
-    const machine = targetZone.machines.find(m => m.id === machineIdPath);
-    if (machine) {
-        const augmentedMachine: FullMachineType = { ...machine };
+    if (foundMachine && foundZone && rootSite) { // rootSite is used for breadcrumb/back button context
+        const augmentedMachine: FullMachineType = { ...foundMachine };
+        // Augment machine data (sensors, controls, alert history)
         if (!augmentedMachine.availableSensors) { 
-            const zoneSensors = targetZone?.sensors || [];
-            const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id));
+            const zoneSensors = foundZone.sensors || [];
+            const machineSpecificSensors = zoneSensors.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(augmentedMachine.id));
             const ambientZoneSensors = zoneSensors.filter(s => s.scope === 'zone');
             
             augmentedMachine.availableSensors = [
                 ...machineSpecificSensors.map(s => ({id: s.id, name: s.name, provides: Array.isArray(s.provides) ? s.provides : []})),
-                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant)`, provides: Array.isArray(s.provides) ? s.provides : []}))
+                ...ambientZoneSensors.map(s => ({id: s.id, name: `${s.name} (Ambiant - ${foundZone.name})`, provides: Array.isArray(s.provides) ? s.provides : []}))
             ];
-             if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC' && augmentedMachine.type !== 'Hub Sécurité') { 
-                 augmentedMachine.availableSensors = [{id: `${machine.id}-generic`, name: `Capteur générique pour ${machine.name}`, provides:['value']}];
-             }
+            if (augmentedMachine.availableSensors.length === 0 && augmentedMachine.type !== 'PC' && augmentedMachine.type !== 'Hub Sécurité') { 
+                augmentedMachine.availableSensors = [{id: `${augmentedMachine.id}-generic`, name: `Capteur générique pour ${augmentedMachine.name}`, provides:['value']}];
+            }
         }
-         if (!augmentedMachine.configuredControls) {
+        if (!augmentedMachine.configuredControls) {
             augmentedMachine.configuredControls = {}; 
         }
-        
         if (augmentedMachine.activeControlInAlert && !augmentedMachine.activeControlInAlert.historicalData) {
             const currentValues = augmentedMachine.activeControlInAlert.currentValues;
             let baseValue = 70; 
@@ -318,7 +315,6 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
                     if (!isNaN(parsedVal)) baseValue = parsedVal;
                 }
             }
-            
             augmentedMachine.activeControlInAlert.historicalData = [
                 { name: 'T-4', value: Math.random() * 10 + baseValue - 5 },
                 { name: 'T-3', value: Math.random() * 10 + baseValue - 4 },
@@ -328,9 +324,10 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
             ];
             augmentedMachine.activeControlInAlert.relevantSensorVariable = augmentedMachine.activeControlInAlert.relevantSensorVariable || Object.keys(currentValues || {})[0] || "Valeur Simulée";
         }
-        return { site: targetSite, zone: targetZone, machine: augmentedMachine };
+        return { site: rootSite, zone: foundZone, machine: augmentedMachine };
     }
-    return { site: targetSite, zone: targetZone };
+    
+    return { site: rootSite, zone: foundZone, machine: undefined }; // Return what was found, page will handle if machine is undefined
 }
 
 function getMachineIconDisplay(type: string): LucideIcon {
@@ -388,6 +385,8 @@ export default function ManageMachinePage() {
       setControlConfigs(initialConfigs);
       setNotFound(false);
     } else {
+      // Even if machine is not found, set site/zone if they were, for context
+      setPageData({ site: foundData.site, zone: foundData.zone, machine: undefined });
       setNotFound(true);
     }
     setIsLoading(false);
@@ -483,6 +482,7 @@ export default function ManageMachinePage() {
       <AppLayout>
         <div className="p-6 text-center">
           <h1 className="text-2xl font-bold text-destructive">Machine non trouvée</h1>
+          <p className="text-muted-foreground mb-4">Site: {pageData.site?.name || siteId}, Zone: {pageData.zone?.name || zoneId}</p>
           <Button onClick={() => router.back()} variant="outline">
             <ChevronLeft className="mr-2 h-4 w-4" /> Retour
           </Button>
@@ -525,7 +525,7 @@ export default function ManageMachinePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <Tabs defaultValue="config" className="w-full">
-              <TabsList className="grid w-full grid-cols-3"> 
+              <TabsList className="grid w-full grid-cols-3 mb-4"> 
                 <TabsTrigger value="config">
                   <Settings2 className="mr-2 h-4 w-4" /> Configuration des Contrôles
                 </TabsTrigger>
@@ -537,7 +537,7 @@ export default function ManageMachinePage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="config" className="mt-4">
+              <TabsContent value="config" className="mt-0">
                 {applicableAdminControls.length > 0 ? (
                     <Accordion type="multiple" className="w-full space-y-3">
                     {applicableAdminControls.map((control) => {
@@ -545,15 +545,15 @@ export default function ManageMachinePage() {
                         return (
                         <AccordionItem key={control.id} value={control.id} className="border rounded-md bg-muted/30 shadow-sm">
                              <AccordionPrimitive.Header className="flex items-center justify-between w-full py-3 px-4 hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
-                                <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline", "[&[data-state=open]>svg]:rotate-180")}>
+                                <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline text-foreground", "[&[data-state=open]>svg]:rotate-180")}>
                                     <div className="flex-grow">
-                                        <CardTitle className="text-lg">{control.nomDuControle}</CardTitle>
-                                        <CardDescription className="text-xs mt-0.5">{control.description}</CardDescription>
+                                        <p className="text-lg font-semibold">{control.nomDuControle}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{control.description}</p>
                                     </div>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-2" />
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-2 text-muted-foreground" />
                                 </AccordionPrimitive.Trigger>
                                 <div className="flex items-center space-x-2 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-                                    <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium">
+                                    <Label htmlFor={`switch-${control.id}`} className="text-sm font-medium text-foreground">
                                         {config.isActive ? "Activé" : "Désactivé"}
                                     </Label>
                                     <Switch
@@ -571,13 +571,13 @@ export default function ManageMachinePage() {
                                     <h4 className="text-md font-semibold text-muted-foreground">Paramètres :</h4>
                                     {control.expectedParams.map(param => (
                                     <div key={param.id} className="space-y-1">
-                                        <Label htmlFor={`${control.id}-${param.id}`}>{param.label}</Label>
+                                        <Label htmlFor={`${control.id}-${param.id}`} className="text-foreground">{param.label}</Label>
                                         {param.type === 'boolean' ? (
                                         <Select
                                             value={String(config.params[param.id] ?? param.defaultValue ?? false)}
                                             onValueChange={(value) => handleParamChange(control.id, param.id, value, param.type)}
                                         >
-                                            <SelectTrigger id={`${control.id}-${param.id}`}>
+                                            <SelectTrigger id={`${control.id}-${param.id}`} className="bg-input">
                                             <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -592,6 +592,7 @@ export default function ManageMachinePage() {
                                             value={config.params[param.id] ?? param.defaultValue ?? ''}
                                             onChange={(e) => handleParamChange(control.id, param.id, e.target.value, param.type)}
                                             placeholder={param.defaultValue !== undefined ? `Ex: ${param.defaultValue}` : ""}
+                                            className="bg-input"
                                         />
                                         )}
                                     </div>
@@ -612,7 +613,7 @@ export default function ManageMachinePage() {
 
                                     return (
                                         <div key={variableId} className="space-y-1">
-                                        <Label htmlFor={`${control.id}-map-${variableId}`}>
+                                        <Label htmlFor={`${control.id}-map-${variableId}`} className="text-foreground">
                                             Nécessite: {variableLabel} (<code>{variableId}</code>)
                                         </Label>
                                         <Select
@@ -621,7 +622,7 @@ export default function ManageMachinePage() {
                                             handleSensorMappingChange(control.id, variableId, sensorInstanceId)
                                             }
                                         >
-                                            <SelectTrigger id={`${control.id}-map-${variableId}`}>
+                                            <SelectTrigger id={`${control.id}-map-${variableId}`} className="bg-input">
                                             <SelectValue placeholder="Sélectionner un capteur..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -667,10 +668,10 @@ export default function ManageMachinePage() {
                 </div>
               </TabsContent>
 
-            <TabsContent value="monitoring" className="mt-4 space-y-6">
+            <TabsContent value="monitoring" className="mt-0 space-y-6">
                 <Card>
-                    <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-xl">
                         {getMachineStatusIcon(machine.status, "h-6 w-6")}
                         État Actuel de la Machine: {getMachineStatusText(machine.status)}
                     </CardTitle>
@@ -678,25 +679,25 @@ export default function ManageMachinePage() {
                     </CardHeader>
                     <CardContent>
                     {machine.activeControlInAlert && (
-                        <div className="p-3 mb-4 bg-destructive/10 border border-destructive/30 rounded-md shadow-sm">
+                        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md shadow-sm">
                             <h4 className="font-semibold text-base mb-1 text-destructive flex items-center">
                                 <AlertTriangle className="mr-2 h-5 w-5"/> Alerte Active: {machine.activeControlInAlert.controlName}
                             </h4>
-                            <p className="text-foreground">{machine.activeControlInAlert.alertDetails}</p>
-                            <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-destructive" onClick={() => router.push(`/client/machine-alerts/${machine.id}`)}>
+                            <p className="text-foreground text-sm">{machine.activeControlInAlert.alertDetails}</p>
+                            <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-destructive hover:text-destructive/80" onClick={() => router.push(`/client/machine-alerts/${machine.id}`)}>
                                 Voir les détails de l'alerte <ChevronRight className="ml-1 h-4 w-4" />
                             </Button>
                         </div>
                     )}
                     {!(machine.activeControlInAlert) && (
-                        <p className="text-muted-foreground">Aucune alerte active pour cette machine.</p>
+                        <p className="text-muted-foreground text-sm">Aucune alerte active pour cette machine.</p>
                     )}
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Suivi Détaillé des Contrôles Actifs</CardTitle>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-xl">Suivi Détaillé des Contrôles Actifs</CardTitle>
                         <CardDescription>Visualisez les métriques et l'état de chaque contrôle activé pour cette machine.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -717,12 +718,12 @@ export default function ManageMachinePage() {
                                 return (
                                     <AccordionItem key={`monitoring-${control.id}`} value={`monitoring-${control.id}`} className="border rounded-md bg-background shadow-sm">
                                         <AccordionPrimitive.Header className="flex items-center w-full py-3 px-4 hover:bg-muted/30 rounded-t-md data-[state=open]:bg-muted/40 transition-colors">
-                                          <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline", "[&[data-state=open]>svg]:rotate-180")}>
+                                          <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline text-foreground", "[&[data-state=open]>svg]:rotate-180")}>
                                               <div className="flex items-center gap-2">
                                                   {controlStatusIcon}
                                                   <span className="font-medium text-md">{control.nomDuControle}</span>
                                               </div>
-                                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
                                           </AccordionPrimitive.Trigger>
                                         </AccordionPrimitive.Header>
                                         <AccordionContent className="pt-0 pb-4 px-4">
@@ -752,7 +753,7 @@ export default function ManageMachinePage() {
                                                                 </ul>
                                                             </>
                                                         ) : (
-                                                            <p className="text-muted-foreground">Aucun paramètre spécifique affiché.</p>
+                                                            <p className="text-muted-foreground">Aucun paramètre spécifique affiché ou le contrôle n'est pas en alerte.</p>
                                                         )}
                                                          {!isCurrentControlInAlert && <p className="mt-2 text-muted-foreground italic">Données en temps réel non simulées (contrôle non en alerte).</p>}
                                                     </CardContent>
@@ -793,20 +794,20 @@ export default function ManageMachinePage() {
                             })}
                         </Accordion>
                         ) : (
-                            <p className="text-muted-foreground text-center py-4">Aucun contrôle n'est actuellement actif pour cette machine.</p>
+                            <p className="text-muted-foreground text-center py-4 text-sm">Aucun contrôle n'est actuellement actif pour cette machine.</p>
                         )}
                     </CardContent>
                 </Card>
                 
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary"/>Journal des Événements Récents</CardTitle>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-xl flex items-center gap-2"><FileText className="h-5 w-5 text-primary"/>Journal des Événements Récents</CardTitle>
                         <CardDescription>Historique des événements pour cette machine.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col sm:flex-row gap-4 items-end">
                             <div className="grid w-full sm:w-auto gap-1.5">
-                                <Label htmlFor="event-start-date" className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Date de début</Label>
+                                <Label htmlFor="event-start-date" className="flex items-center text-foreground"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Date de début</Label>
                                 <Input 
                                     type="date" 
                                     id="event-start-date" 
@@ -816,7 +817,7 @@ export default function ManageMachinePage() {
                                 />
                             </div>
                             <div className="grid w-full sm:w-auto gap-1.5">
-                                <Label htmlFor="event-end-date" className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Date de fin</Label>
+                                <Label htmlFor="event-end-date" className="flex items-center text-foreground"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground"/>Date de fin</Label>
                                 <Input 
                                     type="date" 
                                     id="event-end-date" 
@@ -837,21 +838,21 @@ export default function ManageMachinePage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="sensors" className="mt-4">
+              <TabsContent value="sensors" className="mt-0">
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><RadioTower className="h-5 w-5 text-primary"/>Capteurs Liés à {machine.name}</CardTitle>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-xl flex items-center gap-2"><RadioTower className="h-5 w-5 text-primary"/>Capteurs Liés à {machine.name}</CardTitle>
                         <CardDescription>Liste des capteurs directement liés à cette machine et des capteurs ambiants de la zone.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {machineSensors.length > 0 && (
                             <div>
-                                <h3 className="font-semibold text-lg mb-2">Capteurs de la Machine :</h3>
+                                <h3 className="font-semibold text-lg mb-2 text-foreground">Capteurs de la Machine :</h3>
                                 <div className="space-y-2">
                                 {machineSensors.map(sensor => (
                                     <div key={sensor.id} className="flex items-center justify-between p-3 border rounded-md bg-background/70 shadow-sm">
                                         <div>
-                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-sm font-medium text-foreground">{sensor.name}</p>
                                             <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
                                         </div>
                                         {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
@@ -862,12 +863,12 @@ export default function ManageMachinePage() {
                         )}
                         {ambientSensors.length > 0 && (
                              <div>
-                                <h3 className="font-semibold text-lg mb-2 mt-4">Capteurs Ambiants de la Zone ({zone?.name}) :</h3>
+                                <h3 className="font-semibold text-lg mb-2 mt-4 text-foreground">Capteurs Ambiants de la Zone ({zone?.name}) :</h3>
                                 <div className="space-y-2">
                                 {ambientSensors.map(sensor => (
                                     <div key={sensor.id} className="flex items-center justify-between p-3 border rounded-md bg-background/70 shadow-sm">
                                         <div>
-                                            <p className="text-sm font-medium">{sensor.name}</p>
+                                            <p className="text-sm font-medium text-foreground">{sensor.name}</p>
                                             <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel}</p>
                                         </div>
                                         {getMachineStatusIcon(sensor.status || 'white', "h-5 w-5 shrink-0")}
@@ -892,3 +893,4 @@ export default function ManageMachinePage() {
     
 
     
+
