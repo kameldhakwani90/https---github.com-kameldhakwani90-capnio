@@ -1,8 +1,7 @@
-
 "use client"; 
 
 import type { LucideIcon } from 'lucide-react';
-import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive, Package, ShoppingCart, Utensils, Factory, Truck, Apple, Beef, Snowflake, CalendarDays, Tractor, SprayCan, PawPrint, Warehouse, Move, Flame, Droplets, Wheat, Sprout } from "lucide-react"; 
+import { AlertTriangle, CheckCircle2, Info, Server, Thermometer, Zap, Wind, HardDrive, Package, ShoppingCart, Utensils, Factory, Truck, Apple, Beef, Snowflake, CalendarDays, Tractor, SprayCan, PawPrint, Warehouse, Move, Flame, Droplets, Wheat, Sprout, Layers, Building, Gauge } from "lucide-react"; 
 import { cn } from "@/lib/utils"; 
 
 export type Status = 'green' | 'orange' | 'red' | 'white';
@@ -114,6 +113,9 @@ export interface Zone {
   status?: Status; 
   icon?: LucideIcon;
   zoneTypeId?: string; 
+  configuredZoneControls?: Record<string, ConfiguredControl>; // Placeholder for zone-level controls
+  activeZoneControlInAlert?: ActiveControlInAlert; // Placeholder for zone-level alerts
+  eventLog?: EventLogEntry[]; // Placeholder for zone-level events
 }
 
 export interface Site {
@@ -128,7 +130,7 @@ export interface Site {
 }
 
 export const DUMMY_ZONE_TYPES: ZoneType[] = [
-  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPracticesContent: "Assurer la propreté et la sécurité de base."},
+  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPracticesContent: "Assurer la propreté et la sécurité de base.", icon: Package},
   { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", bestPracticesTitle: "Hygiène & Sécurité en Cuisine Pro", bestPracticesContent: "Respecter les normes HACCP. Nettoyage régulier des surfaces et équipements. Contrôle strict des températures des zones froides et chaudes.", icon: Utensils},
   { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", bestPracticesTitle: "Gestion Optimale Chambre Froide Positive", bestPracticesContent: "Maintenir température entre 0-4°C. Éviter surcharge. Contrôler dates de péremption. Nettoyage hebdomadaire.", icon: Snowflake},
   { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", bestPracticesTitle: "Maintenance Congélateur Industriel", bestPracticesContent: "Maintenir température à -18°C ou moins. Dégivrage régulier. Éviter ruptures chaîne du froid.", icon: Snowflake},
@@ -137,11 +139,13 @@ export const DUMMY_ZONE_TYPES: ZoneType[] = [
     name: "Stockage Agro - Dattes & Produits Secs Sensibles",
     description: "Zone de stockage pour dattes ou autres produits secs sensibles à l'humidité. Idéal pour maintenir qualité et poids.",
     icon: CalendarDays,
-    bestPracticesTitle: "Bonnes Pratiques: Stockage Dattes (HR & Température)",
+    bestPracticesTitle: "Bonnes Pratiques: Stockage Agro - Dattes & Produits Secs Sensibles",
     bestPracticesContent: 
 `**Objectifs Clés (Exemple Dattes) :**
-- **Humidité Relative (HR) :** Maintenir entre 65-75% (via capteur HR). Une HR trop basse (<60%) cause une perte de poids par dessiccation. Une HR trop haute (>80%) favorise les moisissures.
-- **Température :** Maintenir entre 0-4°C pour conservation longue durée (via capteur de température). Des variations importantes sont à éviter.
+- **Humidité Relative (HR) :** Maintenir entre 65-75% (via capteur HR ambiant).
+  - Une HR trop basse (<60%) cause une perte de poids par dessiccation.
+  - Une HR trop haute (>80%) favorise les moisissures.
+- **Température :** Maintenir entre 0-4°C pour conservation longue durée (via capteur de température ambiant). Des variations importantes sont à éviter.
 
 **Actions Correctives Recommandées :**
 - **HR trop basse / dessiccation :** Activer un système d'humidification contrôlé (ex: humidificateur ultrasonique – machine d'action) pour atteindre la consigne de 65-75%.
@@ -151,7 +155,7 @@ export const DUMMY_ZONE_TYPES: ZoneType[] = [
 **Points d'Attention :**
 - **Éviter :** L'ajout manuel d'eau pour humidifier (crée des déséquilibres, condensation, moisissures).
 - **Isolation & Étanchéité :** Essentielles pour limiter l'impact des conditions extérieures (ex: forte chaleur à 40°C dehors) et stabiliser l'ambiance interne.
-- **Surveillance Continue :** Utiliser les capteurs de température et d'humidité pour un suivi en temps réel et des alertes rapides si les valeurs sortent des plages cibles.`,
+- **Surveillance Continue :** Utiliser les capteurs de température et d'humidité ambiants pour un suivi en temps réel et des alertes rapides si les valeurs sortent des plages cibles.`,
   },
   { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", bestPracticesTitle: "Organisation Entrepôt Sec", bestPracticesContent: "Maintenir propre et organisé. Protéger de l'humidité excessive et des nuisibles.", icon: Warehouse},
   { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", bestPracticesTitle: "Sécurité & Efficacité Atelier", bestPracticesContent: "Sécurité des machines. Ordre et propreté (5S). Ventilation adéquate.", icon: Factory},
@@ -323,7 +327,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       { id: "zone-fournil", name: "Fournil", zoneTypeId: "zt-cuisine-pro", machines: [
         { id: "machine-fournil-fourpain", name: "Four à Pain 'Bongard'", type: "Four Professionnel", status: "green", availableSensors: [{id: "s-fournil-fourpain-temp", name: "Temp Four à Pain", provides:["temp_four"]}] },
         { 
-          id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green", zoneTypeId: "zt-chambre-froide-pos",
+          id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green", 
           availableSensors: [{ id: "sensor-levain-temp", name: "Sonde Temp. Levain", provides: ["temp"] }],
           configuredControls: { "control-001": { isActive: true, params: { "seuil_min": 2, "seuil_max": 5 }, sensorMappings: {"temp": "sensor-levain-temp"} } }
         },
@@ -363,7 +367,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                  "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "22:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-rungis-motion-quai"} }
             }
         },
-        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Chambre Froide", status: "green", zoneTypeId: "zt-chambre-froide-pos",
+        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Chambre Froide", status: "green", 
             availableSensors: [{id: "s-rungis-frigo-stock-temp", name: "Temp Ch. Froide Rungis", provides:["temp"]}],
             configuredControls: {"control-001": { isActive: true, params: { "seuil_min": 0, "seuil_max": 4 }, sensorMappings: {"temp": "s-rungis-frigo-stock-temp"} } }
         }
@@ -690,21 +694,24 @@ export const getZoneOverallStatus = (zone: Zone): Status => {
   let hasRed = false;
   let hasOrange = false;
 
+  if (zone.activeZoneControlInAlert?.status === 'red') hasRed = true;
+  else if (zone.activeZoneControlInAlert?.status === 'orange') hasOrange = true;
+  
   zone.machines.forEach(m => {
     if (m.status === 'red') hasRed = true;
-    else if (m.status === 'orange') hasOrange = true;
+    else if (m.status === 'orange' && !hasRed) hasOrange = true;
   });
   (zone.sensors || []).forEach(s => {
     const sensorAlertStatus = s.data?.activeControlInAlert?.status;
     if (sensorAlertStatus === 'red' || s.status === 'red') hasRed = true;
-    else if (sensorAlertStatus === 'orange' || s.status === 'orange') hasOrange = true;
+    else if ((sensorAlertStatus === 'orange' || s.status === 'orange') && !hasRed) hasOrange = true;
   });
 
   if (zone.subZones) {
     zone.subZones.forEach(sz => {
       const subZoneStatus = getZoneOverallStatus(sz);
       if (subZoneStatus === 'red') hasRed = true;
-      else if (subZoneStatus === 'orange') hasOrange = true;
+      else if (subZoneStatus === 'orange' && !hasRed) hasOrange = true;
     });
   }
   
@@ -720,14 +727,14 @@ export const getSiteOverallStatus = (site: Site): Status => {
   site.zones.forEach(z => {
     const zoneStatus = getZoneOverallStatus(z);
     if (zoneStatus === 'red') hasRed = true;
-    else if (zoneStatus === 'orange') hasOrange = true;
+    else if (zoneStatus === 'orange' && !hasRed) hasOrange = true;
   });
 
   if (site.subSites) {
     site.subSites.forEach(ss => {
       const subSiteStatus = getSiteOverallStatus(ss);
       if (subSiteStatus === 'red') hasRed = true;
-      else if (subSiteStatus === 'orange') hasOrange = true;
+      else if (subSiteStatus === 'orange' && !hasRed) hasOrange = true;
     });
   }
 
@@ -777,6 +784,17 @@ export const getMachineIcon = (type: string): LucideIcon => {
     return HardDrive; 
 };
 
+export const getZoneIcon = (zoneTypeId?: string): LucideIcon => {
+  if (!zoneTypeId) return Layers;
+  const zoneType = DUMMY_ZONE_TYPES.find(zt => zt.id === zoneTypeId);
+  return zoneType?.icon || Layers;
+}
+
+export const getSiteIcon = (isConceptualSubSite?: boolean): LucideIcon => {
+  return isConceptualSubSite ? Building : Package; // Using Package for main sites, Building for conceptual sub-sites
+}
+
+
 export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITES_DATA): Site | Zone | undefined => {
   for (const site of sites) {
     if (site.id === assetId) return site;
@@ -784,25 +802,111 @@ export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITE
       const foundInSubSite = findAssetById(assetId, site.subSites);
       if (foundInSubSite) return foundInSubSite;
     }
-    for (const zone of site.zones) {
-      if (zone.id === assetId) return zone;
-      if (zone.subZones) {
-        const findInSubZone = (currentZone: Zone): Zone | undefined => {
-          if (currentZone.id === assetId) return currentZone;
-          if (currentZone.subZones) {
-            for (const sz of currentZone.subZones) {
-              const found = findInSubZone(sz);
-              if (found) return found;
-            }
-          }
-          return undefined;
+    const findInZoneRecursive = (zones: Zone[]): Zone | undefined => {
+      for (const zone of zones) {
+        if (zone.id === assetId) return zone;
+        if (zone.subZones) {
+          const found = findInZoneRecursive(zone.subZones);
+          if (found) return found;
         }
-        const foundInSubZoneRecursive = findInSubZone(zone);
-        if(foundInSubZoneRecursive) return foundInSubZoneRecursive;
       }
-    }
+      return undefined;
+    };
+    const foundZone = findInZoneRecursive(site.zones);
+    if (foundZone) return foundZone;
   }
   return undefined;
 };
 
+// For the new manage-zone page
+export interface BreadcrumbSegment {
+  id: string;
+  name: string;
+  type: 'site' | 'zone';
+  path: string; // Full path to this segment
+}
 
+export interface FoundZonePageData {
+  zone: Zone;
+  breadcrumbPath: BreadcrumbSegment[];
+  parentSite: Site; // The root site
+  // Any other context needed for the page
+}
+
+export function findZoneDataForManagePage(
+  rootSiteId: string,
+  zonePathSegments: string[] // Segments *under* the root site
+): FoundZonePageData | undefined {
+  const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === rootSiteId);
+  if (!rootSite) return undefined;
+
+  let currentAsset: Site | Zone = rootSite;
+  const breadcrumbPath: BreadcrumbSegment[] = [{
+    id: rootSite.id,
+    name: rootSite.name,
+    type: 'site',
+    path: `/client/assets/manage/${rootSite.id}`
+  }];
+
+  let parentForCurrentSegment: Site | Zone = rootSite;
+
+  for (const segmentId of zonePathSegments) {
+    let foundNextAsset: Site | Zone | undefined = undefined;
+    if ('zones' in parentForCurrentSegment) { // If parent is a Site
+      foundNextAsset = (parentForCurrentSegment as Site).zones.find(z => z.id === segmentId);
+      if (foundNextAsset) {
+        breadcrumbPath.push({
+          id: segmentId,
+          name: foundNextAsset.name,
+          type: 'zone',
+          path: `${breadcrumbPath[breadcrumbPath.length - 1].path}/${segmentId}`
+        });
+        parentForCurrentSegment = foundNextAsset;
+        currentAsset = foundNextAsset;
+        continue;
+      }
+    }
+    if ('subZones' in parentForCurrentSegment) { // If parent is a Zone
+       foundNextAsset = (parentForCurrentSegment as Zone).subZones?.find(sz => sz.id === segmentId);
+       if (foundNextAsset) {
+         breadcrumbPath.push({
+           id: segmentId,
+           name: foundNextAsset.name,
+           type: 'zone',
+           path: `${breadcrumbPath[breadcrumbPath.length - 1].path}/${segmentId}`
+         });
+         parentForCurrentSegment = foundNextAsset;
+         currentAsset = foundNextAsset;
+         continue;
+       }
+    }
+    // If we are here, segment not found
+    return undefined;
+  }
+
+  if ('machines' in currentAsset) { // Check if currentAsset is a Zone
+    return { zone: currentAsset as Zone, breadcrumbPath, parentSite: rootSite };
+  }
+  return undefined; // Path ended, but not on a zone
+}
+
+// Helper to count machines in a zone and its subzones
+export const countTotalMachinesInZone = (zone: Zone): number => {
+  let count = zone.machines.length;
+  if (zone.subZones) {
+    for (const subZone of zone.subZones) {
+      count += countTotalMachinesInZone(subZone);
+    }
+  }
+  return count;
+};
+
+// Helper to count ambient sensors in a zone
+export const countAmbientSensorsInZone = (zone: Zone): number => {
+  return (zone.sensors || []).filter(s => s.scope === 'zone').length;
+};
+
+// Helper to count sub-zones in a zone
+export const countSubZonesInZone = (zone: Zone): number => {
+  return (zone.subZones || []).length;
+};

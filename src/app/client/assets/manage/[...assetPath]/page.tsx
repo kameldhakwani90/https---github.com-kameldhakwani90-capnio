@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -8,9 +7,9 @@ import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger as ShadAccordionTrigger } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower, HardDrive, Thermometer, Zap, Wind, Info } from "lucide-react"; 
+import { ChevronRight, Home as HomeIcon, PackageOpen, Edit3, PlusCircle, Settings2, AlertTriangle, Trash2, Layers, Server, RadioTower, HardDrive, Thermometer, Zap, Wind, Info, Building as BuildingIcon, Package as DefaultSiteIcon, ChevronDown, Gauge } from "lucide-react"; 
 import { 
     DUMMY_CLIENT_SITES_DATA, 
     type Site, 
@@ -22,6 +21,8 @@ import {
     getStatusIcon,      
     getStatusText,
     getMachineIcon,
+    getZoneIcon,
+    getSiteIcon as getTopLevelSiteIcon, // Renamed to avoid conflict
     DUMMY_ZONE_TYPES 
 } from "@/lib/client-data.tsx"; 
 import { cn } from "@/lib/utils";
@@ -67,11 +68,30 @@ const findAssetInHierarchy = (
       if (nextAsset) {
         currentAsset = nextAsset;
         currentAssetType = 'zone';
+        // This will now link to the dedicated zone page, so the breadcrumb path stops here for this view.
+        // The dedicated zone page will build its own breadcrumb further.
         breadcrumbPath.push({ id: nextAsset.id, name: nextAsset.name, type: 'zone' });
-        continue;
+        // For this page, currentAsset is still the site, and we list its zones.
+        // The 'asset' returned will be the site, and its zones will be iterated over.
+        // If the path *ends* on a zone ID, it means we are trying to manage that zone,
+        // which should now redirect or be handled by the new manage-zone page.
+        // This function is for displaying the *parent* asset and its children.
+        // If the pathArray fully matches up to a zone, then the currentAsset is that zone.
+        // This logic might need refinement if pathArray implies deeper navigation.
+        // For now, if pathArray[i] is a zone, we set currentAsset to that zone and break.
+        // This makes sense for the breadcrumb part.
+        // currentAsset = nextAsset; 
+        // currentAssetType = 'zone';
+        // return { asset: currentAsset, assetType: currentAssetType, breadcrumbPath, rootSiteId };
+        continue; // Continue building breadcrumb if there are more segments
       }
       return undefined; 
     } else { 
+      // This case should ideally not be hit if we are managing a site that contains zones,
+      // as the path would resolve to the site itself.
+      // If currentAssetType is 'zone', it means we've navigated to a zone.
+      // This page (manage/[...assetPath]) is for sites, or zones acting as containers for sub-zones.
+      // The new manage-zone page will handle individual zone details.
       const zone = currentAsset as Zone;
       const nextSubZone = zone.subZones?.find(sz => sz.id === segmentId);
       if (nextSubZone) {
@@ -89,7 +109,7 @@ const findAssetInHierarchy = (
 
 const SubSiteCardDisplay: React.FC<{ subSite: Site; currentAssetPathSegments: string[] }> = ({ subSite, currentAssetPathSegments }) => {
   const siteStatus = getSiteOverallStatus(subSite); 
-  const SiteOrSubSiteIcon = subSite.isConceptualSubSite ? Layers : HomeIcon;
+  const SiteOrSubSiteIcon = getTopLevelSiteIcon(subSite.isConceptualSubSite);
   const href = `/client/assets/manage/${[...currentAssetPathSegments, subSite.id].join('/')}`;
 
   return (
@@ -124,137 +144,34 @@ const SubSiteCardDisplay: React.FC<{ subSite: Site; currentAssetPathSegments: st
   );
 };
 
-const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: string; router: ReturnType<typeof useRouter>; allZoneSensors?: Sensor[]; }> = ({ machine, siteId, zoneId, router, allZoneSensors }) => {
-    const CurrentMachineIcon = machine.icon || getMachineIcon(machine.type);
-    const machineSensors = allZoneSensors?.filter(s => s.scope === 'machine' && s.affectedMachineIds?.includes(machine.id)) || [];
-    
-    const handleMachineAlertNavigation = (mId: string) => {
-        router.push(`/client/machine-alerts/${mId}`);
-    };
-    const handleManageMachine = (mId: string) => {
-        router.push(`/client/assets/manage-machine/${siteId}/${zoneId}/${mId}`);
-    };
-
-    return (
-        <div className="flex justify-between items-center p-2.5 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2">
-                <CurrentMachineIcon className="h-5 w-5 text-muted-foreground" />
-                <div>
-                    <p className="font-medium">{machine.name} <span className="text-xs text-muted-foreground">({machine.type})</span></p>
-                    <div className="flex items-center gap-1 text-xs">
-                        {getStatusIcon(machine.status, "h-4 w-4")}
-                        <span className={cn(
-                            machine.status === 'red' && 'text-red-600',
-                            machine.status === 'orange' && 'text-orange-600',
-                            machine.status === 'green' && 'text-green-600',
-                            'font-medium'
-                        )}>
-                        {getStatusText(machine.status)}
-                        </span>
-                    </div>
-                    {machineSensors.length > 0 && (
-                        <div className="mt-1">
-                            <span className="text-xs font-medium text-muted-foreground">Capteurs liés: </span>
-                            {machineSensors.map((sensor, index) => (
-                                <span key={sensor.id} className="text-xs text-muted-foreground italic">
-                                    {sensor.name}{index < machineSensors.length - 1 ? ', ' : ''}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="flex items-center gap-1">
-                {machine.status !== 'green' && machine.activeControlInAlert && (
-                    <Button size="sm" variant="ghost" className="text-orange-600 hover:text-orange-700 hover:bg-orange-100 h-8 px-2" onClick={() => handleMachineAlertNavigation(machine.id)}>
-                        <AlertTriangle className="mr-1 h-4 w-4" /> Alerte
-                    </Button>
-                )}
-                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleManageMachine(machine.id)}>
-                    <Settings2 className="mr-1 h-4 w-4" /> Gérer
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ sensor, siteId, zoneId, router }) => {
-    const handleManageSensor = (sensorId: string, sensorName: string) => {
-        alert(`Gestion du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Fonctionnalité de gestion détaillée non implémentée pour le moment.`);
-    };
-    const handleDeleteSensor = (sensorId: string, sensorName: string) => {
-        alert(`Suppression du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Non implémenté.`);
-    };
-
-    return (
-        <div className="flex justify-between items-center p-2.5 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2">
-                <RadioTower className="h-5 w-5 text-muted-foreground" />
-                <div>
-                    <p className="font-medium">{sensor.name}</p>
-                    <p className="text-xs text-muted-foreground">Modèle: {sensor.typeModel} | Portée: {sensor.scope === 'zone' ? 'Ambiant (Zone)' : 'Machine'}</p>
-                    {sensor.status && (
-                         <div className="flex items-center gap-1 text-xs">
-                            {getStatusIcon(sensor.status, "h-4 w-4")}
-                            <span className={cn(
-                                sensor.status === 'red' && 'text-red-600',
-                                sensor.status === 'orange' && 'text-orange-600',
-                                sensor.status === 'green' && 'text-green-600',
-                                'font-medium'
-                            )}>
-                            {getStatusText(sensor.status)}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleManageSensor(sensor.id, sensor.name)}>
-                    <Settings2 className="mr-1 h-4 w-4" /> Gérer
-                </Button>
-                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 px-2" onClick={() => handleDeleteSensor(sensor.id, sensor.name)}>
-                    <Trash2 className="mr-1 h-4 w-4" /> Suppr.
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-
-interface ZoneItemForManagementProps {
+interface ZoneItemLinkProps {
   zone: Zone; 
   rootSiteId: string; 
-  currentPathSegments: string[]; 
+  currentPathSegments: string[]; // Path from root site to the PARENT of this zone
   router: ReturnType<typeof useRouter>;
   level?: number;
 }
 
-const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, rootSiteId, currentPathSegments, router, level = 0 }) => {
+const ZoneItemLink: React.FC<ZoneItemLinkProps> = ({ zone, rootSiteId, currentPathSegments, router, level = 0 }) => {
     const zoneStatus = getZoneOverallStatus(zone); 
-    const paddingLeft = level > 0 ? `${level * 1.5}rem` : '0'; 
-    
-    const ambientSensors = zone.sensors?.filter(s => s.scope === 'zone') || [];
-    const hasMachines = zone.machines && zone.machines.length > 0;
-    const hasAmbientSensors = ambientSensors.length > 0;
-    const hasSubZones = zone.subZones && zone.subZones.length > 0;
-    const isEmptyZoneOverall = !hasMachines && !hasAmbientSensors && !hasSubZones;
-
-    const zoneNavLink = `/client/assets/manage/${[...currentPathSegments, zone.id].join('/')}`;
+    // currentPathSegments lead to the site/zone that *contains* this zone.
+    // zonePathForLink should be segments from rootSite's children down to *this* zone.
+    const relativeZonePathArray = [...currentPathSegments.slice(1), zone.id];
+    const zoneManagelink = `/client/assets/manage-zone/${rootSiteId}/${relativeZonePathArray.join('/')}`;
     const zoneTypeInfo = DUMMY_ZONE_TYPES.find(zt => zt.id === zone.zoneTypeId);
-    const bestPracticesTitle = zoneTypeInfo?.bestPracticesTitle || `Bonnes Pratiques: ${zoneTypeInfo?.name || 'Zone'}`;
-
+    const CurrentZoneIcon = getZoneIcon(zone.zoneTypeId);
 
     return (
-        <AccordionItem value={`${currentPathSegments.join('-')}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
-            <AccordionTrigger className="py-3 px-4 hover:no-underline hover:bg-muted/50 rounded-t-md data-[state=open]:bg-muted/60 transition-colors">
-                <div className="flex items-center justify-between w-full">
-                    <Link href={zoneNavLink} className="flex items-center gap-2 group" onClick={(e) => { e.preventDefault(); router.push(zoneNavLink); }}>
-                        <Layers className="h-5 w-5 text-primary/80 group-hover:text-primary" />
+        <div className="border-b bg-muted/30 rounded-md mb-2 shadow-sm hover:shadow-md transition-shadow" style={{ marginLeft: `${level * 1.5}rem` }}>
+            <Link href={zoneManagelink} className="block group">
+                <div className="flex items-center justify-between w-full py-3 px-4 hover:bg-muted/50 rounded-md transition-colors">
+                    <div className="flex items-center gap-2">
+                        <CurrentZoneIcon className="h-5 w-5 text-primary/80 group-hover:text-primary" />
                         <div>
                           <span className="font-medium text-md group-hover:text-primary group-hover:underline">{zone.name}</span>
                           {zoneTypeInfo && <p className="text-xs text-muted-foreground group-hover:text-primary/80">{zoneTypeInfo.name}</p>}
                         </div>
-                    </Link>
+                    </div>
                     <div className="flex items-center gap-1.5 text-sm font-medium">
                         {getStatusIcon(zoneStatus, "h-5 w-5")}
                         <span className={cn(
@@ -264,136 +181,11 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                         )}>
                         {getStatusText(zoneStatus)}
                         </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
                 </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-3 pt-2 space-y-3">
-                {zoneTypeInfo && zoneTypeInfo.bestPracticesContent && (
-                    <Card className="bg-blue-50 border-blue-200 my-2 shadow-sm">
-                        <CardHeader className="pb-2 pt-3">
-                            <CardTitle className="text-sm font-semibold text-blue-700 flex items-center"><Info className="h-4 w-4 mr-2"/>{bestPracticesTitle}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-xs text-blue-600 whitespace-pre-line">
-                            <p>{zoneTypeInfo.bestPracticesContent}</p>
-                        </CardContent>
-                    </Card>
-                )}
-                <div className="flex flex-wrap justify-end items-center gap-2 my-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${zone.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
-                    
-                    <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sub-zone/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Sous-Zone</Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 text-sm">
-                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Sous-Zone ?</h4>
-                                <p className="text-muted-foreground mb-2">Une sous-zone détaille encore plus une zone existante, utile pour des suivis très localisés.</p>
-                                <p className="font-semibold mb-1">Exemples :</p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                    <li>Dans "Cuisine" (restaurant): "Poste Froid", "Plonge".</li>
-                                    <li>Dans "Rayon Frais" (magasin): "Étagère Produits Laitiers".</li>
-                                    <li>Dans "Ligne d'Assemblage" (usine): "Poste Contrôle Qualité".</li>
-                                </ul>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 text-sm">
-                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Machine ?</h4>
-                                <p className="text-muted-foreground mb-2">Une machine est un équipement spécifique à surveiller (Réfrigérateur, Four, Pompe, etc.) ou un "Serveur Pi Capnio" qui collecte des données.</p>
-                                <p className="font-semibold mb-1">Exemples :</p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                    <li>Machine Générique: "Vitrine Réfrigérée N°3", "Compresseur Atlas C10".</li>
-                                    <li>Serveur Pi: "Boîtier Pi - Cuisine", "Collecteur Pi - Atelier B".</li>
-                                </ul>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${zone.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 text-sm">
-                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'un Capteur ?</h4>
-                                <p className="text-muted-foreground mb-2">Un capteur mesure des données (température, humidité, etc.). Déclarez-le ici en choisissant son type et son emplacement (ambiant ou sur machine).</p>
-                                <p className="font-semibold mb-1">Exemples :</p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                    <li>Sonde de température pour frigo.</li>
-                                    <li>Capteur de CO2 pour qualité de l'air.</li>
-                                </ul>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    
-                    <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${zone.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
-                </div>
-                
-                {isEmptyZoneOverall ? (
-                    <p className="text-sm text-muted-foreground p-2 text-center">Aucune machine, sous-zone ou capteur d'ambiance défini.</p>
-                ) : (
-                    <Accordion type="multiple" className="w-full space-y-1.5 mt-3" defaultValue={['machines', 'ambient-sensors', 'sub-zones']}>
-                        {hasMachines && (
-                            <AccordionItem value={`machines-${zone.id}`} className="border-none rounded-md bg-background/50">
-                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                    Machines ({zone.machines.length})
-                                </AccordionTrigger>
-                                <AccordionContent className="p-2 space-y-1.5">
-                                    {zone.machines.map(machine => (
-                                       <MachineItemDisplay key={machine.id} machine={machine} siteId={rootSiteId} zoneId={zone.id} router={router} allZoneSensors={zone.sensors} />
-                                    ))}
-                                </AccordionContent>
-                            </AccordionItem>
-                        )}
-
-                        {hasAmbientSensors && (
-                             <AccordionItem value={`ambient-sensors-${zone.id}`} className="border-none rounded-md bg-background/50">
-                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                    Capteurs Ambiants (Zone) ({ambientSensors.length})
-                                </AccordionTrigger>
-                                <AccordionContent className="p-2 space-y-1.5">
-                                    {ambientSensors.map(sensor => (
-                                       <SensorItemDisplay key={sensor.id} sensor={sensor} siteId={rootSiteId} zoneId={zone.id} router={router} />
-                                    ))}
-                                </AccordionContent>
-                            </AccordionItem>
-                        )}
-
-                        {hasSubZones && (
-                          <AccordionItem value={`sub-zones-${zone.id}`} className="border-none rounded-md bg-background/50">
-                            <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                Sous-Zones ({zone.subZones!.length})
-                            </AccordionTrigger>
-                            <AccordionContent className="p-0"> 
-                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1"  defaultValue={zone.subZones!.map(sz => `${currentPathSegments.join('-')}-${zone.id}-${sz.id}`)}>
-                                  {zone.subZones!.map(subZone => (
-                                    <ZoneItemForManagement 
-                                      key={subZone.id} 
-                                      zone={subZone} 
-                                      rootSiteId={rootSiteId} 
-                                      currentPathSegments={[...currentPathSegments, zone.id]}
-                                      router={router} 
-                                      level={level + 1} 
-                                    />
-                                  ))}
-                                </Accordion>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                    </Accordion>
-                )}
-            </AccordionContent>
-        </AccordionItem>
+            </Link>
+        </div>
     );
 };
 
@@ -438,7 +230,7 @@ export default function ManageAssetPage() {
   }
 
   const { asset, assetType, breadcrumbPath, rootSiteId } = currentAssetInfo;
-  const AssetIcon = assetType === 'site' ? ((asset as Site).isConceptualSubSite ? Layers : HomeIcon) : Layers;
+  const AssetIcon = assetType === 'site' ? getTopLevelSiteIcon((asset as Site).isConceptualSubSite) : getZoneIcon((asset as Zone).zoneTypeId);
 
   const generateBreadcrumbUrl = (index: number) => {
     const pathSegments = breadcrumbPath.slice(0, index + 1).map(p => p.id);
@@ -446,10 +238,18 @@ export default function ManageAssetPage() {
   };
 
   const handleEditAssetDetails = () => {
+    // For sites, the current edit page is okay.
+    // For zones, editing should happen on the new manage-zone page.
+    // This button might need to be conditional or removed if this page only shows sites.
     if (assetType === 'site') {
       router.push(`/client/assets/edit-site/${asset.id}`);
     } else { 
-      router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`);
+      // This case (editing a zone from this page) should ideally not happen
+      // if zones always navigate to their dedicated manage-zone page.
+      // But if a zone *is* the current asset (e.g. a parent zone displaying sub-zones),
+      // its edit button should go to its dedicated edit page.
+      const zonePathForEdit = breadcrumbPath.slice(1).map(p=>p.id).join('/');
+      router.push(`/client/assets/edit-zone/${rootSiteId}/${zonePathForEdit}`);
     }
   };
 
@@ -457,14 +257,16 @@ export default function ManageAssetPage() {
     if (assetType === 'site') {
       router.push(`/client/assets/add-zone/${asset.id}`);
     } else { 
-       router.push(`/client/assets/add-sub-zone/${rootSiteId}/${asset.id}`);
+       // This button should primarily be on the manage-zone page now.
+       // For adding a sub-zone to a zone listed here, the user should click into that zone first.
+       // However, if this page *can* display a zone directly (as a container), then:
+       const zonePathForAdd = breadcrumbPath.slice(1).map(p=>p.id).join('/');
+       router.push(`/client/assets/add-sub-zone/${rootSiteId}/${asset.id}`); // asset.id is the current zone's ID
     }
   };
   
   const mainCardTitle = asset.name;
   const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : DUMMY_CLIENT_SITES_DATA.find(s=>s.id ===rootSiteId)?.name}`;
-  const currentZoneTypeInfo = assetType === 'zone' ? DUMMY_ZONE_TYPES.find(zt => zt.id === (asset as Zone).zoneTypeId) : null;
-  const currentBestPracticesTitle = currentZoneTypeInfo?.bestPracticesTitle || (currentZoneTypeInfo ? `Bonnes Pratiques: ${currentZoneTypeInfo.name}` : 'Bonnes Pratiques');
   
   const addZoneButtonLabel = assetType === 'site' ? "Ajouter une Zone au Site" : "Ajouter une Sous-Zone";
   const addZonePopoverTitle = assetType === 'site' ? "Qu'est-ce qu'une Zone ?" : "Qu'est-ce qu'une Sous-Zone ?";
@@ -511,227 +313,117 @@ export default function ManageAssetPage() {
                     <div>
                         <CardTitle className="text-3xl">{mainCardTitle}</CardTitle>
                         <CardDescription className="text-md">{mainCardDescription}</CardDescription>
-                        {currentZoneTypeInfo && assetType === 'zone' && (
-                             <CardDescription className="text-sm text-blue-600 mt-1">Type: {currentZoneTypeInfo.name}</CardDescription>
-                        )}
                     </div>
                 </div>
+                 {/* Edit button is now more relevant on the specific manage-zone page */}
                 <Button variant="outline" size="lg" onClick={handleEditAssetDetails}>
-                    <Edit3 className="mr-2 h-5 w-5" /> Modifier les Détails
+                    <Edit3 className="mr-2 h-5 w-5" /> Modifier les Détails de l'Actif
                 </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-8">
             
-            {assetType === 'site' && (
-              <>
-                <section>
-                  <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-6 w-6 text-primary/70"/>Zones</h2>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> {addZoneButtonLabel}
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" size="icon" aria-label="Information sur les Zones/Sous-Zones"><Info className="h-4 w-4" /></Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 text-sm">
-                                <h4 className="font-medium leading-none mb-1">{addZonePopoverTitle}</h4>
-                                <p className="text-muted-foreground mb-2">{addZonePopoverExplanation}</p>
-                                <p className="font-semibold mb-1">Exemples :</p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                    {addZonePopoverExamples.map((ex, i) => <li key={i}>{ex}</li>)}
-                                </ul>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                  </div>
-                  {(asset as Site).zones && (asset as Site).zones.length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-2" defaultValue={(asset as Site).zones.map(z => `${currentAssetInfo.asset.id}-${z.id}`)}>
-                      {(asset as Site).zones.map(zone => (
-                        <ZoneItemForManagement 
-                          key={zone.id} 
-                          zone={zone} 
-                          rootSiteId={rootSiteId} 
-                          currentPathSegments={breadcrumbPath.map(b => b.id)} 
-                          router={router} 
-                          level={0}
-                        />
-                      ))}
-                    </Accordion>
-                  ) : (
-                    <div className="text-center py-6 bg-muted/40 rounded-md">
-                        <Layers className="h-10 w-10 text-muted-foreground mx-auto mb-2"/>
-                        <p className="text-muted-foreground">Aucune zone définie pour ce site.</p>
-                    </div>
-                  )}
-                </section>
-                
-                {(asset as Site).subSites && (asset as Site).subSites.length > 0 && (
-                  <section>
-                    <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                        <h2 className="text-2xl font-semibold flex items-center gap-2"><HomeIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
-                    </div>
-                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-                      {(asset as Site).subSites!.map(subSite => (
-                        <SubSiteCardDisplay key={subSite.id} subSite={subSite} currentAssetPathSegments={breadcrumbPath.map(b => b.id)} />
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
+            {/* This page (manage/[...assetPath]) will now primarily list zones of a site, or sub-sites of a site. */}
+            {/* The detailed management of a zone (machines, sensors, sub-zones within it) will be on manage-zone page */}
 
-            {assetType === 'zone' && (
+            {assetType === 'site' && (asset as Site).zones && (asset as Site).zones.length > 0 && (
               <section>
-                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h2 className="text-2xl font-semibold">Contenu de la Zone: {asset.name}</h2>
-                     <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleAddPrimaryZoneOrSubZone}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> {addZoneButtonLabel}
+                <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                  <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-6 w-6 text-primary/70"/>Zones Principales</h2>
+                   <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => router.push(`/client/assets/add-zone/${asset.id}`)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une Zone
                         </Button>
-                        <Popover>
-                             <PopoverTrigger asChild>
-                                <Button variant="outline" size="icon" aria-label="Information sur les Zones/Sous-Zones"><Info className="h-4 w-4" /></Button>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="icon" aria-label="Information sur les Zones"><Info className="h-4 w-4" /></Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-80 text-sm">
-                                <h4 className="font-medium leading-none mb-1">{addZonePopoverTitle}</h4>
-                                <p className="text-muted-foreground mb-2">{addZonePopoverExplanation}</p>
-                                <p className="font-semibold mb-1">Exemples :</p>
-                                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                    {addZonePopoverExamples.map((ex, i) => <li key={i}>{ex}</li>)}
-                                </ul>
+                                <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Zone ?</h4>
+                                <p className="text-muted-foreground mb-2">Une zone divise un site en sections (ex: Cuisine, Entrepôt). Cliquez sur une zone pour voir ses détails, machines et capteurs.</p>
                             </PopoverContent>
                         </Popover>
                     </div>
-                  </div>
-                  {currentZoneTypeInfo && currentZoneTypeInfo.bestPracticesContent && (
-                      <Card className="bg-blue-50 border-blue-200 my-4 shadow-sm">
-                          <CardHeader className="pb-2 pt-3">
-                              <CardTitle className="text-base font-semibold text-blue-700 flex items-center"><Info className="h-5 w-5 mr-2"/>{currentBestPracticesTitle}</CardTitle>
-                          </CardHeader>
-                          <CardContent className="text-sm text-blue-600 whitespace-pre-line">
-                              <p>{currentZoneTypeInfo.bestPracticesContent}</p>
-                          </CardContent>
-                      </Card>
-                  )}
-                  <div className="px-4 pb-3 pt-2 space-y-3">
-                    <div className="flex flex-wrap justify-end items-center gap-2 my-2">
-                        <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
-                        
-                        <div className="flex items-center gap-1">
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-machine/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Machine</Button>
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                    <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Machine ?</h4>
-                                    <p className="text-muted-foreground mb-2">Une machine est un équipement spécifique à surveiller (Réfrigérateur, Four, Pompe, etc.) ou un "Serveur Pi Capnio" qui collecte des données.</p>
-                                    <p className="font-semibold mb-1">Exemples :</p>
-                                    <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                        <li>Machine Générique: "Vitrine Réfrigérée N°3", "Compresseur Atlas C10".</li>
-                                        <li>Serveur Pi: "Boîtier Pi - Cuisine", "Collecteur Pi - Atelier B".</li>
-                                    </ul>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/add-sensor/${rootSiteId}/${asset.id}`)}><PlusCircle className="mr-1 h-3 w-3" /> Ajouter Capteur</Button>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7"><Info className="h-4 w-4 text-muted-foreground" /></Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 text-sm">
-                                    <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'un Capteur ?</h4>
-                                    <p className="text-muted-foreground mb-2">Un capteur mesure des données (température, humidité, etc.). Déclarez-le ici en choisissant son type et son emplacement (ambiant ou sur machine).</p>
-                                    <p className="font-semibold mb-1">Exemples :</p>
-                                    <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                                        <li>Sonde de température pour frigo.</li>
-                                        <li>Capteur de CO2 pour qualité de l'air.</li>
-                                    </ul>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <Button variant="destructive" size="sm" onClick={() => alert(`Suppression de la zone ${asset.name} non implémentée.`)}><Trash2 className="mr-1 h-3 w-3" /> Supprimer Zone</Button>
-                    </div>
-                    
-                    <Accordion type="multiple" className="w-full space-y-1.5 mt-3" defaultValue={['machines', 'ambient-sensors', 'sub-zones']}>
-                        {(asset as Zone).machines && (asset as Zone).machines.length > 0 && (
-                            <AccordionItem value={`machines-${asset.id}`} className="border-none rounded-md bg-background/50">
-                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                    Machines ({(asset as Zone).machines.length})
-                                </AccordionTrigger>
-                                <AccordionContent className="p-2 space-y-1.5">
-                                    {(asset as Zone).machines.map(machine => (
-                                       <MachineItemDisplay key={machine.id} machine={machine} siteId={rootSiteId} zoneId={asset.id} router={router} allZoneSensors={(asset as Zone).sensors} />
-                                    ))}
-                                </AccordionContent>
-                            </AccordionItem>
-                        )}
-
-                        {((asset as Zone).sensors?.filter(s => s.scope === 'zone') || []).length > 0 && (
-                             <AccordionItem value={`ambient-sensors-${asset.id}`} className="border-none rounded-md bg-background/50">
-                                <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                    Capteurs Ambiants (Zone) ({((asset as Zone).sensors?.filter(s => s.scope === 'zone') || []).length})
-                                </AccordionTrigger>
-                                <AccordionContent className="p-2 space-y-1.5">
-                                    {(asset as Zone).sensors?.filter(s => s.scope === 'zone').map(sensor => (
-                                       <SensorItemDisplay key={sensor.id} sensor={sensor} siteId={rootSiteId} zoneId={asset.id} router={router} />
-                                    ))}
-                                </AccordionContent>
-                            </AccordionItem>
-                        )}
-
-                        {(asset as Zone).subZones && (asset as Zone).subZones!.length > 0 && (
-                          <AccordionItem value={`sub-zones-${asset.id}`} className="border-none rounded-md bg-background/50">
-                            <AccordionTrigger className="py-2 px-3 text-sm font-medium hover:bg-muted/40 rounded-t-md">
-                                Sous-Zones ({(asset as Zone).subZones!.length})
-                            </AccordionTrigger>
-                            <AccordionContent className="p-0"> 
-                                <Accordion type="multiple" className="w-full space-y-1.5 pt-1" defaultValue={(asset as Zone).subZones!.map(sz => `${breadcrumbPath.map(b => b.id).join('-')}-${asset.id}-${sz.id}`)} >
-                                  {(asset as Zone).subZones!.map(subZone => (
-                                    <ZoneItemForManagement 
-                                      key={subZone.id} 
-                                      zone={subZone} 
-                                      rootSiteId={rootSiteId}
-                                      currentPathSegments={breadcrumbPath.map(b => b.id)} 
-                                      router={router} 
-                                      level={0} 
-                                    />
-                                  ))}
-                                </Accordion>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        
-                        {((asset as Zone).machines?.length || 0) === 0 && 
-                         (((asset as Zone).sensors?.filter(s => s.scope === 'zone') || []).length) === 0 && 
-                         ((asset as Zone).subZones?.length || 0) === 0 && (
-                           <p className="text-sm text-muted-foreground p-2 text-center">Cette zone est vide.</p>
-                        )}
-                    </Accordion>
-                  </div>
+                </div>
+                <div className="space-y-2">
+                  {(asset as Site).zones.map(zone => (
+                    <ZoneItemLink 
+                      key={zone.id} 
+                      zone={zone} 
+                      rootSiteId={rootSiteId} 
+                      currentPathSegments={breadcrumbPath.map(b => b.id)} // Path to the current site
+                      router={router} 
+                      level={0}
+                    />
+                  ))}
+                </div>
               </section>
             )}
-
-
-            <section className="pt-6 border-t">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-semibold flex items-center gap-2"><Settings2 className="h-6 w-6 text-primary/70" />Contrôles au Niveau de l'Actif</h2>
-                    <Button variant="outline" onClick={() => alert(`Configuration des contrôles pour ${asset.name} (Non implémenté)`)}>
-                        <Settings2 className="mr-2 h-4 w-4" /> Configurer les Contrôles
+             {assetType === 'site' && (asset as Site).zones.length === 0 && (
+                <div className="text-center py-6 bg-muted/40 rounded-md">
+                    <Layers className="h-10 w-10 text-muted-foreground mx-auto mb-2"/>
+                    <p className="text-muted-foreground">Aucune zone définie pour ce site.</p>
+                    <Button variant="outline" className="mt-3" onClick={() => router.push(`/client/assets/add-zone/${asset.id}`)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter votre première Zone
                     </Button>
                 </div>
-                 <p className="text-sm text-muted-foreground mt-2">Gérer les contrôles et paramètres généraux applicables à {assetType === 'site' ? "l'ensemble du site" : "cette zone"}.</p>
-            </section>
+             )}
 
+            {assetType === 'site' && (asset as Site).subSites && (asset as Site).subSites!.length > 0 && (
+              <section className="mt-8">
+                <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                    <h2 className="text-2xl font-semibold flex items-center gap-2"><BuildingIcon className="h-6 w-6 text-primary/70" />Sous-Sites / Bâtiments</h2>
+                    {/* Button to add sub-site could go here if needed */}
+                </div>
+                <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                  {(asset as Site).subSites!.map(subSite => (
+                    <SubSiteCardDisplay key={subSite.id} subSite={subSite} currentAssetPathSegments={breadcrumbPath.map(b => b.id)} />
+                  ))}
+                </div>
+              </section>
+            )}
+            
+            {/* If the current asset IS a zone (meaning we are viewing a zone that acts as a parent for sub-zones) */}
+            {/* This logic will now mostly live on the dedicated manage-zone page */}
+            {assetType === 'zone' && (asset as Zone).subZones && (asset as Zone).subZones.length > 0 && (
+                 <section>
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                        <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-6 w-6 text-primary/70"/>Sous-Zones</h2>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => router.push(`/client/assets/add-sub-zone/${rootSiteId}/${asset.id}`)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une Sous-Zone
+                            </Button>
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="icon" aria-label="Information sur les Sous-Zones"><Info className="h-4 w-4" /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 text-sm">
+                                    <h4 className="font-medium leading-none mb-1">Qu'est-ce qu'une Sous-Zone ?</h4>
+                                    <p className="text-muted-foreground mb-2">Une sous-zone détaille une zone existante. Cliquez pour gérer.</p>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        {(asset as Zone).subZones!.map(subZone => (
+                            <ZoneItemLink
+                            key={subZone.id}
+                            zone={subZone}
+                            rootSiteId={rootSiteId}
+                            currentPathSegments={breadcrumbPath.map(b => b.id)} // Path to the current parent zone
+                            router={router}
+                            level={0} // Or adjust level based on breadcrumbPath.length
+                            />
+                        ))}
+                    </div>
+                 </section>
+            )}
+
+
+            {/* Controls section is removed from here as it's not generic for sites containing zones. Controls are machine or zone specific */}
           </CardContent>
         </Card>
       </div>
     </AppLayout>
   );
 }
-
