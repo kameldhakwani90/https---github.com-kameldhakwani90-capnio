@@ -1,3 +1,4 @@
+
 "use client"; 
 
 import type { LucideIcon } from 'lucide-react';
@@ -113,9 +114,9 @@ export interface Zone {
   status?: Status; 
   icon?: LucideIcon;
   zoneTypeId?: string; 
-  configuredZoneControls?: Record<string, ConfiguredControl>; // Placeholder for zone-level controls
-  activeZoneControlInAlert?: ActiveControlInAlert; // Placeholder for zone-level alerts
-  eventLog?: EventLogEntry[]; // Placeholder for zone-level events
+  configuredZoneControls?: Record<string, ConfiguredControl>; 
+  activeZoneControlInAlert?: ActiveControlInAlert; 
+  eventLog?: EventLogEntry[]; 
 }
 
 export interface Site {
@@ -791,7 +792,7 @@ export const getZoneIcon = (zoneTypeId?: string): LucideIcon => {
 }
 
 export const getSiteIcon = (isConceptualSubSite?: boolean): LucideIcon => {
-  return isConceptualSubSite ? Building : Package; // Using Package for main sites, Building for conceptual sub-sites
+  return isConceptualSubSite ? Building : Package; 
 }
 
 
@@ -818,29 +819,30 @@ export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITE
   return undefined;
 };
 
-// For the new manage-zone page
+
 export interface BreadcrumbSegment {
   id: string;
   name: string;
   type: 'site' | 'zone';
-  path: string; // Full path to this segment
+  path: string; 
 }
 
 export interface FoundZonePageData {
   zone: Zone;
   breadcrumbPath: BreadcrumbSegment[];
-  parentSite: Site; // The root site
-  // Any other context needed for the page
+  parentSite: Site; 
 }
 
 export function findZoneDataForManagePage(
   rootSiteId: string,
-  zonePathSegments: string[] // Segments *under* the root site
+  zonePathSegments: string[] 
 ): FoundZonePageData | undefined {
   const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === rootSiteId);
-  if (!rootSite) return undefined;
+  if (!rootSite) {
+    console.error(`[findZoneDataForManagePage] Root site not found: ${rootSiteId}`);
+    return undefined;
+  }
 
-  let currentAsset: Site | Zone = rootSite;
   const breadcrumbPath: BreadcrumbSegment[] = [{
     id: rootSite.id,
     name: rootSite.name,
@@ -848,49 +850,74 @@ export function findZoneDataForManagePage(
     path: `/client/assets/manage/${rootSite.id}`
   }];
 
-  let parentForCurrentSegment: Site | Zone = rootSite;
+  let currentAssetInHierarchy: Site | Zone = rootSite;
+  let accumulatedPathForManageLinks = rootSite.id; 
 
-  for (const segmentId of zonePathSegments) {
-    let foundNextAsset: Site | Zone | undefined = undefined;
-    if ('zones' in parentForCurrentSegment) { // If parent is a Site
-      foundNextAsset = (parentForCurrentSegment as Site).zones.find(z => z.id === segmentId);
-      if (foundNextAsset) {
-        breadcrumbPath.push({
-          id: segmentId,
-          name: foundNextAsset.name,
-          type: 'zone',
-          path: `${breadcrumbPath[breadcrumbPath.length - 1].path}/${segmentId}`
-        });
-        parentForCurrentSegment = foundNextAsset;
-        currentAsset = foundNextAsset;
-        continue;
+  for (let i = 0; i < zonePathSegments.length; i++) {
+    const segmentId = zonePathSegments[i];
+    let nextFoundAsset: Site | Zone | undefined = undefined;
+    let nextAssetType: 'site' | 'zone' | undefined = undefined;
+
+    if ('subSites' in currentAssetInHierarchy) { 
+      const currentSiteAsset = currentAssetInHierarchy as Site;
+      
+      const subSite = currentSiteAsset.subSites?.find(ss => ss.id === segmentId);
+      if (subSite) {
+        nextFoundAsset = subSite;
+        nextAssetType = 'site';
+      } else {
+        const zone = currentSiteAsset.zones.find(z => z.id === segmentId);
+        if (zone) {
+          nextFoundAsset = zone;
+          nextAssetType = 'zone';
+        }
+      }
+    } else if ('subZones' in currentAssetInHierarchy) { 
+      const currentZoneAsset = currentAssetInHierarchy as Zone;
+      const subZone = currentZoneAsset.subZones?.find(sz => sz.id === segmentId);
+      if (subZone) {
+        nextFoundAsset = subZone;
+        nextAssetType = 'zone';
       }
     }
-    if ('subZones' in parentForCurrentSegment) { // If parent is a Zone
-       foundNextAsset = (parentForCurrentSegment as Zone).subZones?.find(sz => sz.id === segmentId);
-       if (foundNextAsset) {
-         breadcrumbPath.push({
-           id: segmentId,
-           name: foundNextAsset.name,
-           type: 'zone',
-           path: `${breadcrumbPath[breadcrumbPath.length - 1].path}/${segmentId}`
-         });
-         parentForCurrentSegment = foundNextAsset;
-         currentAsset = foundNextAsset;
-         continue;
-       }
-    }
-    // If we are here, segment not found
-    return undefined;
-  }
 
-  if ('machines' in currentAsset) { // Check if currentAsset is a Zone
-    return { zone: currentAsset as Zone, breadcrumbPath, parentSite: rootSite };
+    if (nextFoundAsset && nextAssetType) {
+      if (nextAssetType === 'site') {
+        accumulatedPathForManageLinks += `/${segmentId}`;
+      }
+
+      let segmentLinkPath: string;
+      const currentSegmentsForPath = zonePathSegments.slice(0, i + 1).join('/');
+      
+      if (nextAssetType === 'site') {
+         segmentLinkPath = `/client/assets/manage/${accumulatedPathForManageLinks}`;
+      } else { 
+        segmentLinkPath = `/client/assets/manage-zone/${rootSiteId}/${currentSegmentsForPath}`;
+      }
+      
+      breadcrumbPath.push({
+        id: segmentId,
+        name: nextFoundAsset.name,
+        type: nextAssetType,
+        path: segmentLinkPath
+      });
+      currentAssetInHierarchy = nextFoundAsset;
+    } else {
+      console.error(`[findZoneDataForManagePage] Segment not found: ${segmentId} under parent ${currentAssetInHierarchy.id}`);
+      return undefined; 
+    }
   }
-  return undefined; // Path ended, but not on a zone
+  
+  if ('machines' in currentAssetInHierarchy) { 
+    return { zone: currentAssetInHierarchy as Zone, breadcrumbPath, parentSite: rootSite };
+  } else {
+    console.error(`[findZoneDataForManagePage] Path did not resolve to a Zone. Final asset: ${currentAssetInHierarchy.id}, type: ${'subSites' in currentAssetInHierarchy ? 'Site' : 'Unknown'}`);
+  }
+  
+  return undefined;
 }
 
-// Helper to count machines in a zone and its subzones
+
 export const countTotalMachinesInZone = (zone: Zone): number => {
   let count = zone.machines.length;
   if (zone.subZones) {
@@ -901,12 +928,14 @@ export const countTotalMachinesInZone = (zone: Zone): number => {
   return count;
 };
 
-// Helper to count ambient sensors in a zone
+
 export const countAmbientSensorsInZone = (zone: Zone): number => {
   return (zone.sensors || []).filter(s => s.scope === 'zone').length;
 };
 
-// Helper to count sub-zones in a zone
+
 export const countSubZonesInZone = (zone: Zone): number => {
   return (zone.subZones || []).length;
 };
+
+    
