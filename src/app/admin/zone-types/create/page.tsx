@@ -20,7 +20,8 @@ export default function AdminCreateZoneTypePage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [bestPractices, setBestPractices] = useState("");
+  const [bestPracticesTitle, setBestPracticesTitle] = useState("");
+  const [bestPracticesContent, setBestPracticesContent] = useState("");
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -37,7 +38,8 @@ export default function AdminCreateZoneTypePage() {
       id: `zt-${Date.now().toString()}`, // Simulate ID generation
       name,
       description,
-      bestPractices,
+      bestPracticesTitle: bestPracticesTitle.trim() === "" ? undefined : bestPracticesTitle,
+      bestPracticesContent: bestPracticesContent.trim() === "" ? undefined : bestPracticesContent,
       // suggestedControls: [], // Placeholder
     };
     console.log("Nouveau type de zone créé (simulation):", zoneTypeData);
@@ -96,11 +98,21 @@ export default function AdminCreateZoneTypePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="zoneTypeBestPractices">Bonnes Pratiques / Recommandations</Label>
+                <Label htmlFor="zoneTypeBestPracticesTitle">Titre pour les Bonnes Pratiques (Optionnel)</Label>
+                <Input 
+                  id="zoneTypeBestPracticesTitle" 
+                  value={bestPracticesTitle}
+                  onChange={(e) => setBestPracticesTitle(e.target.value)}
+                  placeholder="Ex: Gestion Optimale de la Chambre Froide" 
+                />
+              </div>
+
+               <div className="space-y-2">
+                <Label htmlFor="zoneTypeBestPracticesContent">Bonnes Pratiques / Recommandations (Contenu)</Label>
                 <Textarea 
-                  id="zoneTypeBestPractices" 
-                  value={bestPractices}
-                  onChange={(e) => setBestPractices(e.target.value)}
+                  id="zoneTypeBestPracticesContent" 
+                  value={bestPracticesContent}
+                  onChange={(e) => setBestPracticesContent(e.target.value)}
                   placeholder="Listez les bonnes pratiques ou conseils spécifiques à ce type de zone (ex: gestion humidité pour dattes)." 
                   rows={5}
                 />
@@ -121,3 +133,4 @@ export default function AdminCreateZoneTypePage() {
     </AppLayout>
   );
 }
+

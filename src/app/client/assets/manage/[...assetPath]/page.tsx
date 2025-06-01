@@ -22,7 +22,7 @@ import {
     getStatusIcon,      
     getStatusText,
     getMachineIcon,
-    DUMMY_ZONE_TYPES // Import zone types
+    DUMMY_ZONE_TYPES 
 } from "@/lib/client-data.tsx"; 
 import { cn } from "@/lib/utils";
 
@@ -241,6 +241,8 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
 
     const zoneNavLink = `/client/assets/manage/${[...currentPathSegments, zone.id].join('/')}`;
     const zoneTypeInfo = DUMMY_ZONE_TYPES.find(zt => zt.id === zone.zoneTypeId);
+    const bestPracticesTitle = zoneTypeInfo?.bestPracticesTitle || `Bonnes Pratiques: ${zoneTypeInfo?.name || 'Zone'}`;
+
 
     return (
         <AccordionItem value={`${currentPathSegments.join('-')}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
@@ -266,13 +268,13 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-3 pt-2 space-y-3">
-                {zoneTypeInfo && (
+                {zoneTypeInfo && zoneTypeInfo.bestPracticesContent && (
                     <Card className="bg-blue-50 border-blue-200 my-2 shadow-sm">
                         <CardHeader className="pb-2 pt-3">
-                            <CardTitle className="text-sm font-semibold text-blue-700 flex items-center"><Info className="h-4 w-4 mr-2"/>Bonnes Pratiques: {zoneTypeInfo.name}</CardTitle>
+                            <CardTitle className="text-sm font-semibold text-blue-700 flex items-center"><Info className="h-4 w-4 mr-2"/>{bestPracticesTitle}</CardTitle>
                         </CardHeader>
-                        <CardContent className="text-xs text-blue-600">
-                            <p>{zoneTypeInfo.bestPractices}</p>
+                        <CardContent className="text-xs text-blue-600 whitespace-pre-line">
+                            <p>{zoneTypeInfo.bestPracticesContent}</p>
                         </CardContent>
                     </Card>
                 )}
@@ -462,6 +464,7 @@ export default function ManageAssetPage() {
   const mainCardTitle = asset.name;
   const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : DUMMY_CLIENT_SITES_DATA.find(s=>s.id ===rootSiteId)?.name}`;
   const currentZoneTypeInfo = assetType === 'zone' ? DUMMY_ZONE_TYPES.find(zt => zt.id === (asset as Zone).zoneTypeId) : null;
+  const currentBestPracticesTitle = currentZoneTypeInfo?.bestPracticesTitle || (currentZoneTypeInfo ? `Bonnes Pratiques: ${currentZoneTypeInfo.name}` : 'Bonnes Pratiques');
   
   const addZoneButtonLabel = assetType === 'site' ? "Ajouter une Zone au Site" : "Ajouter une Sous-Zone";
   const addZonePopoverTitle = assetType === 'site' ? "Qu'est-ce qu'une Zone ?" : "Qu'est-ce qu'une Sous-Zone ?";
@@ -603,13 +606,13 @@ export default function ManageAssetPage() {
                         </Popover>
                     </div>
                   </div>
-                  {currentZoneTypeInfo && (
+                  {currentZoneTypeInfo && currentZoneTypeInfo.bestPracticesContent && (
                       <Card className="bg-blue-50 border-blue-200 my-4 shadow-sm">
                           <CardHeader className="pb-2 pt-3">
-                              <CardTitle className="text-base font-semibold text-blue-700 flex items-center"><Info className="h-5 w-5 mr-2"/>Focus: {currentZoneTypeInfo.name}</CardTitle>
+                              <CardTitle className="text-base font-semibold text-blue-700 flex items-center"><Info className="h-5 w-5 mr-2"/>{currentBestPracticesTitle}</CardTitle>
                           </CardHeader>
-                          <CardContent className="text-sm text-blue-600">
-                              <p>{currentZoneTypeInfo.bestPractices}</p>
+                          <CardContent className="text-sm text-blue-600 whitespace-pre-line">
+                              <p>{currentZoneTypeInfo.bestPracticesContent}</p>
                           </CardContent>
                       </Card>
                   )}

@@ -22,7 +22,8 @@ export default function AdminEditZoneTypePage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [bestPractices, setBestPractices] = useState("");
+  const [bestPracticesTitle, setBestPracticesTitle] = useState("");
+  const [bestPracticesContent, setBestPracticesContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -38,7 +39,8 @@ export default function AdminEditZoneTypePage() {
     if (typeToEdit) {
       setName(typeToEdit.name);
       setDescription(typeToEdit.description || "");
-      setBestPractices(typeToEdit.bestPractices || "");
+      setBestPracticesTitle(typeToEdit.bestPracticesTitle || "");
+      setBestPracticesContent(typeToEdit.bestPracticesContent || "");
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -61,7 +63,8 @@ export default function AdminEditZoneTypePage() {
       id: zoneTypeId,
       name,
       description,
-      bestPractices,
+      bestPracticesTitle: bestPracticesTitle.trim() === "" ? undefined : bestPracticesTitle,
+      bestPracticesContent: bestPracticesContent.trim() === "" ? undefined : bestPracticesContent,
     };
     console.log("Type de zone mis à jour (simulation):", updatedZoneTypeData);
     toast({
@@ -135,13 +138,23 @@ export default function AdminEditZoneTypePage() {
                   rows={3}
                 />
               </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="zoneTypeBestPracticesTitle">Titre pour les Bonnes Pratiques (Optionnel)</Label>
+                <Input 
+                  id="zoneTypeBestPracticesTitle" 
+                  value={bestPracticesTitle}
+                  onChange={(e) => setBestPracticesTitle(e.target.value)}
+                  placeholder="Ex: Gestion Optimale de la Chambre Froide" 
+                />
+              </div>
 
                <div className="space-y-2">
-                <Label htmlFor="zoneTypeBestPractices">Bonnes Pratiques / Recommandations</Label>
+                <Label htmlFor="zoneTypeBestPracticesContent">Bonnes Pratiques / Recommandations (Contenu)</Label>
                 <Textarea 
-                  id="zoneTypeBestPractices" 
-                  value={bestPractices}
-                  onChange={(e) => setBestPractices(e.target.value)}
+                  id="zoneTypeBestPracticesContent" 
+                  value={bestPracticesContent}
+                  onChange={(e) => setBestPracticesContent(e.target.value)}
                   rows={5}
                 />
               </div>
@@ -161,3 +174,4 @@ export default function AdminEditZoneTypePage() {
     </AppLayout>
   );
 }
+

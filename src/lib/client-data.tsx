@@ -99,8 +99,9 @@ export interface ZoneType {
   id: string;
   name: string;
   description: string;
-  bestPractices?: string; // Simple text for now
-  suggestedControls?: string[]; // IDs of AdminControlDefinition
+  bestPracticesTitle?: string;
+  bestPracticesContent?: string; 
+  suggestedControls?: string[]; 
   icon?: LucideIcon;
 }
 
@@ -112,7 +113,7 @@ export interface Zone {
   sensors?: Sensor[]; 
   status?: Status; 
   icon?: LucideIcon;
-  zoneTypeId?: string; // New field for linking to ZoneType
+  zoneTypeId?: string; 
 }
 
 export interface Site {
@@ -127,23 +128,24 @@ export interface Site {
 }
 
 export const DUMMY_ZONE_TYPES: ZoneType[] = [
-  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPractices: "Assurer la propreté et la sécurité de base."},
-  { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", bestPractices: "Respecter les normes HACCP. Nettoyage régulier des surfaces et équipements. Contrôle strict des températures des zones froides et chaudes.", icon: Utensils},
-  { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", bestPractices: "Maintenir température entre 0-4°C. Éviter surcharge. Contrôler dates de péremption. Nettoyage hebdomadaire.", icon: Snowflake},
-  { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", bestPractices: "Maintenir température à -18°C ou moins. Dégivrage régulier. Éviter ruptures chaîne du froid.", icon: Snowflake},
+  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPracticesContent: "Assurer la propreté et la sécurité de base."},
+  { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", bestPracticesTitle: "Hygiène & Sécurité en Cuisine Pro", bestPracticesContent: "Respecter les normes HACCP. Nettoyage régulier des surfaces et équipements. Contrôle strict des températures des zones froides et chaudes.", icon: Utensils},
+  { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", bestPracticesTitle: "Gestion Optimale Chambre Froide Positive", bestPracticesContent: "Maintenir température entre 0-4°C. Éviter surcharge. Contrôler dates de péremption. Nettoyage hebdomadaire.", icon: Snowflake},
+  { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", bestPracticesTitle: "Maintenance Congélateur Industriel", bestPracticesContent: "Maintenir température à -18°C ou moins. Dégivrage régulier. Éviter ruptures chaîne du froid.", icon: Snowflake},
   {
     id: "zt-stock-dattes",
     name: "Stockage Agro - Dattes & Produits Secs Sensibles",
     description: "Zone de stockage pour dattes ou autres produits secs sensibles à l'humidité.",
     icon: CalendarDays,
-    bestPractices: "Problème courant : La climatisation (groupe froid) refroidit l'air mais l'assèche fortement (condensation). Les produits comme les dattes perdent alors leur eau par évaporation, entraînant une perte de poids (jusqu'à 10% par an). Jeter de l'eau pour compenser est une mauvaise solution (moisissures, condensation excessive). SOLUTION PRO : 1. Contrôler précisément l'humidité relative (HR) avec un humidificateur professionnel (vapeur/ultrasonique) régulé par un capteur d'humidité, visant 65-75% HR pour les dattes. 2. Utiliser un climatiseur avec régulation d'humidité intégrée ou un duo groupe froid + humidificateur. 3. Isoler parfaitement la chambre froide et limiter les entrées d'air extérieur."
+    bestPracticesTitle: "Bonnes Pratiques: Stockage Agro - Dattes & Produits Secs Sensibles",
+    bestPracticesContent: "Problème courant : La climatisation (groupe froid) refroidit l’air mais l’assèche fortement (condensation). Les produits comme les dattes perdent alors leur eau par évaporation, entraînant une perte de poids (jusqu’à 10 % par an). Jeter de l’eau pour compenser est une mauvaise solution (moisissures, condensation excessive).\n\nSOLUTION PRO :\n1. Contrôler précisément l’humidité relative (HR) avec un humidificateur professionnel (vapeur/ultrasonique) régulé par un capteur d’humidité, visant 65-75% HR pour les dattes.\n2. Utiliser un climatiseur avec régulation d’humidité intégrée ou un duo groupe froid + humidificateur.\n3. Isoler parfaitement la chambre froide et limiter les entrées d’air extérieur."
   },
-  { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", bestPractices: "Maintenir propre et organisé. Protéger de l'humidité excessive et des nuisibles.", icon: Warehouse},
-  { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", bestPractices: "Sécurité des machines. Ordre et propreté (5S). Ventilation adéquate.", icon: Factory},
-  { id: "zt-salle-serveur", name: "Salle Serveur / Local Technique", description: "Zone hébergeant des équipements informatiques critiques.", bestPractices: "Contrôle température et humidité strict. Protection incendie. Accès sécurisé.", icon: Server},
-  { id: "zt-champ-culture", name: "Champ de Culture / Parcelle Agricole", description: "Zone extérieure de culture.", bestPractices: "Analyse du sol. Irrigation adaptée. Surveillance des nuisibles et maladies.", icon: Sprout},
-  { id: "zt-serre-agricole", name: "Serre Agricole", description: "Culture sous abri avec contrôle climatique.", bestPractices: "Gestion température, humidité, luminosité, ventilation. Protection contre maladies spécifiques aux serres.", icon: Apple},
-  { id: "zt-elevage-animaux", name: "Zone d'Élevage (Générique)", description: "Zone pour l'hébergement d'animaux.", bestPractices: "Bien-être animal : espace suffisant, eau propre, nourriture adaptée, ventilation, gestion des déjections.", icon: PawPrint}
+  { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", bestPracticesTitle: "Organisation Entrepôt Sec", bestPracticesContent: "Maintenir propre et organisé. Protéger de l'humidité excessive et des nuisibles.", icon: Warehouse},
+  { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", bestPracticesTitle: "Sécurité & Efficacité Atelier", bestPracticesContent: "Sécurité des machines. Ordre et propreté (5S). Ventilation adéquate.", icon: Factory},
+  { id: "zt-salle-serveur", name: "Salle Serveur / Local Technique", description: "Zone hébergeant des équipements informatiques critiques.", bestPracticesTitle: "Maintenance Salle Serveur", bestPracticesContent: "Contrôle température et humidité strict. Protection incendie. Accès sécurisé.", icon: Server},
+  { id: "zt-champ-culture", name: "Champ de Culture / Parcelle Agricole", description: "Zone extérieure de culture.", bestPracticesTitle: "Gestion des Cultures en Plein Champ", bestPracticesContent: "Analyse du sol. Irrigation adaptée. Surveillance des nuisibles et maladies.", icon: Sprout},
+  { id: "zt-serre-agricole", name: "Serre Agricole", description: "Culture sous abri avec contrôle climatique.", bestPracticesTitle: "Optimisation des Conditions en Serre", bestPracticesContent: "Gestion température, humidité, luminosité, ventilation. Protection contre maladies spécifiques aux serres.", icon: Apple},
+  { id: "zt-elevage-animaux", name: "Zone d'Élevage (Générique)", description: "Zone pour l'hébergement d'animaux.", bestPracticesTitle: "Bien-être Animal en Élevage", bestPracticesContent: "Bien-être animal : espace suffisant, eau propre, nourriture adaptée, ventilation, gestion des déjections.", icon: PawPrint}
 ];
 
 const restaurantChecklistTempFrigo: ChecklistItem[] = [
