@@ -131,7 +131,7 @@ export interface Site {
 }
 
 export const DUMMY_ZONE_TYPES: ZoneType[] = [
-  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPracticesContent: "Assurer la propreté et la sécurité de base.", icon: Package},
+  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPracticesTitle: "Bonnes Pratiques Générales", bestPracticesContent: "Assurer la propreté et la sécurité de base.", icon: Package},
   { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", bestPracticesTitle: "Hygiène & Sécurité en Cuisine Pro", bestPracticesContent: "Respecter les normes HACCP. Nettoyage régulier des surfaces et équipements. Contrôle strict des températures des zones froides et chaudes.", icon: Utensils},
   { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", bestPracticesTitle: "Gestion Optimale Chambre Froide Positive", bestPracticesContent: "Maintenir température entre 0-4°C. Éviter surcharge. Contrôler dates de péremption. Nettoyage hebdomadaire.", icon: Snowflake},
   { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", bestPracticesTitle: "Maintenance Congélateur Industriel", bestPracticesContent: "Maintenir température à -18°C ou moins. Dégivrage régulier. Éviter ruptures chaîne du froid.", icon: Snowflake},
@@ -833,13 +833,17 @@ export interface FoundZonePageData {
   parentSite: Site; 
 }
 
+function isSite(asset: Site | Zone): asset is Site {
+  return (asset as Site).location !== undefined && (asset as Site).zones !== undefined;
+}
+
 export function findZoneDataForManagePage(
-  rootSiteId: string,
-  zonePathSegments: string[] 
+  rootSiteIdInput: string,
+  zonePathSegments: string[]
 ): FoundZonePageData | undefined {
-  const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === rootSiteId);
+  const rootSite = DUMMY_CLIENT_SITES_DATA.find(s => s.id === rootSiteIdInput);
   if (!rootSite) {
-    console.error(`[findZoneDataForManagePage] Root site not found: ${rootSiteId}`);
+    console.error(`[findZoneDataForManagePage] Initial root site not found: ${rootSiteIdInput}`);
     return undefined;
   }
 
@@ -851,20 +855,20 @@ export function findZoneDataForManagePage(
   }];
 
   let currentAssetInHierarchy: Site | Zone = rootSite;
-  let accumulatedPathForManageLinks = rootSite.id; 
+  let accumulatedSitePathForManageLinks = rootSite.id; 
 
   for (let i = 0; i < zonePathSegments.length; i++) {
     const segmentId = zonePathSegments[i];
     let nextFoundAsset: Site | Zone | undefined = undefined;
     let nextAssetType: 'site' | 'zone' | undefined = undefined;
 
-    if ('subSites' in currentAssetInHierarchy) { 
-      const currentSiteAsset = currentAssetInHierarchy as Site;
-      
+    if (isSite(currentAssetInHierarchy)) {
+      const currentSiteAsset = currentAssetInHierarchy;
       const subSite = currentSiteAsset.subSites?.find(ss => ss.id === segmentId);
       if (subSite) {
         nextFoundAsset = subSite;
         nextAssetType = 'site';
+        accumulatedSitePathForManageLinks += `/${segmentId}`; 
       } else {
         const zone = currentSiteAsset.zones.find(z => z.id === segmentId);
         if (zone) {
@@ -872,8 +876,8 @@ export function findZoneDataForManagePage(
           nextAssetType = 'zone';
         }
       }
-    } else if ('subZones' in currentAssetInHierarchy) { 
-      const currentZoneAsset = currentAssetInHierarchy as Zone;
+    } else { // currentAssetInHierarchy is a Zone
+      const currentZoneAsset = currentAssetInHierarchy;
       const subZone = currentZoneAsset.subZones?.find(sz => sz.id === segmentId);
       if (subZone) {
         nextFoundAsset = subZone;
@@ -882,17 +886,12 @@ export function findZoneDataForManagePage(
     }
 
     if (nextFoundAsset && nextAssetType) {
-      if (nextAssetType === 'site') {
-        accumulatedPathForManageLinks += `/${segmentId}`;
-      }
-
+      const currentPathToSegmentForZonePage = zonePathSegments.slice(0, i + 1).join('/');
       let segmentLinkPath: string;
-      const currentSegmentsForPath = zonePathSegments.slice(0, i + 1).join('/');
-      
       if (nextAssetType === 'site') {
-         segmentLinkPath = `/client/assets/manage/${accumulatedPathForManageLinks}`;
+        segmentLinkPath = `/client/assets/manage/${accumulatedSitePathForManageLinks}`;
       } else { 
-        segmentLinkPath = `/client/assets/manage-zone/${rootSiteId}/${currentSegmentsForPath}`;
+        segmentLinkPath = `/client/assets/manage-zone/${rootSite.id}/${currentPathToSegmentForZonePage}`;
       }
       
       breadcrumbPath.push({
@@ -903,15 +902,15 @@ export function findZoneDataForManagePage(
       });
       currentAssetInHierarchy = nextFoundAsset;
     } else {
-      console.error(`[findZoneDataForManagePage] Segment not found: ${segmentId} under parent ${currentAssetInHierarchy.id}`);
+      console.error(`[findZoneDataForManagePage] Segment not found: ${segmentId} under parent ${currentAssetInHierarchy.id}. Parent type: ${isSite(currentAssetInHierarchy) ? 'Site' : 'Zone'}.`);
       return undefined; 
     }
   }
   
-  if ('machines' in currentAssetInHierarchy) { 
+  if (!isSite(currentAssetInHierarchy)) { 
     return { zone: currentAssetInHierarchy as Zone, breadcrumbPath, parentSite: rootSite };
   } else {
-    console.error(`[findZoneDataForManagePage] Path did not resolve to a Zone. Final asset: ${currentAssetInHierarchy.id}, type: ${'subSites' in currentAssetInHierarchy ? 'Site' : 'Unknown'}`);
+    console.error(`[findZoneDataForManagePage] Path did not resolve to a Zone. Final asset: ${currentAssetInHierarchy.id}, type: Site`);
   }
   
   return undefined;
