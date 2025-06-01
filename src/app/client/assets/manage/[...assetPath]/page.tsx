@@ -178,11 +178,11 @@ const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: s
 };
 
 const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ sensor, siteId, zoneId, router }) => {
-    const handleManageSensor = (sensorId: string) => {
-        alert(`Gestion du capteur ${sensor.name} (ID: ${sensorId}) - Non implémenté`);
+    const handleManageSensor = (sensorId: string, sensorName: string) => {
+        alert(`Gestion du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Fonctionnalité non implémentée pour le moment.`);
     };
-    const handleDeleteSensor = (sensorId: string) => {
-        alert(`Suppression du capteur ${sensor.name} (ID: ${sensorId}) - Non implémenté`);
+    const handleDeleteSensor = (sensorId: string, sensorName: string) => {
+        alert(`Suppression du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Non implémenté.`);
     };
 
     return (
@@ -208,10 +208,10 @@ const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: stri
                 </div>
             </div>
             <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleManageSensor(sensor.id)}>
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleManageSensor(sensor.id, sensor.name)}>
                     <Settings2 className="mr-1 h-4 w-4" /> Gérer
                 </Button>
-                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 px-2" onClick={() => handleDeleteSensor(sensor.id)}>
+                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 px-2" onClick={() => handleDeleteSensor(sensor.id, sensor.name)}>
                     <Trash2 className="mr-1 h-4 w-4" /> Suppr.
                 </Button>
             </div>
@@ -702,3 +702,4 @@ export default function ManageAssetPage() {
     </AppLayout>
   );
 }
+

@@ -15,6 +15,7 @@ import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/acco
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone as FullZoneType, type Machine as FullMachineType, type Sensor as FullSensorType, type Status, type ConfiguredControl, type ControlParameter as SiteControlParameter, type ActiveControlInAlert, type HistoricalDataPoint, type ChecklistItem, type EventLogEntry, type EventSeverity, type EventType, getStatusIcon as getMachineStatusIcon, getStatusText as getMachineStatusText, getMachineIcon, securityChecklistMotion, securityChecklistSmoke, farmChecklistSoilMoisture, farmChecklistAnimalEnclosure, agroChecklistHumidityCold } from "@/lib/client-data.tsx"; 
 import { ChevronLeft, Save, Settings2, HardDrive, Server, Thermometer, Zap, Wind, LineChart as LineChartIcon, FileText, ListChecks, AlertTriangle, CheckCircle2, Info, ChevronRight, Move, Flame, Droplets, RadioTower, Edit3, ChevronDown, Gauge, Download, CalendarDays, Snowflake, WifiOff, Wifi, Wrench, StickyNote, ToggleLeft, ToggleRight, ListFilter } from "lucide-react"; 
+import { Badge } from "@/components/ui/badge"; // Added Badge import
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -277,38 +278,28 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
 
     function searchZoneAndMachineRecursive(currentSites: Site[]): boolean {
         for (const site of currentSites) {
-            // Check zones in current site
-            let zoneToSearchInSubzones: FullZoneType | undefined = site.zones.find(z => z.id === zoneIdPath);
-            
-            if (zoneToSearchInSubzones) {
-                foundZone = zoneToSearchInSubzones;
-                const machine = zoneToSearchInSubzones.machines.find(m => m.id === machineIdPath);
+            let targetZone: FullZoneType | undefined;
+            function findZoneRecursive(zones: FullZoneType[], id: string): FullZoneType | undefined {
+                for (const z of zones) {
+                if (z.id === id) return z;
+                if (z.subZones) {
+                    const foundInSub = findZoneRecursive(z.subZones, id);
+                    if (foundInSub) return foundInSub;
+                }
+                }
+                return undefined;
+            }
+            targetZone = findZoneRecursive(site.zones, zoneIdPath);
+
+            if (targetZone) {
+                foundZone = targetZone;
+                const machine = targetZone.machines.find(m => m.id === machineIdPath);
                 if (machine) {
                     foundMachine = machine;
                     return true;
                 }
-            } else { // If not in direct zones, check its subZones
-                function findZoneInSubZones(zones: FullZoneType[]): boolean {
-                    for (const z of zones) {
-                        if (z.id === zoneIdPath) {
-                            foundZone = z;
-                            const machine = z.machines.find(m => m.id === machineIdPath);
-                            if (machine) {
-                                foundMachine = machine;
-                                return true;
-                            }
-                            return false; // Zone found, but machine not in it, stop searching this branch of subzones
-                        }
-                        if (z.subZones && findZoneInSubZones(z.subZones)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-                if(findZoneInSubZones(site.zones)) return true;
             }
-
-            // If not found yet, recurse into subSites
+            
             if (site.subSites && searchZoneAndMachineRecursive(site.subSites)) {
                 return true;
             }
@@ -316,7 +307,13 @@ function findMachineHierarchy(siteIdPath: string, zoneIdPath: string, machineIdP
         return false;
     }
 
-    searchZoneAndMachineRecursive(DUMMY_CLIENT_SITES_DATA);
+    if(rootSiteForContext){ // Search within the context of the root site found
+         if (searchZoneAndMachineRecursive([rootSiteForContext])) {
+             // Machine found
+         }
+    } else { // Fallback to searching all sites if root context is not directly the one containing the zone/machine path (e.g. siteIdPath is a parent of the site containing the zone)
+        searchZoneAndMachineRecursive(DUMMY_CLIENT_SITES_DATA);
+    }
     
     if (foundMachine && foundZone && rootSiteForContext) { 
         const augmentedMachine: FullMachineType = { ...foundMachine };
@@ -382,9 +379,9 @@ const getEventIcon = (type: EventType, severity: EventSeverity): React.ReactElem
     case 'ALERT_TRIGGERED':
       return <AlertTriangle {...iconProps} color={severity === 'CRITICAL' ? 'hsl(var(--destructive))' : 'hsl(var(--accent))'} />;
     case 'ALERT_RESOLVED':
-      return <CheckCircle2 {...iconProps} color="hsl(var(--success))" />; // Assuming success color exists
+      return <CheckCircle2 {...iconProps} color="hsl(var(--success))" />; 
     case 'CONTROL_ACTIVATED':
-      return <ToggleRight {...iconProps} color="hsl(var(--info))" />; // Assuming info color exists
+      return <ToggleRight {...iconProps} color="hsl(var(--info))" />; 
     case 'CONTROL_DEACTIVATED':
       return <ToggleLeft {...iconProps} color="hsl(var(--muted-foreground))" />;
     case 'CONTROL_PARAMETER_CHANGED':
@@ -405,9 +402,9 @@ const getEventIcon = (type: EventType, severity: EventSeverity): React.ReactElem
 const getEventSeverityClass = (severity: EventSeverity): string => {
   switch (severity) {
     case 'CRITICAL': return 'text-destructive';
-    case 'WARNING': return 'text-orange-500'; // Using direct orange for warning for now
-    case 'INFO': return 'text-blue-500';    // Using direct blue for info for now
-    case 'SUCCESS': return 'text-green-500'; // Using direct green for success for now
+    case 'WARNING': return 'text-orange-500'; 
+    case 'INFO': return 'text-blue-500';    
+    case 'SUCCESS': return 'text-green-500'; 
     default: return 'text-muted-foreground';
   }
 };
@@ -548,7 +545,6 @@ export default function ManageMachinePage() {
     if (!eventLogStartDate || !eventLogEndDate) return pageData.machine.eventLog;
 
     const start = parseISO(eventLogStartDate);
-    // Add 1 day to end date to make it inclusive of the whole day
     const end = new Date(parseISO(eventLogEndDate));
     end.setDate(end.getDate() + 1);
 
@@ -786,102 +782,103 @@ export default function ManageMachinePage() {
 
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-xl">Suivi Détaillé des Contrôles Actifs</CardTitle>
-                        <CardDescription>Visualisez les métriques et l'état de chaque contrôle activé pour cette machine.</CardDescription>
+                        <CardTitle className="text-xl">Données des Contrôles Actifs</CardTitle>
+                        <CardDescription>Visualisez l'état et les métriques de chaque contrôle activé pour cette machine.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {activeMachineControls.length > 0 ? (
-                        <Accordion type="multiple" className="w-full space-y-3" defaultValue={activeMachineControls.map(c => `monitoring-${c.id}`)}>
-                            {activeMachineControls.map(control => {
-                                const isCurrentControlInAlert = machine.activeControlInAlert?.controlId === control.id;
-                                const controlStatus: Status = isCurrentControlInAlert ? machine.activeControlInAlert!.status || 'red' : 'green';
-                                const controlStatusText = isCurrentControlInAlert ? getMachineStatusText(controlStatus) : "OK";
-                                const controlStatusIcon = isCurrentControlInAlert 
-                                    ? getMachineStatusIcon(controlStatus, "h-5 w-5") 
-                                    : <CheckCircle2 className="h-5 w-5 text-green-500" />;
-                                
-                                const currentControlConfig = controlConfigs[control.id];
-                                const chartDataForThisControl = isCurrentControlInAlert ? machine.activeControlInAlert?.historicalData : [];
-                                const relevantVariableForChart = isCurrentControlInAlert ? machine.activeControlInAlert?.relevantSensorVariable : control.variablesUtilisees.length > 0 ? control.variablesUtilisees[0] : "N/A";
+                            <Accordion type="multiple" className="w-full space-y-3" defaultValue={activeMachineControls.map(c => `monitoring-${c.id}`)}>
+                                {activeMachineControls.map(control => {
+                                    const isCurrentControlInAlert = machine.activeControlInAlert?.controlId === control.id;
+                                    const controlStatus: Status = isCurrentControlInAlert ? machine.activeControlInAlert!.status || 'red' : (controlConfigs[control.id]?.isActive ? 'green' : 'white');
+                                    const controlStatusText = isCurrentControlInAlert ? getMachineStatusText(controlStatus) : (controlConfigs[control.id]?.isActive ? "OK" : "Inactif");
+                                    const controlStatusIcon = isCurrentControlInAlert 
+                                        ? getMachineStatusIcon(controlStatus, "h-5 w-5") 
+                                        : (controlConfigs[control.id]?.isActive ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <Info className="h-5 w-5 text-gray-400"/>) ;
+                                    
+                                    const currentControlConfig = controlConfigs[control.id];
+                                    const chartDataForThisControl = isCurrentControlInAlert ? machine.activeControlInAlert?.historicalData : [];
+                                    const relevantVariableForChart = isCurrentControlInAlert ? machine.activeControlInAlert?.relevantSensorVariable : control.variablesUtilisees.length > 0 ? control.variablesUtilisees[0] : "N/A";
+                                    const chartConfig = { value: { label: relevantVariableForChart, color: "hsl(var(--chart-1))" } };
 
-                                return (
-                                    <AccordionItem key={`monitoring-${control.id}`} value={`monitoring-${control.id}`} className="border rounded-md bg-background shadow-sm">
-                                        <AccordionPrimitive.Header className="flex items-center w-full py-3 px-4 hover:bg-muted/30 rounded-t-md data-[state=open]:bg-muted/40 transition-colors">
-                                          <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline text-foreground", "[&[data-state=open]>svg]:rotate-180")}>
-                                              <div className="flex items-center gap-2">
-                                                  {controlStatusIcon}
-                                                  <span className="font-medium text-md">{control.nomDuControle}</span>
-                                              </div>
-                                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
-                                          </AccordionPrimitive.Trigger>
-                                        </AccordionPrimitive.Header>
-                                        <AccordionContent className="pt-0 pb-4 px-4">
-                                            <div className="space-y-3 pt-3 border-t mt-2">
-                                                <Card className="bg-muted/30">
-                                                    <CardHeader className="pb-2 pt-3">
-                                                        <CardTitle className="text-sm font-semibold">État Actuel des Données</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="text-xs">
-                                                        {isCurrentControlInAlert && machine.activeControlInAlert?.currentValues ? (
-                                                            <ul className="list-disc list-inside">
-                                                                {Object.entries(machine.activeControlInAlert.currentValues).map(([key, valObj]) => (
-                                                                    <li key={key}><strong>{key}:</strong> {valObj.value}{valObj.unit ? ` ${valObj.unit}` : ''}</li>
-                                                                ))}
-                                                            </ul>
-                                                        ) : currentControlConfig?.params && Object.keys(currentControlConfig.params).length > 0 && control.expectedParams ? (
-                                                            <>
-                                                                <p className="font-medium mb-1">Paramètres configurés :</p>
+                                    return (
+                                        <AccordionItem key={`monitoring-${control.id}`} value={`monitoring-${control.id}`} className="border rounded-md bg-background shadow-sm">
+                                            <AccordionPrimitive.Header className="flex items-center w-full py-3 px-4 hover:bg-muted/30 rounded-t-md data-[state=open]:bg-muted/40 transition-colors">
+                                            <AccordionPrimitive.Trigger className={cn("flex flex-1 items-center justify-between text-left focus:outline-none p-0 bg-transparent hover:no-underline text-foreground", "[&[data-state=open]>svg]:rotate-180")}>
+                                                <div className="flex items-center gap-2">
+                                                    {controlStatusIcon}
+                                                    <span className="font-medium text-md">{control.nomDuControle}</span>
+                                                </div>
+                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
+                                            </AccordionPrimitive.Trigger>
+                                            </AccordionPrimitive.Header>
+                                            <AccordionContent className="pt-0 pb-4 px-4">
+                                                <div className="space-y-3 pt-3 border-t mt-2">
+                                                    <Card className="bg-muted/30">
+                                                        <CardHeader className="pb-2 pt-3">
+                                                            <CardTitle className="text-sm font-semibold">État Actuel des Données</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="text-xs">
+                                                            {isCurrentControlInAlert && machine.activeControlInAlert?.currentValues ? (
                                                                 <ul className="list-disc list-inside">
-                                                                    {control.expectedParams.map(paramDef => {
-                                                                        const val = currentControlConfig.params[paramDef.id];
-                                                                        if (val !== undefined) {
-                                                                            return <li key={paramDef.id}><strong>{paramDef.label}:</strong> {String(val)}</li>;
-                                                                        }
-                                                                        return null;
-                                                                    })}
+                                                                    {Object.entries(machine.activeControlInAlert.currentValues).map(([key, valObj]) => (
+                                                                        <li key={key}><strong>{key}:</strong> {valObj.value}{valObj.unit ? ` ${valObj.unit}` : ''}</li>
+                                                                    ))}
                                                                 </ul>
-                                                            </>
-                                                        ) : (
-                                                            <p className="text-muted-foreground">Aucun paramètre spécifique affiché ou le contrôle n'est pas en alerte.</p>
-                                                        )}
-                                                         {!isCurrentControlInAlert && <p className="mt-2 text-muted-foreground italic">Données en temps réel non simulées (contrôle non en alerte).</p>}
-                                                    </CardContent>
-                                                </Card>
+                                                            ) : currentControlConfig?.params && Object.keys(currentControlConfig.params).length > 0 && control.expectedParams ? (
+                                                                <>
+                                                                    <p className="font-medium mb-1">Paramètres configurés :</p>
+                                                                    <ul className="list-disc list-inside">
+                                                                        {control.expectedParams.map(paramDef => {
+                                                                            const val = currentControlConfig.params[paramDef.id];
+                                                                            if (val !== undefined) {
+                                                                                return <li key={paramDef.id}><strong>{paramDef.label}:</strong> {String(val)}</li>;
+                                                                            }
+                                                                            return null;
+                                                                        })}
+                                                                    </ul>
+                                                                </>
+                                                            ) : (
+                                                                <p className="text-muted-foreground">Aucun paramètre spécifique affiché ou le contrôle n'est pas en alerte.</p>
+                                                            )}
+                                                            {!isCurrentControlInAlert && <p className="mt-2 text-muted-foreground italic">Données en temps réel non simulées (contrôle non en alerte).</p>}
+                                                        </CardContent>
+                                                    </Card>
 
-                                                <Card className="bg-muted/30">
-                                                    <CardHeader className="pb-2 pt-3">
-                                                        <CardTitle className="text-sm font-semibold flex items-center"><LineChartIcon className="mr-2 h-4 w-4 text-primary" /> Graphique du Contrôle</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        {isCurrentControlInAlert && chartDataForThisControl && chartDataForThisControl.length > 0 ? (
-                                                            <ChartContainer config={{ value: { label: relevantVariableForChart, color: "hsl(var(--chart-1))" }}} className="h-[200px] w-full aspect-auto">
-                                                                <LineChart data={chartDataForThisControl} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                                                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} fontSize={10} />
-                                                                <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={10} width={30} />
-                                                                <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
-                                                                <Line dataKey="value" name={relevantVariableForChart} type="monotone" stroke="var(--color-value)" strokeWidth={2} dot={true}/>
-                                                                </LineChart>
-                                                            </ChartContainer>
-                                                        ) : (
-                                                            <p className="text-xs text-muted-foreground text-center py-4">Aucune alerte active pour ce contrôle pour afficher un graphique d'historique.</p>
-                                                        )}
-                                                    </CardContent>
-                                                </Card>
-                                                 <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    className="w-full mt-3"
-                                                    onClick={() => router.push(`/client/machine-control-monitoring/${siteId}/${zoneId}/${machineId}/${control.id}`)}
-                                                >
-                                                    Voir la page de suivi dédiée à ce contrôle <ChevronRight className="ml-1 h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                );
-                            })}
-                        </Accordion>
+                                                    <Card className="bg-muted/30">
+                                                        <CardHeader className="pb-2 pt-3">
+                                                            <CardTitle className="text-sm font-semibold flex items-center"><LineChartIcon className="mr-2 h-4 w-4 text-primary" /> Graphique du Contrôle</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            {isCurrentControlInAlert && chartDataForThisControl && chartDataForThisControl.length > 0 ? (
+                                                                <ChartContainer config={chartConfig} className="h-[200px] w-full aspect-auto">
+                                                                    <LineChart data={chartDataForThisControl} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                                    <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} fontSize={10} />
+                                                                    <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={10} width={30} />
+                                                                    <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                                                                    <Line dataKey="value" name={chartConfig.value.label} type="monotone" stroke="var(--color-value)" strokeWidth={2} dot={true}/>
+                                                                    </LineChart>
+                                                                </ChartContainer>
+                                                            ) : (
+                                                                <p className="text-xs text-muted-foreground text-center py-4">Aucune alerte active pour ce contrôle pour afficher un graphique d'historique.</p>
+                                                            )}
+                                                        </CardContent>
+                                                    </Card>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="w-full mt-3"
+                                                        onClick={() => router.push(`/client/machine-control-monitoring/${siteId}/${zoneId}/${machineId}/${control.id}`)}
+                                                    >
+                                                        Voir la page de suivi dédiée à ce contrôle <ChevronRight className="ml-1 h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    );
+                                })}
+                            </Accordion>
                         ) : (
                             <p className="text-muted-foreground text-center py-4 text-sm">Aucun contrôle n'est actuellement actif pour cette machine.</p>
                         )}
@@ -941,8 +938,8 @@ export default function ManageMachinePage() {
                                             </div>
                                              <Badge variant={
                                                 event.severity === 'CRITICAL' ? 'destructive' :
-                                                event.severity === 'WARNING' ? 'default' : // Using default for orange
-                                                event.severity === 'SUCCESS' ? 'default' : // Using default for green
+                                                event.severity === 'WARNING' ? 'default' : 
+                                                event.severity === 'SUCCESS' ? 'default' : 
                                                 'outline' 
                                               }
                                               className={cn("text-xs shrink-0", 
