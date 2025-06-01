@@ -6,16 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone } from "@/lib/client-data"; // Updated import
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select
+import { DUMMY_CLIENT_SITES_DATA, type Site, type Zone, DUMMY_ZONE_TYPES } from "@/lib/client-data.tsx"; 
 import { ChevronLeft, PlusCircle, Layers } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 function findSiteOrZone(sites: Site[], siteId: string, zoneId?: string): { site?: Site, zone?: Zone } {
     const site = sites.find(s => s.id === siteId);
-    if (!site) return {};
+    if (!site) { // Check top-level sites first
+        for (const topSite of sites) { // If not found, check subSites recursively
+            if(topSite.subSites) {
+                const foundInSub = findSiteOrZone(topSite.subSites, siteId, zoneId);
+                if (foundInSub.site) return foundInSub; // Return if site is found in subSite
+            }
+        }
+        return {}; // Site not found at all
+    }
 
-    if (!zoneId) return { site };
+    if (!zoneId) return { site }; // Site found, no zoneId to search
 
     function findZoneRecursive(zones: Zone[], id: string): Zone | undefined {
         for (const z of zones) {
@@ -39,6 +48,7 @@ export default function AddSubZonePage() {
   const parentZoneId = params.parentZoneId as string;
 
   const [subZoneName, setSubZoneName] = useState("");
+  const [selectedZoneTypeId, setSelectedZoneTypeId] = useState<string>("");
   const [parentSite, setParentSite] = useState<Site | null>(null);
   const [parentZone, setParentZone] = useState<Zone | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,9 +76,11 @@ export default function AddSubZonePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log(`Adding sub-zone to site "${parentSite?.name}", parent zone "${parentZone?.name}":`, { name: subZoneName });
-    alert(`Sous-zone "${subZoneName}" ajoutée à la zone "${parentZone?.name}" (simulation).`);
-    router.push(`/client/assets/manage/${siteId}`); 
+    console.log(`Adding sub-zone to site "${parentSite?.name}", parent zone "${parentZone?.name}":`, { name: subZoneName, zoneTypeId: selectedZoneTypeId });
+    alert(`Sous-zone "${subZoneName}" (Type: ${DUMMY_ZONE_TYPES.find(zt => zt.id === selectedZoneTypeId)?.name || 'Non spécifié'}) ajoutée à la zone "${parentZone?.name}" (simulation).`);
+    // TODO: In a real app, update DUMMY_CLIENT_SITES_DATA or call an API
+    // to add the new sub-zone with its typeId
+    router.push(`/client/assets/manage/${siteId}/${parentZoneId}`); 
   };
   
   if (isLoading) {
@@ -93,8 +105,8 @@ export default function AddSubZonePage() {
     <AppLayout>
       <div className="container mx-auto max-w-2xl py-8">
          <div className="mb-6">
-          <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}`)}>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion de {parentSite.name}
+          <Button variant="outline" onClick={() => router.push(`/client/assets/manage/${siteId}/${parentZoneId}`)}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Retour à la gestion de {parentZone.name}
           </Button>
         </div>
         <Card className="shadow-xl">
@@ -108,7 +120,7 @@ export default function AddSubZonePage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="subZoneName">Nom de la Sous-Zone</Label>
+                <Label htmlFor="subZoneName">Nom de la Sous-Zone *</Label>
                 <Input 
                   id="subZoneName" 
                   value={subZoneName} 
@@ -116,6 +128,23 @@ export default function AddSubZonePage() {
                   placeholder="e.g., Chambre Froide A, Section Usinage B"
                   required 
                 />
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="zoneType">Type de Sous-Zone (Optionnel)</Label>
+                <Select value={selectedZoneTypeId} onValueChange={setSelectedZoneTypeId}>
+                  <SelectTrigger id="zoneType">
+                    <SelectValue placeholder="Sélectionnez un type de zone..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">-- Aucun type spécifique --</SelectItem>
+                    {DUMMY_ZONE_TYPES.map(type => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Choisir un type peut aider à pré-configurer des contrôles et bonnes pratiques.</p>
               </div>
               <div className="flex justify-end pt-4">
                 <Button type="submit">
@@ -129,3 +158,4 @@ export default function AddSubZonePage() {
     </AppLayout>
   );
 }
+

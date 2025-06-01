@@ -45,7 +45,6 @@ export interface ActiveControlInAlert {
   checklist?: ChecklistItem[]; 
 }
 
-// New Event Log Structures
 export type EventSeverity = 'CRITICAL' | 'WARNING' | 'INFO' | 'SUCCESS';
 export type EventType = 
   | 'ALERT_TRIGGERED' 
@@ -60,11 +59,11 @@ export type EventType =
 
 export interface EventLogEntry {
   id: string;
-  timestamp: string; // ISO date-time string
+  timestamp: string; 
   type: EventType;
   severity: EventSeverity;
   message: string;
-  details?: Record<string, any>; // e.g., { controlName: "Temp Control", oldValue: 5, newValue: 4 }
+  details?: Record<string, any>; 
   controlId?: string;
   sensorId?: string;
 }
@@ -96,6 +95,15 @@ export interface Sensor {
   piServerId?: string; 
 }
 
+export interface ZoneType {
+  id: string;
+  name: string;
+  description: string;
+  bestPractices?: string; // Simple text for now
+  suggestedControls?: string[]; // IDs of AdminControlDefinition
+  icon?: LucideIcon;
+}
+
 export interface Zone {
   id: string;
   name: string;
@@ -104,6 +112,7 @@ export interface Zone {
   sensors?: Sensor[]; 
   status?: Status; 
   icon?: LucideIcon;
+  zoneTypeId?: string; // New field for linking to ZoneType
 }
 
 export interface Site {
@@ -116,6 +125,26 @@ export interface Site {
   status?: Status; 
   icon?: LucideIcon; 
 }
+
+export const DUMMY_ZONE_TYPES: ZoneType[] = [
+  { id: "zt-generic", name: "Générique", description: "Zone standard sans spécificités prédéfinies.", bestPractices: "Assurer la propreté et la sécurité de base."},
+  { id: "zt-cuisine-pro", name: "Cuisine Professionnelle", description: "Zone de préparation alimentaire pour restaurants, traiteurs.", bestPractices: "Respecter les normes HACCP. Nettoyage régulier des surfaces et équipements. Contrôle strict des températures des zones froides et chaudes.", icon: Utensils},
+  { id: "zt-chambre-froide-pos", name: "Chambre Froide Positive", description: "Stockage réfrigéré de produits frais (0°C à +8°C).", bestPractices: "Maintenir température entre 0-4°C. Éviter surcharge. Contrôler dates de péremption. Nettoyage hebdomadaire.", icon: Snowflake},
+  { id: "zt-chambre-froide-neg", name: "Chambre Froide Négative / Congélation", description: "Stockage de produits congelés (généralement -18°C et moins).", bestPractices: "Maintenir température à -18°C ou moins. Dégivrage régulier. Éviter ruptures chaîne du froid.", icon: Snowflake},
+  {
+    id: "zt-stock-dattes",
+    name: "Stockage Agro - Dattes & Produits Secs Sensibles",
+    description: "Zone de stockage pour dattes ou autres produits secs sensibles à l'humidité.",
+    icon: CalendarDays,
+    bestPractices: "Problème courant : La climatisation (groupe froid) refroidit l'air mais l'assèche fortement (condensation). Les produits comme les dattes perdent alors leur eau par évaporation, entraînant une perte de poids (jusqu'à 10% par an). Jeter de l'eau pour compenser est une mauvaise solution (moisissures, condensation excessive). SOLUTION PRO : 1. Contrôler précisément l'humidité relative (HR) avec un humidificateur professionnel (vapeur/ultrasonique) régulé par un capteur d'humidité, visant 65-75% HR pour les dattes. 2. Utiliser un climatiseur avec régulation d'humidité intégrée ou un duo groupe froid + humidificateur. 3. Isoler parfaitement la chambre froide et limiter les entrées d'air extérieur."
+  },
+  { id: "zt-entrepot-sec", name: "Entrepôt Sec Général", description: "Stockage de produits non périssables ne nécessitant pas de contrôle de température.", bestPractices: "Maintenir propre et organisé. Protéger de l'humidité excessive et des nuisibles.", icon: Warehouse},
+  { id: "zt-atelier-prod", name: "Atelier de Production/Fabrication", description: "Zone d'assemblage ou de transformation de produits.", bestPractices: "Sécurité des machines. Ordre et propreté (5S). Ventilation adéquate.", icon: Factory},
+  { id: "zt-salle-serveur", name: "Salle Serveur / Local Technique", description: "Zone hébergeant des équipements informatiques critiques.", bestPractices: "Contrôle température et humidité strict. Protection incendie. Accès sécurisé.", icon: Server},
+  { id: "zt-champ-culture", name: "Champ de Culture / Parcelle Agricole", description: "Zone extérieure de culture.", bestPractices: "Analyse du sol. Irrigation adaptée. Surveillance des nuisibles et maladies.", icon: Sprout},
+  { id: "zt-serre-agricole", name: "Serre Agricole", description: "Culture sous abri avec contrôle climatique.", bestPractices: "Gestion température, humidité, luminosité, ventilation. Protection contre maladies spécifiques aux serres.", icon: Apple},
+  { id: "zt-elevage-animaux", name: "Zone d'Élevage (Générique)", description: "Zone pour l'hébergement d'animaux.", bestPractices: "Bien-être animal : espace suffisant, eau propre, nourriture adaptée, ventilation, gestion des déjections.", icon: PawPrint}
+];
 
 const restaurantChecklistTempFrigo: ChecklistItem[] = [
     { id: 'chk-frigo-porte', label: "Vérifier la fermeture correcte de la porte du réfrigérateur." },
@@ -175,7 +204,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         icon: Utensils,
         zones: [
           {
-            id: "zone-paris-cuisine", name: "Cuisine Paris", 
+            id: "zone-paris-cuisine", name: "Cuisine Paris", zoneTypeId: "zt-cuisine-pro",
             machines: [
               { 
                 id: "machine-paris-four", name: "Four Pro 'Vulcan'", type: "Four Professionnel", status: "green",
@@ -224,7 +253,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
               { id: "sensor-paris-cuisine-motion", name: "Détecteur Mouvement Cuisine", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-paris-cuisine-secu" }
             ]
           },
-          { id: "zone-paris-salle", name: "Salle Restaurant Paris", machines: [
+          { id: "zone-paris-salle", name: "Salle Restaurant Paris", zoneTypeId: "zt-generic", machines: [
             { id: "machine-paris-salle-secu", name: "Hub Sécurité Salle", type: "Hub Sécurité", status: "green", 
                 availableSensors: [],
                 configuredControls: {
@@ -235,7 +264,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
               { id: "sensor-paris-salle-co2", name: "Qualité Air Salle Paris", typeModel: "Détecteur CO2 Z-Air", scope: "zone", status: "green", provides: ["co2"]},
               { id: "sensor-paris-salle-motion", name: "Détecteur Mouvement Salle (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-paris-salle-secu" }
           ]},
-          { id: "zone-paris-cave", name: "Cave à Vins Paris", machines: [
+          { id: "zone-paris-cave", name: "Cave à Vins Paris", zoneTypeId: "zt-chambre-froide-pos", machines: [
             { id: "machine-paris-cave-secu", name: "Hub Sécurité Cave", type: "Hub Sécurité", status: "green", 
                 availableSensors: [],
                 configuredControls: {
@@ -255,7 +284,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         isConceptualSubSite: true,
         icon: Utensils,
         zones: [
-          { id: "zone-lyon-cuisine", name: "Cuisine Lyon", machines: [
+          { id: "zone-lyon-cuisine", name: "Cuisine Lyon", zoneTypeId: "zt-cuisine-pro", machines: [
             { id: "machine-lyon-frigo1", name: "Réfrigérateur Positif Lyon", type: "Frigo", status: "green", availableSensors: [{id: "s-lyon-frigo1-temp", name: "Temp Frigo Lyon 1", provides:["temp"]}]},
             { id: "machine-lyon-cuisine-secu", name: "Hub Sécurité Cuisine Lyon", type: "Hub Sécurité", status: "green", 
                 availableSensors: [],
@@ -276,10 +305,10 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     location: "7 Rue du Blé, Strasbourg, France",
     icon: ShoppingCart, 
     zones: [
-      { id: "zone-fournil", name: "Fournil", machines: [
+      { id: "zone-fournil", name: "Fournil", zoneTypeId: "zt-cuisine-pro", machines: [
         { id: "machine-fournil-fourpain", name: "Four à Pain 'Bongard'", type: "Four Professionnel", status: "green", availableSensors: [{id: "s-fournil-fourpain-temp", name: "Temp Four à Pain", provides:["temp_four"]}] },
         { 
-          id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green",
+          id: "machine-fournil-chflevain", name: "Chambre Froide Levain", type: "Frigo", status: "green", zoneTypeId: "zt-chambre-froide-pos",
           availableSensors: [{ id: "sensor-levain-temp", name: "Sonde Temp. Levain", provides: ["temp"] }],
           configuredControls: { "control-001": { isActive: true, params: { "seuil_min": 2, "seuil_max": 5 }, sensorMappings: {"temp": "sensor-levain-temp"} } }
         },
@@ -292,7 +321,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       ], sensors: [
          { id: "sensor-fournil-fumee", name: "Détecteur Fumée Fournil", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-fournil-secu" }
       ]},
-      { id: "zone-boutique", name: "Boutique", machines: [
+      { id: "zone-boutique", name: "Boutique", zoneTypeId: "zt-generic", machines: [
         { id: "machine-boutique-vitrine", name: "Vitrine Réfrigérée Pâtisseries", type: "Vitrine Réfrigérée", status: "orange", availableSensors: [{id: "s-boutique-vitrine-temp", name: "Temp Vitrine Pâtisserie", provides:["temp"]}]},
         { id: "machine-boutique-secu", name: "Hub Sécurité Boutique", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
@@ -311,7 +340,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     location: "Pole Logistique Rungis, France",
     icon: Truck,
     zones: [
-      { id: "zone-liv-entrepot", name: "Entrepôt Central Rungis", machines: [
+      { id: "zone-liv-entrepot", name: "Entrepôt Central Rungis", zoneTypeId: "zt-entrepot-sec", machines: [
         { id: "machine-rungis-secu", name: "Hub Sécurité Rungis", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
             configuredControls: {
@@ -319,7 +348,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
                  "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "22:00", "heure_fin_surveillance": "06:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-rungis-motion-quai"} }
             }
         },
-        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Chambre Froide", status: "green",
+        { id: "machine-rungis-frigo-stock", name: "Chambre Froide Stockage Rungis", type: "Chambre Froide", status: "green", zoneTypeId: "zt-chambre-froide-pos",
             availableSensors: [{id: "s-rungis-frigo-stock-temp", name: "Temp Ch. Froide Rungis", provides:["temp"]}],
             configuredControls: {"control-001": { isActive: true, params: { "seuil_min": 0, "seuil_max": 4 }, sensorMappings: {"temp": "s-rungis-frigo-stock-temp"} } }
         }
@@ -329,7 +358,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         },
         { id: "sensor-rungis-fumee", name: "Détecteur Fumée Entrepôt Rungis", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-rungis-secu"}
       ]},
-      { id: "zone-liv-vehicules", name: "Flotte de Véhicules", machines: [
+      { id: "zone-liv-vehicules", name: "Flotte de Véhicules", zoneTypeId: "zt-generic", machines: [
         { 
           id: "machine-camion-fr01", name: "Camion FR-01 (AB-123-CD)", type: "Camion Réfrigéré", status: "red",
           activeControlInAlert: {
@@ -358,7 +387,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     location: "Zone Industrielle Mghira, Tunisie",
     icon: Factory,
     zones: [
-      { id: "zone-usine-embouteillage", name: "Ligne d'Embouteillage Eau Minérale", machines: [
+      { id: "zone-usine-embouteillage", name: "Ligne d'Embouteillage Eau Minérale", zoneTypeId: "zt-atelier-prod", machines: [
         { id: "machine-embouteilleuse", name: "Embouteilleuse 'Krones'", type: "Equipement de Production", status: "green", availableSensors: [{id: "s-emb-krones-vitesse", name: "Vitesse Emb. Krones", provides: ["speed"]}] },
         { id: "machine-emb-secu", name: "Hub Sécurité Embouteillage", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
@@ -370,7 +399,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         { id: "sensor-emb-fumee", name: "Détecteur Fumée Ligne Emb.", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-emb-secu" }
       ]},
       { 
-        id: "zone-usine-maintenance", name: "Atelier Maintenance", machines: [
+        id: "zone-usine-maintenance", name: "Atelier Maintenance", zoneTypeId: "zt-atelier-prod", machines: [
         { 
           id: "machine-compresseur-c1", name: "Compresseur Air Principal 'Atlas'", type: "Compresseur", status: "orange",
           activeControlInAlert: {
@@ -409,7 +438,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       {
         id: "site-entrepot-viandes", name: "Entrepôt Viandes", location: "AgroStock - Section Viandes", isConceptualSubSite: true, icon: Beef,
         zones: [
-          { id: "zone-viande-chf-bovin", name: "Chambre Froide Bovins (-2°C)", machines: [
+          { id: "zone-viande-chf-bovin", name: "Chambre Froide Bovins (-2°C)", zoneTypeId: "zt-chambre-froide-neg", machines: [
             { id: "machine-chf-bovin1", name: "Unité Réfrig. Bovin 1", type: "Chambre Froide", status: "green", availableSensors: [{id: "s-bovin1-temp", name: "Temp Bovin 1", provides:["temp"]}]},
             { id: "machine-viande-bovin-secu", name: "Hub Sécurité CHF Bovins", type: "Hub Sécurité", status: "green", 
                 availableSensors: [],
@@ -420,7 +449,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
           ], sensors: [
             { id: "sensor-viande-bovin-fumee", name: "Détecteur Fumée CHF Bovins", typeModel: "Détecteur de Fumée FireAlert Z3", scope: "zone", status: "green", provides: ["smoke_detected"], piServerId: "machine-viande-bovin-secu" }
           ]},
-          { id: "zone-viande-chf-volaille", name: "Chambre Congélation Volailles (-18°C)", machines: [
+          { id: "zone-viande-chf-volaille", name: "Chambre Congélation Volailles (-18°C)", zoneTypeId: "zt-chambre-froide-neg", machines: [
             { id: "machine-chf-volaille1", name: "Unité Congél. Volaille 1", type: "Congélateur", status: "green", availableSensors: [{id: "s-volaille1-temp", name: "Temp Volaille 1", provides:["temp"]}] }
           ]}
         ]
@@ -428,66 +457,66 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       {
         id: "site-entrepot-dattes", name: "Entrepôt Dattes", location: "AgroStock - Section Dattes", isConceptualSubSite: true, icon: CalendarDays,
         zones: [
-          { id: "zone-dattes-stock", name: "Stockage Dattes (Ventilé)", machines: [
+          { id: "zone-dattes-stock", name: "Stockage Dattes (Ventilé)", zoneTypeId: "zt-stock-dattes", machines: [
             { 
                 id: "machine-dattes-clim-01", name: "Climatiseur Dattes Unité 1", type: "Climatiseur", status: "green",
                 availableSensors: [{ id: "s-dattes-clim-1-tempout", name: "Temp. Sortie Clim 1", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-1-power", name: "Conso. Clim 1", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-1-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-1-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-1-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-1-power"} } }
             },
             { 
                 id: "machine-dattes-clim-02", name: "Climatiseur Dattes Unité 2", type: "Climatiseur", status: "green",
                 availableSensors: [{ id: "s-dattes-clim-2-tempout", name: "Temp. Sortie Clim 2", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-2-power", name: "Conso. Clim 2", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-2-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-2-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-2-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-2-power"} } }
             },
             { 
                 id: "machine-dattes-clim-03", name: "Climatiseur Dattes Unité 3", type: "Climatiseur", status: "green",
                 availableSensors: [{ id: "s-dattes-clim-3-tempout", name: "Temp. Sortie Clim 3", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-3-power", name: "Conso. Clim 3", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-3-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-3-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-3-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-3-power"} } }
             },
             { 
                 id: "machine-dattes-clim-04", name: "Climatiseur Dattes Unité 4", type: "Climatiseur", status: "green",
                 availableSensors: [{ id: "s-dattes-clim-4-tempout", name: "Temp. Sortie Clim 4", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-4-power", name: "Conso. Clim 4", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-4-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-4-power"} } }
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-4-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-4-power"} } }
             },
             { 
                 id: "machine-dattes-clim-05", name: "Climatiseur Dattes Unité 5", type: "Climatiseur", status: "orange",
                 activeControlInAlert: {
                   controlId: "control-ac-agro", controlName: "Contrôle Climatiseur Agroalimentaire",
-                  alertDetails: "Humidité ambiante dattes à 70%. Seuil max: 65%. Risque de condensation et perte de qualité. (Ext: 40°C)", status: "orange",
-                  currentValues: { "temp_out": { value: 12.5, unit: "°C" }, "humidity_zone": { value: 70, unit: "%" }, "power_ac": { value: 1300, unit: "W" } },
-                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 },
+                  alertDetails: "Humidité ambiante dattes à 78%. Seuil max: 75%. Temp ext: 40°C. Risque de condensation si l'air n'est pas correctement brassé, surveiller circulation.", status: "orange",
+                  currentValues: { "temp_out": { value: 12.5, unit: "°C" }, "humidity_zone": { value: 78, unit: "%" }, "power_ac": { value: 1300, unit: "W" } },
+                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 },
                   controlDescription: "Vérifie le bon fonctionnement du climatiseur, la température de sortie, l'humidité ambiante et la consommation.",
-                  historicalData: [{ name: 'T-4h', value: 60 }, { name: 'T-2h', value: 68 }, { name: 'Actuel', value: 70 }],
+                  historicalData: [{ name: 'T-4h', value: 70 }, { name: 'T-2h', value: 76 }, { name: 'Actuel', value: 78 }],
                   relevantSensorVariable: 'humidity_zone', checklist: agroChecklistHumidityCold
                 },
                 availableSensors: [{ id: "s-dattes-clim-5-tempout", name: "Temp. Sortie Clim 5", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-5-power", name: "Conso. Clim 5", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-5-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-5-power"} } },
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-5-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-5-power"} } },
                 eventLog: [
-                  {id: "evt-clim5-1", timestamp: new Date(Date.now() - 1*60*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "WARNING", message: "Humidité dattes Clim 5 à 70% (max 65%). Ext: 40°C", controlId: "control-ac-agro"},
+                  {id: "evt-clim5-1", timestamp: new Date(Date.now() - 1*60*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "WARNING", message: "Humidité dattes Clim 5 à 78% (max 75%). Ext: 40°C", controlId: "control-ac-agro"},
                 ]
             },
             { 
                 id: "machine-dattes-clim-06", name: "Climatiseur Dattes Unité 6", type: "Climatiseur", status: "red",
                  activeControlInAlert: {
                   controlId: "control-ac-agro", controlName: "Contrôle Climatiseur Agroalimentaire",
-                  alertDetails: "Température de sortie clim. à 18°C. Cible: 12°C. Climatiseur inefficace, risque produit. (Ext: 40°C)", status: "red",
-                  currentValues: { "temp_out": { value: 18, unit: "°C" }, "humidity_zone": { value: 60, unit: "%" }, "power_ac": { value: 1650, unit: "W" } }, // Power slightly high too
-                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 },
+                  alertDetails: "Température de sortie clim. à 18°C. Cible: 12°C. Temp ext: 40°C. Climatiseur inefficace, perte de poids produit et risque qualité.", status: "red",
+                  currentValues: { "temp_out": { value: 18, unit: "°C" }, "humidity_zone": { value: 72, unit: "%" }, "power_ac": { value: 1650, unit: "W" } },
+                  thresholds: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 },
                   controlDescription: "Vérifie le bon fonctionnement du climatiseur, la température de sortie, l'humidité ambiante et la consommation.",
                   historicalData: [{ name: 'T-4h', value: 13 }, { name: 'T-2h', value: 16 }, { name: 'Actuel', value: 18 }],
                   relevantSensorVariable: 'temp_out', checklist: agroChecklistHumidityCold
                 },
                 availableSensors: [{ id: "s-dattes-clim-6-tempout", name: "Temp. Sortie Clim 6", provides: ["temp_out", "temp"] }, { id: "s-dattes-clim-6-power", name: "Conso. Clim 6", provides: ["power_ac", "power"] }],
-                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 55, "humidity_max_zone": 65, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-6-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-6-power"} } },
+                configuredControls: { "control-ac-agro": { isActive: true, params: { "temp_cible_sortie": 12, "humidity_min_zone": 65, "humidity_max_zone": 75, "power_max_ac": 1500 }, sensorMappings: {"temp_out": "s-dattes-clim-6-tempout", "humidity_zone": "sensor-dattes-stock-temphum", "power_ac": "s-dattes-clim-6-power"} } },
                  eventLog: [
                   {id: "evt-clim6-1", timestamp: new Date(Date.now() - 30*60*1000).toISOString(), type: "ALERT_TRIGGERED", severity: "CRITICAL", message: "Temp. sortie Clim 6 à 18°C (cible 12°C). Ext: 40°C", controlId: "control-ac-agro"},
                   {id: "evt-clim6-2", timestamp: new Date(Date.now() - 5*24*60*60*1000).toISOString(), type: "MAINTENANCE_LOGGED", severity: "INFO", message: "Nettoyage filtre Clim 6."},
                 ]
             },
           ], sensors: [
-            { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity", "humidity_zone"] } // status orange due to AC issues
+            { id: "sensor-dattes-stock-temphum", name: "Ambiance Stockage Dattes", typeModel: "Sonde Ambiante THL v2.1", scope: "zone", status: "orange", provides: ["temp", "humidity", "humidity_zone"] } 
           ]},
-          { id: "zone-dattes-conditionnement", name: "Salle de Conditionnement Dattes", machines: [
+          { id: "zone-dattes-conditionnement", name: "Salle de Conditionnement Dattes", zoneTypeId: "zt-atelier-prod", machines: [
             { id: "machine-dattes-emballeuse", name: "Emballeuse Dattes D1", type: "Equipement de Production", status: "green", availableSensors: [{id:"s-dattes-emballeuse-compteur", name: "Compteur Emballeuse", provides: ["count"]}] }
           ]}
         ]
@@ -495,7 +524,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       {
         id: "site-entrepot-fruitsleg", name: "Entrepôt Fruits & Légumes", location: "AgroStock - Section F&L", isConceptualSubSite: true, icon: Apple,
         zones: [
-          { id: "zone-fl-reception", name: "Quai de Réception F&L", machines: [{id: "machine-fl-reception-secu", name: "Hub Sécurité Quai F&L", type: "Hub Sécurité", status: "green", 
+          { id: "zone-fl-reception", name: "Quai de Réception F&L", zoneTypeId: "zt-entrepot-sec", machines: [{id: "machine-fl-reception-secu", name: "Hub Sécurité Quai F&L", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
             configuredControls: {
                 "control-motion-security": { isActive: true, params: { "heure_debut_surveillance": "19:00", "heure_fin_surveillance": "05:00", "surveillance_active": true }, sensorMappings: {"motion_detected": "sensor-fl-reception-motion"} }
@@ -504,7 +533,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
              { id: "sensor-fl-reception-motion", name: "Détecteur Mouvement Quai F&L (nuit)", typeModel: "Détecteur de Mouvement SecuMotion X1", scope: "zone", status: "green", provides: ["motion_detected"], piServerId: "machine-fl-reception-secu" }
           ]},
           { 
-            id: "zone-fl-chf-tropicaux", name: "Chambre Froide Fruits Tropicaux (+8°C)", machines: [
+            id: "zone-fl-chf-tropicaux", name: "Chambre Froide Fruits Tropicaux (+8°C)", zoneTypeId: "zt-chambre-froide-pos", machines: [
               { 
                 id: "machine-chf-tropic1", name: "Réfrigérateur Tropicaux T1", type: "Chambre Froide", status: "red",
                 activeControlInAlert: {
@@ -530,7 +559,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
     icon: Tractor,
     zones: [
       { 
-        id: "zone-ferme-champs-lavande", name: "Champs de Lavande", icon: Sprout, machines: [
+        id: "zone-ferme-champs-lavande", name: "Champs de Lavande", icon: Sprout, zoneTypeId: "zt-champ-culture", machines: [
           { id: "machine-ferme-irrigation-lavande", name: "Système d'Irrigation Lavande IL01", type: "Système d'Irrigation", status: "orange", icon: SprayCan,
             activeControlInAlert: {
               controlId: "control-soil-moisture", controlName: "Contrôle Humidité du Sol (Irrigation)",
@@ -547,7 +576,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         ]
       },
       { 
-        id: "zone-ferme-serres-legumes", name: "Serres Légumes (Tomates, Poivrons)", icon: Apple, machines: [
+        id: "zone-ferme-serres-legumes", name: "Serres Légumes (Tomates, Poivrons)", icon: Apple, zoneTypeId: "zt-serre-agricole", machines: [
           { id: "machine-ferme-ventilation-serre1", name: "Ventilation Serre S1", type: "Ventilation Serre", status: "green", availableSensors:[{id: "s-vent-serre1-speed", name: "Vitesse Vent. Serre 1", provides:["speed"]}] },
           { id: "machine-ferme-chauffage-serre1", name: "Chauffage Serre S1", type: "Chauffage Serre", status: "green", 
               availableSensors:[{id: "s-chauf-serre1-power", name: "Puissance Chauf. Serre 1", provides:["power"]}, {id: "s-chauf-serre1-temp", name: "Temp. Chauf. Serre 1", provides:["temp_enclos"]}],
@@ -561,7 +590,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         ]
       },
       { 
-        id: "zone-ferme-bergerie-moutons", name: "Bergerie Moutons", icon: PawPrint, machines: [
+        id: "zone-ferme-bergerie-moutons", name: "Bergerie Moutons", icon: PawPrint, zoneTypeId: "zt-elevage-animaux", machines: [
           { id: "machine-ferme-ventilation-bergerie", name: "Ventilation Bergerie B1", type: "Ventilation Enclos", status: "green", 
             availableSensors:[{id: "s-vent-bergerie-speed", name: "Vitesse Vent. Bergerie B1", provides:["speed"]}, {id: "s-vent-bergerie-temp", name: "Temp. Vent. Bergerie B1", provides:["temp_enclos"]}],
             configuredControls: {
@@ -583,7 +612,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
         ]
       },
       { 
-        id: "zone-ferme-hangar-materiel", name: "Hangar Matériel Agricole", icon: Warehouse, machines: [
+        id: "zone-ferme-hangar-materiel", name: "Hangar Matériel Agricole", icon: Warehouse, zoneTypeId: "zt-entrepot-sec", machines: [
           { id: "machine-ferme-secu-hangar", name: "Hub Sécurité Ferme", type: "Hub Sécurité", status: "green", 
             availableSensors: [],
             configuredControls: {
@@ -608,6 +637,7 @@ export const DUMMY_CLIENT_SITES_DATA: Site[] = [
       {
         id: "zone-pi-office",
         name: "Bureau Client Exemple",
+        zoneTypeId: "zt-salle-serveur",
         machines: [
           {
             id: "machine-pi-office-main",
@@ -759,3 +789,4 @@ export const findAssetById = (assetId: string, sites: Site[] = DUMMY_CLIENT_SITE
   }
   return undefined;
 };
+

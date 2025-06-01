@@ -21,7 +21,8 @@ import {
     getSiteOverallStatus, 
     getStatusIcon,      
     getStatusText,
-    getMachineIcon       
+    getMachineIcon,
+    DUMMY_ZONE_TYPES // Import zone types
 } from "@/lib/client-data.tsx"; 
 import { cn } from "@/lib/utils";
 
@@ -179,7 +180,7 @@ const MachineItemDisplay: React.FC<{ machine: Machine; siteId: string; zoneId: s
 
 const SensorItemDisplay: React.FC<{ sensor: Sensor; siteId: string; zoneId: string; router: ReturnType<typeof useRouter> }> = ({ sensor, siteId, zoneId, router }) => {
     const handleManageSensor = (sensorId: string, sensorName: string) => {
-        alert(`Gestion du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Fonctionnalité non implémentée pour le moment.`);
+        alert(`Gestion du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Fonctionnalité de gestion détaillée non implémentée pour le moment.`);
     };
     const handleDeleteSensor = (sensorId: string, sensorName: string) => {
         alert(`Suppression du capteur ambiant "${sensorName}" (ID: ${sensorId}) - Non implémenté.`);
@@ -239,6 +240,7 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
     const isEmptyZoneOverall = !hasMachines && !hasAmbientSensors && !hasSubZones;
 
     const zoneNavLink = `/client/assets/manage/${[...currentPathSegments, zone.id].join('/')}`;
+    const zoneTypeInfo = DUMMY_ZONE_TYPES.find(zt => zt.id === zone.zoneTypeId);
 
     return (
         <AccordionItem value={`${currentPathSegments.join('-')}-${zone.id}`} className="border-b bg-muted/30 rounded-md mb-2" style={{ marginLeft: paddingLeft }}>
@@ -246,7 +248,10 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                 <div className="flex items-center justify-between w-full">
                     <Link href={zoneNavLink} className="flex items-center gap-2 group" onClick={(e) => { e.preventDefault(); router.push(zoneNavLink); }}>
                         <Layers className="h-5 w-5 text-primary/80 group-hover:text-primary" />
-                        <span className="font-medium text-md group-hover:text-primary group-hover:underline">{zone.name}</span>
+                        <div>
+                          <span className="font-medium text-md group-hover:text-primary group-hover:underline">{zone.name}</span>
+                          {zoneTypeInfo && <p className="text-xs text-muted-foreground group-hover:text-primary/80">{zoneTypeInfo.name}</p>}
+                        </div>
                     </Link>
                     <div className="flex items-center gap-1.5 text-sm font-medium">
                         {getStatusIcon(zoneStatus, "h-5 w-5")}
@@ -261,6 +266,16 @@ const ZoneItemForManagement: React.FC<ZoneItemForManagementProps> = ({ zone, roo
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-3 pt-2 space-y-3">
+                {zoneTypeInfo && (
+                    <Card className="bg-blue-50 border-blue-200 my-2 shadow-sm">
+                        <CardHeader className="pb-2 pt-3">
+                            <CardTitle className="text-sm font-semibold text-blue-700 flex items-center"><Info className="h-4 w-4 mr-2"/>Bonnes Pratiques: {zoneTypeInfo.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-xs text-blue-600">
+                            <p>{zoneTypeInfo.bestPractices}</p>
+                        </CardContent>
+                    </Card>
+                )}
                 <div className="flex flex-wrap justify-end items-center gap-2 my-2">
                     <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${zone.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
                     
@@ -446,6 +461,7 @@ export default function ManageAssetPage() {
   
   const mainCardTitle = asset.name;
   const mainCardDescription = assetType === 'site' ? (asset as Site).location : `Zone de ${breadcrumbPath.length > 1 ? breadcrumbPath[breadcrumbPath.length - 2].name : DUMMY_CLIENT_SITES_DATA.find(s=>s.id ===rootSiteId)?.name}`;
+  const currentZoneTypeInfo = assetType === 'zone' ? DUMMY_ZONE_TYPES.find(zt => zt.id === (asset as Zone).zoneTypeId) : null;
   
   const addZoneButtonLabel = assetType === 'site' ? "Ajouter une Zone au Site" : "Ajouter une Sous-Zone";
   const addZonePopoverTitle = assetType === 'site' ? "Qu'est-ce qu'une Zone ?" : "Qu'est-ce qu'une Sous-Zone ?";
@@ -492,6 +508,9 @@ export default function ManageAssetPage() {
                     <div>
                         <CardTitle className="text-3xl">{mainCardTitle}</CardTitle>
                         <CardDescription className="text-md">{mainCardDescription}</CardDescription>
+                        {currentZoneTypeInfo && assetType === 'zone' && (
+                             <CardDescription className="text-sm text-blue-600 mt-1">Type: {currentZoneTypeInfo.name}</CardDescription>
+                        )}
                     </div>
                 </div>
                 <Button variant="outline" size="lg" onClick={handleEditAssetDetails}>
@@ -584,6 +603,16 @@ export default function ManageAssetPage() {
                         </Popover>
                     </div>
                   </div>
+                  {currentZoneTypeInfo && (
+                      <Card className="bg-blue-50 border-blue-200 my-4 shadow-sm">
+                          <CardHeader className="pb-2 pt-3">
+                              <CardTitle className="text-base font-semibold text-blue-700 flex items-center"><Info className="h-5 w-5 mr-2"/>Focus: {currentZoneTypeInfo.name}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="text-sm text-blue-600">
+                              <p>{currentZoneTypeInfo.bestPractices}</p>
+                          </CardContent>
+                      </Card>
+                  )}
                   <div className="px-4 pb-3 pt-2 space-y-3">
                     <div className="flex flex-wrap justify-end items-center gap-2 my-2">
                         <Button variant="outline" size="sm" onClick={() => router.push(`/client/assets/edit-zone/${rootSiteId}/${asset.id}`)}><Edit3 className="mr-1 h-3 w-3" /> Modifier Zone</Button>
