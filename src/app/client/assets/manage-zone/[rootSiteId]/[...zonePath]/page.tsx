@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronRight, Layers, Edit3, PlusCircle, Trash2, PackageOpen, Info, HardDrive, RadioTower, ListChecks, Settings2, ExternalLink, BarChart3, Activity, AlertTriangle } from "lucide-react"; 
 import { 
@@ -163,6 +165,9 @@ export default function ManageZonePage() {
     // Potentially navigate up: router.push(breadcrumbPath[breadcrumbPath.length - 2]?.path || '/assets');
   }
 
+  const bestPracticesChecklist = zoneTypeDetails?.bestPracticesContent?.split('\n').filter(line => line.trim() !== '') || [];
+
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -174,7 +179,6 @@ export default function ManageZonePage() {
               {index === breadcrumbPath.length - 1 ? (
                 <span className="font-semibold text-foreground">{segment.name}</span>
               ) : (
-                // For site segments, link to manage/[siteId]. For zone segments, link to manage-zone/[rootSiteId]/[...path]
                 <Link href={segment.path} className="hover:text-primary font-medium">
                   {segment.name}
                 </Link>
@@ -216,8 +220,8 @@ export default function ManageZonePage() {
                 <TabsTrigger value="subzones"><Layers className="mr-1 h-4 w-4 md:mr-2"/>Sous-Zones</TabsTrigger>
                 <TabsTrigger value="ambientSensors"><RadioTower className="mr-1 h-4 w-4 md:mr-2"/>Capteurs Ambiants</TabsTrigger>
                 <TabsTrigger value="bestPractices"><ListChecks className="mr-1 h-4 w-4 md:mr-2"/>Bonnes Pratiques</TabsTrigger>
-                <TabsTrigger value="zoneControls" disabled><Settings2 className="mr-1 h-4 w-4 md:mr-2"/>Contrôles (Zone)</TabsTrigger>
-                <TabsTrigger value="zoneEvents" disabled><Activity className="mr-1 h-4 w-4 md:mr-2"/>Événements (Zone)</TabsTrigger>
+                <TabsTrigger value="zoneControls"><Settings2 className="mr-1 h-4 w-4 md:mr-2"/>Contrôles (Zone)</TabsTrigger>
+                <TabsTrigger value="zoneEvents"><Activity className="mr-1 h-4 w-4 md:mr-2"/>Événements (Zone)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -353,11 +357,21 @@ export default function ManageZonePage() {
                          {zoneTypeDetails && <CardDescription>Recommandations pour le type de zone : {zoneTypeDetails.name}</CardDescription>}
                     </CardHeader>
                     <CardContent>
-                        {zoneTypeDetails?.bestPracticesContent ? (
-                            <div className="prose prose-sm max-w-none whitespace-pre-line text-sm">
-                                <p>{zoneTypeDetails.bestPracticesContent}</p>
+                        {bestPracticesChecklist.length > 0 ? (
+                            <div className="space-y-3">
+                                {bestPracticesChecklist.map((item, index) => (
+                                    <div key={`bp-item-${index}`} className="flex items-start space-x-3 p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                                        <Checkbox id={`bp-chk-${index}`} className="mt-1" />
+                                        <div className="grid gap-1.5 leading-snug">
+                                        <Label htmlFor={`bp-chk-${index}`} className="font-medium text-sm cursor-pointer">
+                                          {item.startsWith('- ') || item.startsWith('* ') ? item.substring(2) : item}
+                                        </Label>
+                                        {/* Potential for sub-text or actions in the future */}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ): <p className="text-muted-foreground">Aucune bonne pratique spécifique définie pour ce type de zone.</p>}
+                        ): <p className="text-muted-foreground">Aucune bonne pratique spécifique définie pour ce type de zone ou le contenu n'est pas formaté en liste.</p>}
                     </CardContent>
                 </Card>
               </TabsContent>
